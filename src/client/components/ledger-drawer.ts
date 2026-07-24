@@ -1,5 +1,3 @@
-'use strict';
-
 // <ledger-drawer> — the reading drawer (manuscript leaf) for one item.
 //
 // A modal overlay that reads and edits a single Epic/Story/Task: status, workflow
@@ -21,10 +19,22 @@
 // Open with .open(node); the node's known fields paint immediately, then the
 // full item is fetched and the drawer repaints.
 
-import { el, asButton, copyLink, relTime } from './util.js';
+import { el, asButton, copyLink } from './util.js';
 import { chromeSheet, idTag } from './shared-styles.js';
-import { mdToHtml, renderInto } from './markdown.js';
+import { renderInto } from './markdown.js';
 import './ledger-comment-thread.js';
+import type { LedgerCommentThread } from './ledger-comment-thread.js';
+import type { Item, LedgerNode, User, EditableField, Capabilities } from '../../shared/contract';
+
+/** The fetch wrapper the board injects (see app's api()). */
+export type ApiFn = <T = unknown>(path: string, opts?: RequestInit) => Promise<T>;
+/** The board's lazy child loader, injected so the contains-list uses the same
+ *  filters as the board. */
+export type FetchChildrenFn = (node: LedgerNode) => Promise<LedgerNode[]>;
+/** Optional foley cues. */
+export interface Sfx { pageTurn(): void; quill(): void }
+/** Optional toast surface. */
+export type ToastFn = (msg: string, isErr?: boolean) => void;
 
 const STATUSES = ['Open', 'Resolved', 'Closed'];
 
@@ -126,26 +136,28 @@ sheet.replaceSync(`
   :focus-visible { outline: 2px solid var(--brass-hi, #d8b878); outline-offset: 3px; }
 `);
 
-class LedgerDrawer extends HTMLElement {
-  api = null;
-  fetchChildren = null;
-  sfx = null;
-  toast = null;
-  #caps = {};
-  #item = null;
-  #descMode = 'read';
-  #descCancelled = false;
-  #lastFocus = null;
-  #stepCache = new Map();
-  #ta = { items: [], active: -1, seq: 0, debounce: null };
-  #saveTimer = 0;
-  #trap = null;
+interface TypeaheadState { items: User[]; active: number; seq: number; debounce: number | null }
 
-  connectedCallback() {
+export class LedgerDrawer extends HTMLElement {
+  api: ApiFn | null = null;
+  fetchChildren: FetchChildrenFn | null = null;
+  sfx: Sfx | null = null;
+  toast: ToastFn | null = null;
+  #caps: Partial<Capabilities> = {};
+  #item: (LedgerNode & Partial<Item>) | null = null;
+  #descMode: 'read' | 'edit' = 'read';
+  #descCancelled = false;
+  #lastFocus: HTMLElement | null = null;
+  #stepCache = new Map<string, string[]>();
+  #ta: TypeaheadState = { items: [], active: -1, seq: 0, debounce: null };
+  #saveTimer = 0;
+  #trap: ((e: KeyboardEvent) => void) | null = null;
+
+  connectedCallback(): void {
     if (this.shadowRoot) return;
     this.attachShadow({ mode: 'open' });
-    this.shadowRoot.adoptedStyleSheets = [chromeSheet, sheet];
-    this.shadowRoot.innerHTML = `
+    this.shadowRoot!.adoptedStyleSheets = [chromeSheet, sheet];
+    this.shadowRoot!.innerHTML = `
       <div class="scrim" part="scrim"></div>
       <div class="panel" role="dialog" aria-modal="true" tabindex="-1" part="panel">
         <div class="head">
@@ -183,20 +195,20 @@ class LedgerDrawer extends HTMLElement {
     this.#wire();
   }
 
-  set caps(v) { this.#caps = v || {}; }
-  get caps() { return this.#caps; }
+  set caps(v: Partial<Capabilities>) { this.#caps = v || {}; }
+  get caps(): Partial<Capabilities> { return this.#caps; }
 
-  #$(sel) { return this.shadowRoot.querySelector(sel); }
+  #$<T extends Element = HTMLElement>(sel: string): T { return this.shadowRoot!.querySelector(sel) as T; }
 
-  #wire() {
+  #wire(): void {
     this.#$('.scrim').addEventListener('click', () => this.close());
     this.#$('#d-close').addEventListener('click', () => this.close());
     this.#$('#d-copy-link').addEventListener('click', () => { if (this.#item?.url) copyLink(this.#item.url, this.#$('#d-copy-link')); });
 
-    this.#$('#d-status-edit').addEventListener('change', (e) => this.#edit('status', e.target.value, 'Status'));
-    this.#$('#d-step-edit').addEventListener('change', (e) => this.#edit('workflowAction', e.target.value, 'Workflow step'));
-    this.#$('#d-estimate-edit').addEventListener('blur', (e) => {
-      const value = e.target.value.trim();
+    this.#$<HTMLSelectElement>('#d-status-edit').addEventListener('change', (e) => this.#edit('status', (e.target as HTMLSelectElement).value, 'Status'));
+    this.#$<HTMLSelectElement>('#d-step-edit').addEventListener('change', (e) => this.#edit('workflowAction', (e.target as HTMLSelectElement).value, 'Workflow step'));
+    this.#$<HTMLInputElement>('#d-estimate-edit').addEventListener('blur', (e) => {
+      const value = (e.target as HTMLInputElement).value.trim();
       const current = this.#item?.estimate;
       const same = (value === '' && (current == null || current === 0)) || Number(value) === current;
       if (!same) this.#edit('estimate', value, 'Estimate');
@@ -207,16 +219,17 @@ class LedgerDrawer extends HTMLElement {
     this.#$('#d-cancel').addEventListener('mousedown', (e) => { e.preventDefault(); this.#cancelEdit(); });
     this.#$('#d-desc').addEventListener('blur', () => this.#saveDescOnBlur());
 
-    const aEdit = this.#$('#d-assignee-edit');
+    const aEdit = this.#$<HTMLInputElement>('#d-assignee-edit');
     aEdit.addEventListener('input', () => this.#onAssigneeInput());
     aEdit.addEventListener('keydown', (e) => this.#onAssigneeKeydown(e));
     aEdit.addEventListener('blur', () => this.#onAssigneeBlur());
 
     // Description-editor Escape cancels; otherwise Escape closes the drawer. The
     // assignee list handles its own Escape (stopPropagation) to stay open-scoped.
-    this.shadowRoot.addEventListener('keydown', (e) => {
-      if (e.key !== 'Escape') return;
-      if (this.#descMode === 'edit') { this.#cancelEdit(); e.target.blur?.(); }
+    this.shadowRoot!.addEventListener('keydown', (e) => {
+      const ke = e as KeyboardEvent;
+      if (ke.key !== 'Escape') return;
+      if (this.#descMode === 'edit') { this.#cancelEdit(); (ke.target as HTMLElement).blur?.(); }
       else this.close();
     });
 
@@ -227,30 +240,30 @@ class LedgerDrawer extends HTMLElement {
   }
 
   // ---- open / close ----
-  async open(node) {
+  async open(node: LedgerNode | null): Promise<void> {
     if (!node) return;
     this.sfx?.pageTurn();
     this.#item = node;
     this.#descMode = 'read';
     this.#paint(node);
-    this.#lastFocus = node.getRootNode?.()?.activeElement || document.activeElement;
+    this.#lastFocus = document.activeElement as HTMLElement | null;
     this.setAttribute('open', '');
     this.#$('.panel').focus();
-    this.#trap = (e) => this.#trapFocus(e);
+    this.#trap = (e: KeyboardEvent) => this.#trapFocus(e);
     document.addEventListener('keydown', this.#trap, true);
 
     if (this.#caps.readItem && this.api) {
       try {
-        const { item } = await this.api(`/api/item/${node.id}`);
+        const { item } = await this.api<{ item: Item }>(`/api/item/${node.id}`);
         if (this.#item?.id !== node.id) return;
         Object.assign(node, item);
         this.#item = node;
         this.#paint(node);
-      } catch (err) { this.toast?.(err.message, true); }
+      } catch (err) { this.toast?.((err as Error).message, true); }
     }
   }
 
-  close() {
+  close(): void {
     if (!this.hasAttribute('open')) return;
     this.removeAttribute('open');
     this.#item = null;
@@ -261,26 +274,26 @@ class LedgerDrawer extends HTMLElement {
 
   // Focus trap that descends into nested shadow roots (the comment thread), so
   // Tab cycles through every focusable in the open dialog, not just this root's.
-  #trapFocus(e) {
+  #trapFocus(e: KeyboardEvent): void {
     if (e.key !== 'Tab' || !this.hasAttribute('open')) return;
     const focusables = this.#deepFocusables(this.#$('.panel'));
     if (!focusables.length) return;
-    const first = focusables[0], last = focusables[focusables.length - 1];
-    const active = this.shadowRoot.activeElement;
+    const first = focusables[0]!, last = focusables[focusables.length - 1]!;
+    const active = this.shadowRoot!.activeElement;
     const activeDeep = this.#deepActive();
     if (e.shiftKey && (activeDeep === first || active === this.#$('.panel'))) { e.preventDefault(); last.focus(); }
     else if (!e.shiftKey && activeDeep === last) { e.preventDefault(); first.focus(); }
   }
-  #deepActive() {
-    let a = document.activeElement;
+  #deepActive(): Element | null {
+    let a: Element | null = document.activeElement;
     while (a?.shadowRoot?.activeElement) a = a.shadowRoot.activeElement;
     return a;
   }
-  #deepFocusables(root) {
+  #deepFocusables(root: Element): HTMLElement[] {
     const sel = 'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])';
-    const out = [];
-    const walk = (r) => {
-      r.querySelectorAll(sel).forEach((n) => {
+    const out: HTMLElement[] = [];
+    const walk = (r: Element | ShadowRoot) => {
+      r.querySelectorAll<HTMLElement>(sel).forEach((n) => {
         if (n.hidden || n.offsetParent === null) return;
         out.push(n);
         if (n.shadowRoot) walk(n.shadowRoot);
@@ -291,13 +304,13 @@ class LedgerDrawer extends HTMLElement {
   }
 
   // ---- paint ----
-  #paint(item) {
+  #paint(item: LedgerNode & Partial<Item>): void {
     const caps = this.#caps;
     const type = this.#$('#d-type'); type.textContent = item.type; type.className = `chip t-${item.type}`;
     // The source supplies the ticket link; without one, show the id as plain text
     // (no href, no copy button) — the app builds no source URL itself.
     this.#$('#d-short-text').textContent = `№ ${item.shortId}`;
-    const short = this.#$('#d-short'); const copyBtn = this.#$('#d-copy-link');
+    const short = this.#$<HTMLAnchorElement>('#d-short'); const copyBtn = this.#$('#d-copy-link');
     const prefix = this.#$('#d-short-prefix');
     if (item.url) {
       short.href = item.url; short.classList.remove('no-link'); copyBtn.hidden = false;
@@ -309,16 +322,16 @@ class LedgerDrawer extends HTMLElement {
     }
     this.#$('#d-title').textContent = item.title;
 
-    const canEdit = (f) => (caps.editFields || []).includes(f);
+    const canEdit = (f: EditableField) => (caps.editFields || []).includes(f);
     this.#$('#d-status-field').hidden = !canEdit('status');
     this.#$('#d-assignee-field').hidden = !canEdit('assignee');
     this.#$('#d-estimate-field').hidden = !canEdit('estimate');
 
-    this.#$('#d-estimate-edit').value = item.estimate != null && item.estimate > 0 ? item.estimate : '';
-    const sel = this.#$('#d-status-edit'); sel.innerHTML = '';
+    this.#$<HTMLInputElement>('#d-estimate-edit').value = item.estimate != null && item.estimate > 0 ? String(item.estimate) : '';
+    const sel = this.#$<HTMLSelectElement>('#d-status-edit'); sel.innerHTML = '';
     const opts = STATUSES.includes(item.status) ? STATUSES : [item.status, ...STATUSES];
     [...new Set(opts)].forEach((s) => { const o = el('option', null, s); o.value = s; if (s === item.status) o.selected = true; sel.append(o); });
-    this.#$('#d-assignee-edit').value = item.assignee || '';
+    this.#$<HTMLInputElement>('#d-assignee-edit').value = item.assignee || '';
     this.#closeAssigneeList();
 
     this.#populateStepField(item);
@@ -327,56 +340,56 @@ class LedgerDrawer extends HTMLElement {
     this.#setDescMode('read');
     this.#setSaveState('');
 
-    const thread = this.#$('#c-thread');
+    const thread = this.#$<LedgerCommentThread>('#c-thread');
     thread.canComment = !!caps.comment;
     thread.canEdit = !!caps.editOwnComments;
     thread.comments = item.comments || [];
   }
 
   // ---- edits ----
-  async #edit(field, value, label) {
+  async #edit(field: EditableField, value: unknown, label: string): Promise<Item | undefined> {
     const node = this.#item; if (!node || !this.api) return;
     try {
-      const { item } = await this.api(`/api/item/${node.id}/edit`, {
+      const { item } = await this.api<{ item: Item }>(`/api/item/${node.id}/edit`, {
         method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ field, value }),
       });
       Object.assign(node, item); this.#item = node;
-      if (field === 'estimate') this.#$('#d-estimate-edit').value = item.estimate != null && item.estimate > 0 ? item.estimate : '';
+      if (field === 'estimate') this.#$<HTMLInputElement>('#d-estimate-edit').value = item.estimate != null && item.estimate > 0 ? String(item.estimate) : '';
       this.sfx?.quill();
       this.#setSaveState('saved', `${label.toLowerCase()} saved`);
       this.#emitChanged();
       return item;
-    } catch (err) { this.toast?.(err.message, true); throw err; }
+    } catch (err) { this.toast?.((err as Error).message, true); throw err; }
   }
 
-  async #comment(method, suffix, body, clearComposer) {
+  async #comment(method: string, suffix: string, body?: { message: string }, clearComposer?: boolean): Promise<void> {
     const node = this.#item; if (!node || !this.api) return;
     try {
-      const { item } = await this.api(`/api/item/${node.id}/comment${suffix}`, {
+      const { item } = await this.api<{ item: Item }>(`/api/item/${node.id}/comment${suffix}`, {
         method, headers: { 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined,
       });
       Object.assign(node, item); this.#item = node;
-      const thread = this.#$('#c-thread');
+      const thread = this.#$<LedgerCommentThread>('#c-thread');
       thread.comments = item.comments || [];
       if (clearComposer) thread.clearComposer();
       this.sfx?.quill();
       this.#setSaveState('saved', 'comment saved');
       this.#emitChanged();
-    } catch (err) { this.toast?.(err.message, true); }
+    } catch (err) { this.toast?.((err as Error).message, true); }
   }
 
-  #emitChanged() {
-    this.dispatchEvent(new CustomEvent('item-changed', { detail: { item: this.#item }, bubbles: true, composed: true }));
+  #emitChanged(): void {
+    this.dispatchEvent(new CustomEvent('item-changed', { detail: { item: this.#item as Item }, bubbles: true, composed: true }));
   }
 
   // ---- description edit mode ----
-  #renderMarkdown(src) {
+  #renderMarkdown(src: string): void {
     const box = this.#$('#d-desc-render');
     if (!src.trim()) { box.className = 'd-desc-render empty'; box.textContent = 'No description yet. Click “edit” to add one.'; return; }
     box.className = 'd-desc-render';
     renderInto(box, src);
   }
-  #setDescMode(mode) {
+  #setDescMode(mode: 'read' | 'edit'): void {
     this.#descMode = mode;
     const editing = mode === 'edit';
     this.#$('#d-desc-render').hidden = editing;
@@ -384,39 +397,39 @@ class LedgerDrawer extends HTMLElement {
     this.#$('#d-cancel').hidden = !editing;
     if (editing) this.#$('#d-desc').focus();
   }
-  #enterEdit() {
+  #enterEdit(): void {
     if (this.#descMode === 'edit') return;
     this.#descCancelled = false;
-    this.#$('#d-desc').value = this.#item?.description || '';
+    this.#$<HTMLTextAreaElement>('#d-desc').value = this.#item?.description || '';
     this.#setDescMode('edit');
   }
-  #cancelEdit() { this.#descCancelled = true; this.#setDescMode('read'); }
-  async #saveDescOnBlur() {
+  #cancelEdit(): void { this.#descCancelled = true; this.#setDescMode('read'); }
+  async #saveDescOnBlur(): Promise<void> {
     if (this.#descMode !== 'edit') return;
     if (this.#descCancelled) { this.#descCancelled = false; return; }
-    const value = this.#$('#d-desc').value;
+    const value = this.#$<HTMLTextAreaElement>('#d-desc').value;
     if (value === (this.#item?.description || '')) { this.#setDescMode('read'); return; }
     const item = await this.#edit('description', value, 'Description').catch(() => null);
     if (item) this.#renderMarkdown(item.description || '');
     this.#setDescMode('read');
   }
 
-  #setSaveState(kind, label) {
+  #setSaveState(kind: '' | 'saved', label?: string): void {
     const s = this.#$('#d-save-state');
     s.className = `save-state ${kind}`;
     s.textContent = kind === 'saved' ? `✓ ${label || 'saved'}` : '';
     clearTimeout(this.#saveTimer);
-    if (kind === 'saved') this.#saveTimer = setTimeout(() => { s.className = 'save-state'; s.textContent = ''; }, 2400);
+    if (kind === 'saved') this.#saveTimer = window.setTimeout(() => { s.className = 'save-state'; s.textContent = ''; }, 2400);
   }
 
   // ---- workflow step field ----
-  async #populateStepField(item) {
-    const field = this.#$('#d-step-field'); const sel = this.#$('#d-step-edit');
+  async #populateStepField(item: LedgerNode & Partial<Item>): Promise<void> {
+    const field = this.#$('#d-step-field'); const sel = this.#$<HTMLSelectElement>('#d-step-edit');
     field.hidden = true; sel.innerHTML = '';
     if (!this.#caps.stepOptions || !item.project || !this.api) return;
     let steps = this.#stepCache.get(item.project);
     if (!steps) {
-      try { steps = (await this.api(`/api/steps?project=${encodeURIComponent(item.project)}`)).steps || []; }
+      try { steps = (await this.api<{ steps: string[] }>(`/api/steps?project=${encodeURIComponent(item.project)}`)).steps || []; }
       catch { steps = []; }
       this.#stepCache.set(item.project, steps);
     }
@@ -428,19 +441,19 @@ class LedgerDrawer extends HTMLElement {
   }
 
   // ---- contains (children summary) ----
-  async #renderContains(item) {
+  async #renderContains(item: LedgerNode & Partial<Item>): Promise<void> {
     const box = this.#$('#d-contains');
     if (!item.childCount) { box.hidden = true; box.innerHTML = ''; return; }
-    if (!item.loaded && this.fetchChildren) {
+    if (!(item as { loaded?: boolean }).loaded && this.fetchChildren) {
       box.hidden = false; box.innerHTML = '';
       box.append(el('h4', null, 'Contents'), el('div', 'cgroup-label', 'loading…'));
       try { await this.fetchChildren(item); } catch { /* leave loading */ }
       if (this.#item?.id !== item.id) return;
     }
-    const children = item.children || [];
+    const children: LedgerNode[] = (item as { children?: LedgerNode[] }).children || [];
     const stories = children.filter((n) => n.kind === 'story');
     const direct = children.filter((n) => n.kind !== 'story');
-    const groups = [];
+    const groups: [string, LedgerNode[]][] = [];
     if (item.kind === 'epic') {
       if (stories.length) groups.push(['Stories', stories]);
       if (direct.length) groups.push(['Tasks directly on this epic', direct]);
@@ -465,13 +478,13 @@ class LedgerDrawer extends HTMLElement {
   }
 
   // ---- assignee typeahead ----
-  #closeAssigneeList() {
+  #closeAssigneeList(): void {
     const list = this.#$('#d-assignee-list');
     list.hidden = true; list.innerHTML = '';
     this.#ta.items = []; this.#ta.active = -1;
     this.#$('#d-assignee-edit').setAttribute('aria-expanded', 'false');
   }
-  #renderAssigneeList() {
+  #renderAssigneeList(): void {
     const list = this.#$('#d-assignee-list');
     list.innerHTML = '';
     if (!this.#ta.items.length) { this.#closeAssigneeList(); return; }
@@ -486,34 +499,34 @@ class LedgerDrawer extends HTMLElement {
     list.hidden = false;
     this.#$('#d-assignee-edit').setAttribute('aria-expanded', 'true');
   }
-  #chooseAssignee(i) {
+  #chooseAssignee(i: number): void {
     const u = this.#ta.items[i]; if (!u) return;
-    this.#$('#d-assignee-edit').value = u.alias;
+    this.#$<HTMLInputElement>('#d-assignee-edit').value = u.alias;
     this.#closeAssigneeList();
     this.#commitAssignee();
   }
-  #commitAssignee() {
-    const value = this.#$('#d-assignee-edit').value.trim();
+  #commitAssignee(): void {
+    const value = this.#$<HTMLInputElement>('#d-assignee-edit').value.trim();
     if (value === (this.#item?.assignee || '')) return;
     this.#edit('assignee', value, 'Assignee');
   }
-  async #queryAssignee(q) {
+  async #queryAssignee(q: string): Promise<void> {
     const seq = ++this.#ta.seq;
     try {
-      const { users } = await this.api(`/api/assignees?q=${encodeURIComponent(q)}`);
+      const { users } = await this.api!<{ users: User[] }>(`/api/assignees?q=${encodeURIComponent(q)}`);
       if (seq !== this.#ta.seq) return;
-      if (this.shadowRoot.activeElement !== this.#$('#d-assignee-edit')) return;
+      if (this.shadowRoot!.activeElement !== this.#$('#d-assignee-edit')) return;
       this.#ta.items = users; this.#ta.active = -1;
       this.#renderAssigneeList();
     } catch { /* best-effort */ }
   }
-  #onAssigneeInput() {
-    const q = this.#$('#d-assignee-edit').value.trim();
-    clearTimeout(this.#ta.debounce);
+  #onAssigneeInput(): void {
+    const q = this.#$<HTMLInputElement>('#d-assignee-edit').value.trim();
+    if (this.#ta.debounce) clearTimeout(this.#ta.debounce);
     if (!this.#caps.searchAssignees || q.length < 3) { this.#closeAssigneeList(); return; }
-    this.#ta.debounce = setTimeout(() => this.#queryAssignee(q), 180);
+    this.#ta.debounce = window.setTimeout(() => this.#queryAssignee(q), 180);
   }
-  #onAssigneeKeydown(e) {
+  #onAssigneeKeydown(e: KeyboardEvent): void {
     const open = !this.#$('#d-assignee-list').hidden;
     if (e.key === 'ArrowDown' && open) { e.preventDefault(); this.#ta.active = Math.min(this.#ta.active + 1, this.#ta.items.length - 1); this.#renderAssigneeList(); }
     else if (e.key === 'ArrowUp' && open) { e.preventDefault(); this.#ta.active = Math.max(this.#ta.active - 1, 0); this.#renderAssigneeList(); }
@@ -522,10 +535,9 @@ class LedgerDrawer extends HTMLElement {
       else { this.#closeAssigneeList(); this.#commitAssignee(); }
     } else if (e.key === 'Escape' && open) { e.stopPropagation(); this.#closeAssigneeList(); }
   }
-  #onAssigneeBlur() {
+  #onAssigneeBlur(): void {
     setTimeout(() => { if (!this.#$('#d-assignee-list').hidden) return; this.#commitAssignee(); }, 120);
   }
 }
 
 if (!customElements.get('ledger-drawer')) customElements.define('ledger-drawer', LedgerDrawer);
-export { LedgerDrawer };

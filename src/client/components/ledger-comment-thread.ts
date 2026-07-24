@@ -1,5 +1,3 @@
-'use strict';
-
 // <ledger-comment-thread> — the comment list and composer for one item.
 //
 // Data in (properties): `comments` (array of shaped comments), `canEdit`
@@ -19,6 +17,7 @@
 
 import { el, relTime } from './util.js';
 import { renderInto } from './markdown.js';
+import type { Comment } from '../../shared/contract';
 
 const sheet = new CSSStyleSheet();
 sheet.replaceSync(`
@@ -65,24 +64,25 @@ sheet.replaceSync(`
   :focus-visible { outline: 2px solid var(--wax, #7c2b22); outline-offset: 2px; }
 `);
 
-class LedgerCommentThread extends HTMLElement {
-  #comments = [];
+export class LedgerCommentThread extends HTMLElement {
+  #comments: Comment[] = [];
   #canEdit = false;
   #canComment = true;
 
-  connectedCallback() {
+  connectedCallback(): void {
     if (!this.shadowRoot) {
       this.attachShadow({ mode: 'open' });
-      this.shadowRoot.adoptedStyleSheets = [sheet];
-      this.shadowRoot.innerHTML = `
+      const root = this.shadowRoot!;
+      root.adoptedStyleSheets = [sheet];
+      root.innerHTML = `
         <div class="head"><span class="label" part="label">comments</span></div>
         <div class="compose" part="compose">
           <textarea rows="2" aria-label="Add a comment (Markdown)" placeholder="Add a comment…"></textarea>
           <button type="button" class="mini-btn">add comment</button>
         </div>
         <div class="c-list"></div>`;
-      const ta = this.shadowRoot.querySelector('.compose textarea');
-      const add = this.shadowRoot.querySelector('.compose .mini-btn');
+      const ta = root.querySelector('.compose textarea') as HTMLTextAreaElement;
+      const add = root.querySelector('.compose .mini-btn') as HTMLButtonElement;
       const submit = () => {
         const msg = ta.value.trim();
         if (!msg) return;
@@ -95,30 +95,31 @@ class LedgerCommentThread extends HTMLElement {
     this.#renderList();
   }
 
-  set comments(v) { this.#comments = Array.isArray(v) ? v : []; if (this.shadowRoot) this.#renderList(); }
-  get comments() { return this.#comments; }
-  set canEdit(v) { this.#canEdit = !!v; if (this.shadowRoot) this.#renderList(); }
-  get canEdit() { return this.#canEdit; }
-  set canComment(v) { this.#canComment = !!v; const c = this.shadowRoot?.querySelector('.compose'); if (c) c.hidden = !this.#canComment; }
-  get canComment() { return this.#canComment; }
+  set comments(v: Comment[]) { this.#comments = Array.isArray(v) ? v : []; if (this.shadowRoot) this.#renderList(); }
+  get comments(): Comment[] { return this.#comments; }
+  set canEdit(v: boolean) { this.#canEdit = !!v; if (this.shadowRoot) this.#renderList(); }
+  get canEdit(): boolean { return this.#canEdit; }
+  set canComment(v: boolean) { this.#canComment = !!v; const c = this.shadowRoot?.querySelector('.compose') as HTMLElement | null; if (c) c.hidden = !this.#canComment; }
+  get canComment(): boolean { return this.#canComment; }
 
   // Clear the composer (the host calls this after a successful add).
-  clearComposer() { const ta = this.shadowRoot?.querySelector('.compose textarea'); if (ta) ta.value = ''; }
+  clearComposer(): void { const ta = this.shadowRoot?.querySelector('.compose textarea') as HTMLTextAreaElement | null; if (ta) ta.value = ''; }
 
-  #renderList() {
-    const list = this.shadowRoot.querySelector('.c-list');
-    const label = this.shadowRoot.querySelector('.label');
+  #renderList(): void {
+    const root = this.shadowRoot!;
+    const list = root.querySelector('.c-list')!;
+    const label = root.querySelector('.label')!;
     const comments = this.#comments;
     label.textContent = comments.length ? `comments · ${comments.length}` : 'comments';
     list.innerHTML = '';
     if (!comments.length) { list.append(el('div', 'c-empty', 'No comments yet.')); return; }
     // Newest first. createDate is the stable ordering key; fall back to
     // lastUpdatedDate, then preserve source order for entries missing both.
-    const when = (c) => new Date(c.createDate || c.lastUpdatedDate || 0).getTime() || 0;
+    const when = (c: Comment) => new Date(c.createDate || c.lastUpdatedDate || 0).getTime() || 0;
     [...comments].sort((a, b) => when(b) - when(a)).forEach((c) => list.append(this.#commentEl(c)));
   }
 
-  #commentEl(c) {
+  #commentEl(c: Comment): HTMLElement {
     const box = el('div', 'c-item'); box.dataset.id = c.id;
     const head = el('div', 'c-head');
     head.append(el('span', 'c-author', c.author || 'unknown'));
@@ -140,9 +141,9 @@ class LedgerCommentThread extends HTMLElement {
   }
 
   // Inline edit: swap the comment body for a textarea + save/cancel.
-  #enterEdit(box, c) {
+  #enterEdit(box: HTMLElement, c: Comment): void {
     if (box.querySelector('.c-edit')) return;
-    const body = box.querySelector('.c-body');
+    const body = box.querySelector('.c-body') as HTMLElement;
     const ta = el('textarea', 'c-edit'); ta.value = c.message || ''; ta.rows = 3;
     const bar = el('div', 'c-edit-bar');
     const save = el('button', 'mini-btn'); save.type = 'button'; save.textContent = 'save';
@@ -153,10 +154,12 @@ class LedgerCommentThread extends HTMLElement {
     save.addEventListener('click', () => { save.disabled = true; this.#emit('comment-edit', { id: c.id, message: ta.value }); });
   }
 
-  #emit(type, detail) {
+  #emit<K extends 'comment-add' | 'comment-edit' | 'comment-delete'>(
+    type: K,
+    detail: HTMLElementEventMap[K] extends CustomEvent<infer D> ? D : never,
+  ): void {
     this.dispatchEvent(new CustomEvent(type, { detail, bubbles: true, composed: true }));
   }
 }
 
 if (!customElements.get('ledger-comment-thread')) customElements.define('ledger-comment-thread', LedgerCommentThread);
-export { LedgerCommentThread };

@@ -1,5 +1,3 @@
-'use strict';
-
 // <ledger-card> — a parchment slip for one Epic/Story/Task item.
 //
 // Data in: the `item` JS property (a shaped node — rich data, so a property, not
@@ -17,6 +15,7 @@
 
 import { el, asButton } from './util.js';
 import { chromeSheet, idTag } from './shared-styles.js';
+import type { LedgerNode } from '../../shared/contract';
 
 const cardSheet = new CSSStyleSheet();
 cardSheet.replaceSync(`
@@ -118,28 +117,28 @@ const DECKLE_SVG = `
     </defs>
   </svg>`;
 
-class LedgerCard extends HTMLElement {
+export class LedgerCard extends HTMLElement {
   static observedAttributes = ['selected', 'drill'];
-  #item = null;
+  #item: LedgerNode | null = null;
 
-  connectedCallback() {
+  connectedCallback(): void {
     if (!this.shadowRoot) {
       this.attachShadow({ mode: 'open' });
-      this.shadowRoot.adoptedStyleSheets = [chromeSheet, cardSheet];
+      this.shadowRoot!.adoptedStyleSheets = [chromeSheet, cardSheet];
     }
     // Lazy-upgrade the property in case it was set before this module loaded.
     if (Object.prototype.hasOwnProperty.call(this, 'item')) {
-      const v = this.item; delete this.item; this.item = v;
+      const v = (this as { item?: LedgerNode }).item; delete (this as { item?: LedgerNode }).item; this.item = v ?? null;
     }
     this.#render();
   }
 
-  set item(v) { this.#item = v; this.#render(); }
-  get item() { return this.#item; }
+  set item(v: LedgerNode | null) { this.#item = v; this.#render(); }
+  get item(): LedgerNode | null { return this.#item; }
 
-  attributeChangedCallback() { /* styling is attribute-driven; no re-render needed */ }
+  attributeChangedCallback(): void { /* styling is attribute-driven; no re-render needed */ }
 
-  #render() {
+  #render(): void {
     const root = this.shadowRoot;
     if (!root) return;
     const item = this.#item;
@@ -166,7 +165,7 @@ class LedgerCard extends HTMLElement {
     const stepText = item.workflowAction || item.status;
     const status = el('span', `pill st-${item.status}`); status.setAttribute('part', 'status-pill');
     status.append(el('span', 'dot', ''), document.createTextNode(stepText));
-    status.firstChild.setAttribute('aria-hidden', 'true');
+    (status.firstChild as HTMLElement).setAttribute('aria-hidden', 'true');
     meta.append(status);
     if (item.assignee) {
       const who = el('span', 'who');
@@ -204,7 +203,7 @@ class LedgerCard extends HTMLElement {
     root.append(card);
   }
 
-  #emit(type) {
+  #emit(type: 'card-activate' | 'card-open'): void {
     this.dispatchEvent(new CustomEvent(type, {
       detail: { id: this.#item?.id, item: this.#item },
       bubbles: true, composed: true,
@@ -213,4 +212,3 @@ class LedgerCard extends HTMLElement {
 }
 
 if (!customElements.get('ledger-card')) customElements.define('ledger-card', LedgerCard);
-export { LedgerCard };

@@ -1,5 +1,3 @@
-'use strict';
-
 // <ledger-column> — one column of the columns lens (Epics / Stories / Tasks).
 // Shadow DOM holds only the chrome: a titled head with the item count and the
 // tier's "§" mark, and a scrolling body that projects its light-DOM children
@@ -34,14 +32,14 @@ sheet.replaceSync(`
   .col-body { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 16px 24px; }
 `);
 
-class LedgerColumn extends HTMLElement {
+export class LedgerColumn extends HTMLElement {
   static observedAttributes = ['heading', 'count'];
 
-  connectedCallback() {
+  connectedCallback(): void {
     if (!this.shadowRoot) {
       this.attachShadow({ mode: 'open' });
-      this.shadowRoot.adoptedStyleSheets = [sheet];
-      this.shadowRoot.innerHTML = `
+      this.shadowRoot!.adoptedStyleSheets = [sheet];
+      this.shadowRoot!.innerHTML = `
         <div class="col-head" part="head">
           <h3 part="heading"></h3>
           <span class="count" part="count"></span>
@@ -51,14 +49,14 @@ class LedgerColumn extends HTMLElement {
     this.#sync();
   }
 
-  attributeChangedCallback() { if (this.shadowRoot) this.#sync(); }
+  attributeChangedCallback(): void { if (this.shadowRoot) this.#sync(); }
 
-  #sync() {
-    this.shadowRoot.querySelector('h3').textContent = this.getAttribute('heading') || '';
+  #sync(): void {
+    const root = this.shadowRoot!;
+    root.querySelector('h3')!.textContent = this.getAttribute('heading') || '';
     const n = Number(this.getAttribute('count') || 0);
-    this.shadowRoot.querySelector('.count').textContent = n === 1 ? '1 item' : `${n} items`;
+    root.querySelector('.count')!.textContent = n === 1 ? '1 item' : `${n} items`;
   }
 }
 
 if (!customElements.get('ledger-column')) customElements.define('ledger-column', LedgerColumn);
-export { LedgerColumn };

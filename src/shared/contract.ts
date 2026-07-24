@@ -65,6 +65,9 @@ export interface LedgerNode {
   /** Some sources carry a workflow step distinct from status; shown in place of
    *  status on the card/pill when present. */
   workflowAction?: string | null;
+  /** Estimate in points, when a source carries it on the list node (shown as a
+   *  card pill). The full Item always has it; a node may too. */
+  estimate?: number | null;
 }
 
 /** One comment on an item. */

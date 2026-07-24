@@ -1,5 +1,3 @@
-'use strict';
-
 // Constructable stylesheets shared across Ledger components. Each is a single
 // CSSStyleSheet object, parsed once, adopted into every shadow root that needs
 // it (adoptedStyleSheets) — cheaper than inlining <style> per instance.
@@ -8,8 +6,15 @@
 // declared on :root in styles.css. Custom properties inherit through the shadow
 // boundary, so the tokens reach here; the var() fallbacks keep a component
 // legible even if it's dropped on a page that hasn't loaded the token layer.
+//
+// Styles stay authored as template literals here (rather than `import … with
+// { type: 'css' }`) deliberately: CSS module scripts aren't supported in Safari
+// as of late 2025, so template-literal constructable sheets are the portable
+// no-build choice.
 
-const sheet = (css) => { const s = new CSSStyleSheet(); s.replaceSync(css); return s; };
+import { el, copyLink } from './util.js';
+
+const sheet = (css: string): CSSStyleSheet => { const s = new CSSStyleSheet(); s.replaceSync(css); return s; };
 
 // The wax-seal tier chip, tier→color map, status/estimate pills, assignee, and
 // the ticket-number + copy-link unit. These leaf bits render as part-tagged
@@ -65,8 +70,7 @@ export const chromeSheet = sheet(`
 // copy-link button when the item carries a `url` (the source supplies the link;
 // the app neither knows nor builds any source's URL). Returns a part-tagged node
 // so a host can restyle it from outside via ::part(id-tag) / ::part(copy-link).
-import { el, copyLink } from './util.js';
-export function idTag(shortId, url) {
+export function idTag(shortId: string, url?: string | null): HTMLSpanElement {
   const wrap = el('span', 'id-tag'); wrap.setAttribute('part', 'id-tag');
   wrap.append(el('span', 'card-id', `№ ${shortId}`));
   if (!url) return wrap;   // no link when the source doesn't provide one

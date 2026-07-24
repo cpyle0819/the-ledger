@@ -14,9 +14,9 @@
 // owns the model and orchestration and wires the others together. Importing a
 // component module registers its element as a side effect.
 
-import './components/ledger-card.js';
-import './components/ledger-column.js';
-import './components/ledger-drawer.js';
+import './build/client/components/ledger-card.js';
+import './build/client/components/ledger-column.js';
+import './build/client/components/ledger-drawer.js';
 
 const state = {
   assignee: '',          // '' = me, 'anyone', or an alias
