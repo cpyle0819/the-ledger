@@ -99,6 +99,7 @@ function shapeNode(item, items, context = false) {
     project: item.project || null,
     context,
     childCount: items.filter((c) => c.parent === item.id).length,
+    estimate: item.estimate ?? null,
   };
 }
 

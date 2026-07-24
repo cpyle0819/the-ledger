@@ -178,7 +178,7 @@ export class LedgerCard extends HTMLElement {
       }
       meta.append(who);
     }
-    if (item.estimate != null) meta.append(el('span', 'pill', `${item.estimate} pts`));
+    if (item.estimate != null && item.estimate > 0) meta.append(el('span', 'pill', `${item.estimate} pts`));
     if (item.childCount > 0) meta.append(el('span', 'pill count-badge', `${item.childCount} within`));
 
     body.append(top, title, meta);
