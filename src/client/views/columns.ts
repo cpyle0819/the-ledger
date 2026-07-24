@@ -1,0 +1,130 @@
+// The columns lens: Epics | Stories | Tasks, each a <ledger-column> of cards.
+//
+// Downstream columns depend on lazily-loaded children, so a selected-but-unloaded
+// epic/story shows a loading state; the board calls the refresh* swaps once a
+// fetch resolves. Orphan stories/tasks (matches belonging to no epic) render in
+// below-the-fold lanes, shown regardless of selection.
+
+import { state, byId, storiesOf, directTasksOf, type CachedNode } from '../core/state.js';
+import { $ } from '../ui/dom.js';
+import { column, card, emptyMsg, hint, laneLabel } from './render-helpers.js';
+import type { LedgerColumn } from '../components/ledger-column.js';
+import type { ViewHandlers } from './types.js';
+
+export function renderColumns(stage: HTMLElement, animate: boolean, h: ViewHandlers): void {
+  const wrap = document.createElement('div'); wrap.className = 'columns';
+  wrap.append(buildEpicCol(animate, h), buildStoryCol(animate, h), buildTaskCol(animate, h));
+  stage.append(wrap);
+}
+
+function buildEpicCol(animate: boolean, h: ViewHandlers): LedgerColumn {
+  const { col, body } = column('epic', 'Epics', state.epics.length);
+  if (!state.epics.length) body.append(emptyMsg('No epics.', 'Try changing your filters.'));
+  state.epics.forEach((e) => {
+    const cd = card(e, { drill: true, animate, onActivate: () => h.selectEpic(e.id), onOpen: h.openDrawer });
+    if (e.id === state.selEpic) cd.setAttribute('selected', '');
+    body.append(cd);
+  });
+  return col;
+}
+
+function buildStoryCol(animate: boolean, h: ViewHandlers): LedgerColumn {
+  const epic = byId(state.selEpic);
+  const orphans = state.orphanStories;
+  const storyCard = (s: CachedNode) => {
+    const cd = card(s, { drill: true, animate, onActivate: () => h.selectStory(s.id), onOpen: h.openDrawer });
+    if (s.id === state.selStory) cd.setAttribute('selected', '');
+    return cd;
+  };
+  const appendOrphans = (body: LedgerColumn) => {
+    if (!orphans.length) return;
+    body.append(laneLabel(`stories not in an epic · ${orphans.length}`, true));
+    orphans.forEach((s) => body.append(storyCard(s)));
+  };
+
+  if (!epic) {
+    const { col, body } = column('story', 'Stories', orphans.length);
+    if (orphans.length) appendOrphans(body);
+    // No selected epic here means no epics exist (the first loads selected), so
+    // this is an empty state, not a "pick one" prompt.
+    else body.append(emptyMsg('No stories.', 'Try changing your filters.'));
+    return col;
+  }
+  if (!epic.loaded) {
+    const { col, body } = column('story', 'Stories', orphans.length);
+    body.append(hint('Loading', 'stories…'));
+    appendOrphans(body);
+    return col;
+  }
+  const stories = storiesOf(epic);
+  const { col, body } = column('story', 'Stories', stories.length + orphans.length);
+  if (stories.length) stories.forEach((s) => body.append(storyCard(s)));
+  else if (!orphans.length) body.append(emptyMsg('No stories.', 'This epic has no stories.'));
+  appendOrphans(body);
+  return col;
+}
+
+// The tasks column holds both the selected story's tasks and the tasks parented
+// directly on the epic. Story tasks come first; the epic's direct tasks follow
+// under their own divider, so they're always visible (even with no story
+// selected) but never confused with the story's own tasks.
+function buildTaskCol(animate: boolean, h: ViewHandlers): LedgerColumn {
+  const epic = byId(state.selEpic);
+  const orphans = state.orphanTasks;
+  const addTask = (body: LedgerColumn, t: CachedNode) => { body.append(card(t, { animate, onOpen: h.openDrawer })); };
+  const appendOrphans = (body: LedgerColumn) => {
+    if (!orphans.length) return;
+    body.append(laneLabel(`tasks not in an epic · ${orphans.length}`, true));
+    orphans.forEach((t) => addTask(body, t));
+  };
+
+  if (!epic) {
+    const { col, body } = column('task', 'Tasks', orphans.length);
+    if (orphans.length) appendOrphans(body);
+    else body.append(emptyMsg('No tasks.', 'Try changing your filters.'));
+    return col;
+  }
+  if (!epic.loaded) {
+    const { col, body } = column('task', 'Tasks', orphans.length);
+    body.append(hint('Loading', 'tasks…'));
+    appendOrphans(body);
+    return col;
+  }
+  const story = storiesOf(epic).find((s) => s.id === state.selStory);
+  const directTasks = directTasksOf(epic);
+  const storyTasks = story ? (story.loaded ? story.children ?? [] : null) : [];
+  const total = (storyTasks?.length || 0) + directTasks.length + orphans.length;
+  const { col, body } = column('task', 'Tasks', total);
+
+  if (story && !story.loaded) body.append(hint('Loading', 'tasks…'));
+  else if (storyTasks?.length) storyTasks.forEach((t) => addTask(body, t));
+  if (directTasks.length) {
+    body.append(laneLabel(`tasks directly on this epic · ${directTasks.length}`, true));
+    directTasks.forEach((t) => addTask(body, t));
+  }
+  // Empty states: distinguish "story has none" from "nothing to select yet".
+  // The orphan lane counts as content, so it suppresses both placeholders.
+  if (story && story.loaded && !storyTasks?.length && !directTasks.length && !orphans.length) body.append(emptyMsg('No tasks.', 'This story has none yet.'));
+  else if (!story && !directTasks.length && !orphans.length) body.append(hint('Select a story', 'to see its tasks.'));
+  appendOrphans(body);
+  return col;
+}
+
+// Swap the story + task columns for the current selection state. Called after a
+// selection changes and again once a lazy children fetch resolves.
+export function refreshDownstreamColumns(h: ViewHandlers): void {
+  const cols = $('.columns'); if (!cols) return;
+  cols.children[1]?.replaceWith(buildStoryCol(false, h));
+  cols.children[2]?.replaceWith(buildTaskCol(false, h));
+}
+export function refreshTaskColumn(h: ViewHandlers): void {
+  const cols = $('.columns'); if (!cols) return;
+  cols.children[2]?.replaceWith(buildTaskCol(false, h));
+}
+// Rebuild all three columns in place (used by patchNode after an edit).
+export function refreshAllColumns(h: ViewHandlers): void {
+  const cols = $('.columns'); if (!cols) return;
+  cols.children[0]?.replaceWith(buildEpicCol(false, h));
+  cols.children[1]?.replaceWith(buildStoryCol(false, h));
+  cols.children[2]?.replaceWith(buildTaskCol(false, h));
+}

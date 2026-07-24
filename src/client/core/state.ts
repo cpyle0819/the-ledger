@@ -1,0 +1,65 @@
+// The board's model: the current filter/selection state, and the node cache.
+//
+// The hierarchy loads lazily — roots first, a node's children only when it's
+// opened or expanded — so there is no full tree to walk. `nodeIndex` is the
+// single source of truth for lookup: every view renders from the one instance a
+// node id maps to, so a single Object.assign on an edited item updates the board.
+
+import type { Capabilities, LedgerNode, StatusFilter } from '../../shared/contract';
+
+// A cached node also carries its lazily-loaded children and load bookkeeping.
+export interface CachedNode extends LedgerNode {
+  children?: CachedNode[];
+  loaded?: boolean;
+  _loading?: Promise<CachedNode[]> | null;
+}
+
+export interface BoardState {
+  assignee: string;          // '' = the default (me), 'anyone', or an alias
+  status: StatusFilter;
+  project: string | null;    // null = every project; else a source project id
+  lens: 'columns' | 'outline';
+  me: string | null;
+  caps: Partial<Capabilities>;
+  epics: CachedNode[];        // root nodes of kind epic
+  orphanStories: CachedNode[];// root nodes of kind story (belong to no epic)
+  orphanTasks: CachedNode[];  // root nodes of kind task (belong to no parent)
+  selEpic: string | null;
+  selStory: string | null;
+  expanded: Set<string>;      // outline: ids whose children are shown
+}
+
+export const state: BoardState = {
+  assignee: '',
+  status: 'Open',
+  project: null,
+  lens: 'columns',
+  me: null,
+  caps: {},
+  epics: [],
+  orphanStories: [],
+  orphanTasks: [],
+  selEpic: null,
+  selStory: null,
+  expanded: new Set(),
+};
+
+// Every node the client has fetched, by id.
+const nodeIndex = new Map<string, CachedNode>();
+
+/** Cache freshly-fetched nodes (first write wins, so a re-fetch doesn't replace
+ *  the instance the views already hold). */
+export function indexNodes(nodes: CachedNode[]): void {
+  for (const n of nodes) if (!nodeIndex.has(n.id)) nodeIndex.set(n.id, n);
+}
+/** Look up a cached node by id. */
+export function byId(id: string | null): CachedNode | null {
+  return id ? nodeIndex.get(id) || null : null;
+}
+/** Drop the whole cache (on a full reload). */
+export function clearNodes(): void { nodeIndex.clear(); }
+
+// An epic's children arrive as one list (stories, then the tasks parented
+// directly on the epic); split by kind. A story's children are all tasks.
+export const storiesOf = (node: CachedNode | null): CachedNode[] => (node?.children || []).filter((n) => n.kind === 'story');
+export const directTasksOf = (node: CachedNode | null): CachedNode[] => (node?.children || []).filter((n) => n.kind !== 'story');
