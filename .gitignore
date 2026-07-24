@@ -19,7 +19,9 @@ build.log
 .env.*
 
 # Source plugins that integrate with a private/internal backend live only on the
-# machines that use them, never in this repo. The bundled local-file source is
-# the committed reference; add other plugins under plugins/ and they stay local.
+# machines that use them, never in this repo. Committed sources are opt-in via a
+# negation below; everything else under plugins/ stays local (e.g. a plugin
+# wrapping an internal system).
 /plugins/*/
 !/plugins/local-file/
+!/plugins/github/

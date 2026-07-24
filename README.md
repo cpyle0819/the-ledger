@@ -38,6 +38,10 @@ The bundled source, `plugins/local-file/`, renders items from a JSON file
 the reference implementation and the default. Select the active source with the
 `LEDGER_SOURCE` env var (default `local-file`).
 
+`plugins/github/` renders a GitHub repo as the board (Project → Milestone →
+Issue), authenticating through the `gh` CLI. See its README for setup:
+`LEDGER_SOURCE=github GITHUB_REPO=owner/name npm start`.
+
 To add a source, drop a new folder under `plugins/`, implement the interface, and
 point `LEDGER_SOURCE` at it.
 
