@@ -1,28 +1,50 @@
 # The Ledger — agent orientation
 
 A personal, local-only task board that renders work from any backing system as
-**Epics → Stories → Tasks**. Node CommonJS server, **no build step** — plain ES
-modules and CSS served straight from `public/` to the browser.
+**Epics → Stories → Tasks**. TypeScript throughout (server + client), compiled
+by `tsc -b` with no bundler — one `.js` per module. Server emits to `dist/`
+(CommonJS), client to `public/build/` (ES modules). Plugins stay plain JS.
 
-## Run / verify
+## Build / Run / Verify
 
-- `npm run serve` — install deps + start on http://localhost:4317.
+- `npm run build` (or `tsc -b`) — compile. `npm run dev` for `--watch` mode.
+- `npm run serve` — install deps + build + start on http://localhost:4317.
 - A background service (`the-ledger.service`) usually already runs it. **The
-  service bakes the server code into memory**, so after editing `server.js`,
-  `lib/`, or `plugins/`, restart it: `systemctl --user restart the-ledger.service`.
-  **Frontend edits** (anything under `public/`) need no restart — just reload.
+  service bakes the compiled server into memory**, so after editing anything
+  under `src/` or `plugins/`, rebuild and restart:
+  `npm run build && systemctl --user restart the-ledger.service`.
 - Verify UI changes by **rendering**, not by reasoning about layout: screenshot
   the live page in headless Chromium over CDP and look. Layout bugs hide from
   static reading.
+
+## Source layout
+
+```
+src/
+  shared/contract.ts        # THE SPINE: the typed data contract (LedgerNode, Item,
+                            #   Capabilities, Project, Filters). Both halves reference it.
+  server/
+    server.ts               # plugin-agnostic HTTP host
+    plugin-interface.ts     # loads + resolves + guards plugin methods
+  client/
+    app.ts                  # thin composition root: wires controls, defines <ledger-board>
+    core/{state,api,board,sound}.ts   # model, fetch, orchestration, foley
+    views/{columns,outline,render-helpers,types}.ts   # the two lenses
+    ui/{dom,feedback,title-seal}.ts   # shared DOM/toast/loading, SVG masthead
+    components/*.ts         # Web Components (see below)
+```
+
+`dist/` (server CommonJS) and `public/build/` (client ES modules) are compiled
+output — gitignored, never committed. Rebuild from source with `npm run build`.
 
 ## The UI is Web Components — this is the core convention
 
 The frontend is a **composition of custom elements**, not one script driving a
 shared document. When you add or change UI, you work in components. New reusable,
 visually-encapsulated UI should become a custom element, not markup appended to
-`app.js`.
+`app.ts`.
 
-Components live in `public/components/`, one self-registering ES module each:
+Components live in `src/client/components/`, one self-registering module each:
 
 - `ledger-card` — a parchment slip for one item. **Shadow DOM.** Takes an `item`
   property; emits composed `card-activate` / `card-open`.
@@ -35,10 +57,11 @@ Components live in `public/components/`, one self-registering ES module each:
   (`api`, `fetchChildren`, `caps`, `sfx`, `toast`); emits `item-changed`.
 - `ledger-board` — the app root. **Light DOM** (no shadow): it owns the model,
   filters, and lens orchestration; its masthead/controls/stage children keep the
-  global styling in `styles.css`. Defined in `app.js`.
-- `markdown.js`, `shared-styles.js`, `util.js` — shared helpers: the markdown
+  global styling in `styles.css`. Defined in `app.ts`.
+- `markdown.ts`, `shared-styles.ts`, `util.ts` — shared helpers: the markdown
   renderer, the constructable `chromeSheet` for leaf chrome (chip/pill/id-tag),
-  and DOM utilities (`el`, `asButton`, `copyLink`, `relTime`).
+  and DOM utilities (`el`, `asButton`, `copyLink`, `relTime`). These are the
+  **single source of truth** for these functions — no duplicates elsewhere.
 
 ### Conventions that keep the composition working
 
@@ -66,15 +89,17 @@ Components live in `public/components/`, one self-registering ES module each:
 
 ## Backend shape
 
-- `server.js` — plugin-agnostic host. Loads one active source and exposes
-  `/api/source`, `/api/children`, `/api/item/:id`, `…/edit`, `…/comment`,
-  `/api/assignees`, `/api/steps`.
-- `lib/plugin-interface.js` — the contract every source implements: capability
-  declaration, timeout/guard wrapper, `loadActiveSource()`.
-- `plugins/<name>/` — one source each. `local-file` is the bundled reference
-  source. Select with `LEDGER_SOURCE` (default `local-file`).
+- `src/server/server.ts` — plugin-agnostic host. Loads one active source and
+  exposes `/api/source`, `/api/children`, `/api/item/:id`, `…/edit`,
+  `…/comment`, `/api/assignees`, `/api/steps`.
+- `src/server/plugin-interface.ts` — resolves capabilities, guards every host→plugin
+  call, and loads the active source from `plugins/<name>/index.js`.
+- `src/shared/contract.ts` — the typed shapes (LedgerNode, Item, Capabilities,
+  Filters, …) that both halves reference. Type-only imports erase at runtime.
+- `plugins/<name>/` — one source each, plain JS. `local-file` is the bundled
+  reference source. Select with `LEDGER_SOURCE` (default `local-file`).
 - The hierarchy loads **lazily** via `getChildren(parentId, filters)` — null
   parent = roots (epics). A source declares **capabilities**; the UI hides actions
   a source can't perform.
 
-See `README.md` for the full run/auth story and `ROADMAP.md` for target features.
+See `README.md` for the full run/build/auth story.

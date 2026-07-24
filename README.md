@@ -28,10 +28,10 @@ lens on work that lives elsewhere.
 ## Sources
 
 A **source plugin** lives at `plugins/<name>/index.js` and exports a factory that
-returns an object implementing the contract in `lib/plugin-interface.js`. The host
-(`server.js`) loads one active source and exposes a small plugin-agnostic API to
-the browser; the UI reads the source's declared capabilities and hides actions it
-can't perform.
+returns an object implementing the contract in `src/shared/contract.ts`. The host
+loads one active source and exposes a small plugin-agnostic API to the browser; the
+UI reads the source's declared capabilities and hides actions it can't perform.
+Plugins stay plain JavaScript (they're the language-agnostic extension boundary).
 
 The bundled source, `plugins/local-file/`, renders items from a JSON file
 (`plugins/local-file/sample.json` by default, override with `LEDGER_FILE`). It is
@@ -41,13 +41,20 @@ the reference implementation and the default. Select the active source with the
 To add a source, drop a new folder under `plugins/`, implement the interface, and
 point `LEDGER_SOURCE` at it.
 
-## Run
+## Build & run
+
+The app is authored in TypeScript, compiled with `tsc` (no bundler) to one JS file
+per module so devtools maps 1:1 to source. A `prepare` hook builds automatically
+after `npm install`, and the `serve`/`register` scripts build before starting.
 
 ```bash
-npm run serve          # install deps + start on http://localhost:4317
+npm install            # install deps + compile (prepare hook)
+npm run serve          # build + start on http://localhost:4317
+npm run build          # just compile (tsc -b)
+npm run dev            # tsc --watch for development
 ```
 
-Then open http://localhost:4317. Requires Node ≥ 18.
+Then open http://localhost:4317. Requires Node ≥ 18 and TypeScript ≥ 7.
 
 To keep it always running in the background (starts on boot, survives
 logout/login), register it as a per-user service:
