@@ -40,7 +40,11 @@ async function main() {
   const install = spawnSync('npm', ['install'], { cwd: REPO, stdio: 'inherit' });
   if (install.status !== 0) process.exit(install.status);
 
-  const server = spawnSync(process.execPath, [path.join(REPO, 'server.js')], {
+  // Compile TypeScript (server -> dist/, client -> public/build/) before running.
+  const build = spawnSync('npm', ['run', 'build'], { cwd: REPO, stdio: 'inherit' });
+  if (build.status !== 0) process.exit(build.status);
+
+  const server = spawnSync(process.execPath, [path.join(REPO, 'dist', 'server', 'server.js')], {
     cwd: REPO,
     stdio: 'inherit',
   });

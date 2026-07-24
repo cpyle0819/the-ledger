@@ -4,14 +4,21 @@
   "description": "A personal, local-only task board that renders work from any backing system as Epics, Stories, and Tasks. Built from reusable Web Components.",
   "type": "commonjs",
   "private": true,
-  "main": "server.js",
+  "main": "dist/server/server.js",
   "scripts": {
-    "start": "node server.js",
+    "build": "tsc -b",
+    "dev": "tsc -b --watch",
+    "start": "npm run build && node dist/server/server.js",
     "serve": "node scripts/serve.js",
-    "register": "node scripts/register.js"
+    "register": "node scripts/register.js",
+    "prepare": "tsc -b"
   },
   "dependencies": {
     "smoke-drift": "github:cpyle0819/smoke-drift"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "typescript": "^7.0.2"
   },
   "author": "Corey Pyle",
   "license": "MIT"

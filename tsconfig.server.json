@@ -1,0 +1,14 @@
+{
+  // Host + plugin interface -> CommonJS in dist/. Node runtime, no DOM. The
+  // shared contract is type-only, so it compiles to (empty) dist/shared/*.js and
+  // costs nothing at runtime.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "module": "node16",
+    "moduleResolution": "node16",
+    "lib": ["es2022"],
+    "types": ["node"],
+    "outDir": "dist"
+  },
+  "include": ["src/server/**/*.ts", "src/shared/**/*.ts"]
+}

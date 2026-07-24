@@ -24,7 +24,8 @@ const REPO = path.resolve(__dirname, '..');
 // your interactive PATH (mise shims included). A node upgrade moves this path;
 // just re-run `npm run register` to refresh the unit.
 const NODE = process.execPath;
-const SERVER = path.join(REPO, 'server.js');
+// The compiled server (TypeScript builds to dist/); see ensureBuild.
+const SERVER = path.join(REPO, 'dist', 'server', 'server.js');
 const NAME = 'the-ledger';
 const LABEL = 'com.corepyle.the-ledger';
 const PORT = process.env.PORT || '4317';
@@ -42,6 +43,16 @@ function ensureDeps() {
   console.log('› installing dependencies…');
   const status = run('npm', ['install'], { cwd: REPO });
   if (status !== 0) throw new Error(`npm install failed (exit ${status})`);
+}
+
+// Compile TypeScript once, here at register time — the service runs the emitted
+// dist/server/server.js and must never build on boot (that would be slow and
+// could crash-loop). `npm install` also runs `prepare` (tsc -b), but build here
+// explicitly so a re-register with unchanged deps still refreshes the output.
+function ensureBuild() {
+  console.log('› building…');
+  const status = run('npm', ['run', 'build'], { cwd: REPO });
+  if (status !== 0) throw new Error(`build failed (exit ${status})`);
 }
 
 function registerLinux() {
@@ -125,6 +136,7 @@ function registerWindows() {
 
 function main() {
   ensureDeps();
+  ensureBuild();
   switch (process.platform) {
     case 'linux':
       return registerLinux();

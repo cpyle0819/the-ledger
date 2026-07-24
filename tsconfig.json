@@ -1,0 +1,10 @@
+{
+  // Solution file: `tsc -b` builds both projects (server -> dist/, client ->
+  // public/build/). Neither is a source root itself — each references its own
+  // config. Editors pick up whichever project a file belongs to.
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.server.json" },
+    { "path": "./tsconfig.client.json" }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  // Browser client -> native ES modules in public/build/, one .js per source
+  // module (no bundler), so devtools maps 1:1 to source. Imports carry explicit
+  // .js extensions (browser-resolvable); bundler resolution lets those specifiers
+  // point at the .ts sources at check time. DOM libs, no Node types.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "lib": ["es2022", "dom", "dom.iterable"],
+    "types": [],
+    "verbatimModuleSyntax": true,
+    "outDir": "public/build"
+  },
+  "include": ["src/client/**/*.ts", "src/shared/**/*.ts", "types/**/*.d.ts"]
+}

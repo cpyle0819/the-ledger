@@ -1,33 +1,45 @@
-'use strict';
-
 // The Ledger — host. Serves the UI and a plugin-agnostic API over one active
 // source plugin. The host knows nothing about any backing system: it loads the
-// active plugin (lib/plugin-interface.js), routes requests through the guarded
-// gateway, and lets the frontend read the plugin's capabilities to decide which
-// actions to show. Source-specific logic lives entirely in plugins/<name>.
+// active plugin (plugin-interface), routes requests through the guarded gateway,
+// and lets the frontend read the plugin's capabilities to decide which actions
+// to show. Source-specific logic lives entirely in plugins/<name>.
 
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
-const { callPlugin, loadActiveSource } = require('./lib/plugin-interface');
+import * as http from 'node:http';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { callPlugin, loadActiveSource, REPO_ROOT } from './plugin-interface';
+import type { Filters, SourcePlugin } from '../shared/contract';
 
-const PORT = process.env.PORT || 4317;
+const PORT = Number(process.env.PORT) || 4317;
 
 const source = loadActiveSource();
 
+// Static assets (index.html, styles, compiled client, sounds) live under
+// public/ at the repo root — resolved from REPO_ROOT since this compiled server
+// runs from dist/server/.
+const PUBLIC_DIR = path.join(REPO_ROOT, 'public');
+
 // ---- http helpers -------------------------------------------------------
 
-const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.ogg': 'audio/ogg' };
+const MIME: Record<string, string> = {
+  '.html': 'text/html',
+  '.js': 'text/javascript',
+  '.css': 'text/css',
+  '.svg': 'image/svg+xml',
+  '.ogg': 'audio/ogg',
+  '.jpg': 'image/jpeg',
+  '.map': 'application/json',
+};
 
-function sendJSON(res, code, obj) {
+function sendJSON(res: http.ServerResponse, code: number, obj: unknown): void {
   const body = JSON.stringify(obj);
   res.writeHead(code, { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) });
   res.end(body);
 }
 
-function serveStatic(req, res, urlPath) {
+function serveStatic(req: http.IncomingMessage, res: http.ServerResponse, urlPath: string): void {
   const rel = urlPath === '/' ? '/index.html' : urlPath;
-  const file = path.join(__dirname, 'public', path.normalize(rel).replace(/^(\.\.[/\\])+/, ''));
+  const file = path.join(PUBLIC_DIR, path.normalize(rel).replace(/^(\.\.[/\\])+/, ''));
   fs.readFile(file, (err, buf) => {
     if (err) return sendJSON(res, 404, { error: 'not found' });
     const type = MIME[path.extname(file)] || 'application/octet-stream';
@@ -35,7 +47,8 @@ function serveStatic(req, res, urlPath) {
     // Media needs this: without a known length the browser reports duration
     // Infinity and treats the stream as unseekable, so setting audio
     // currentTime is silently ignored (the page-turn start-offset regression).
-    const range = req.headers.range && /^bytes=(\d*)-(\d*)$/.exec(req.headers.range);
+    const rangeHeader = req.headers.range;
+    const range = rangeHeader ? /^bytes=(\d*)-(\d*)$/.exec(rangeHeader) : null;
     if (range) {
       const start = range[1] ? parseInt(range[1], 10) : 0;
       const end = range[2] ? parseInt(range[2], 10) : buf.length - 1;
@@ -57,19 +70,19 @@ function serveStatic(req, res, urlPath) {
   });
 }
 
-async function readBody(req) {
-  const chunks = [];
-  for await (const c of req) chunks.push(c);
+async function readBody(req: http.IncomingMessage): Promise<Record<string, unknown>> {
+  const chunks: Buffer[] = [];
+  for await (const c of req) chunks.push(c as Buffer);
   return chunks.length ? JSON.parse(Buffer.concat(chunks).toString('utf8')) : {};
 }
 
 // Route a request through the active plugin's method via the guarded gateway.
-const call = (method, ...args) => callPlugin(source.plugin, method, args);
+const call = (method: keyof SourcePlugin, ...args: unknown[]) => callPlugin(source.plugin, method, args);
 
 // ---- routing ------------------------------------------------------------
 
 const server = http.createServer(async (req, res) => {
-  const url = new URL(req.url, `http://localhost:${PORT}`);
+  const url = new URL(req.url || '/', `http://localhost:${PORT}`);
   const p = url.pathname;
   const q = url.searchParams;
   try {
@@ -83,7 +96,10 @@ const server = http.createServer(async (req, res) => {
     // `project` (a source grouping id) scopes the roots when the source supports
     // projects; it's one more filter dimension alongside assignee and status.
     if (p === '/api/children' && req.method === 'GET') {
-      const filters = { assignee: q.get('assignee') || source.plugin.me, status: q.get('status') || 'Open' };
+      const filters: Filters = {
+        assignee: q.get('assignee') || source.plugin.me,
+        status: (q.get('status') as Filters['status']) || 'Open',
+      };
       if (source.capabilities.projects && q.get('project')) filters.project = q.get('project');
       const nodes = await call('getChildren', q.get('parent') || null, filters);
       return sendJSON(res, 200, { parent: q.get('parent') || null, assignee: filters.assignee, nodes });
@@ -138,7 +154,8 @@ const server = http.createServer(async (req, res) => {
     }
     return serveStatic(req, res, p);
   } catch (err) {
-    sendJSON(res, err.status || 500, { error: err.message });
+    const e = err as { status?: number; message?: string };
+    sendJSON(res, e.status || 500, { error: e.message });
   }
 });
 
