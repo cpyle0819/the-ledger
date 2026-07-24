@@ -1,0 +1,152 @@
+'use strict';
+
+// The Ledger — host. Serves the UI and a plugin-agnostic API over one active
+// source plugin. The host knows nothing about any backing system: it loads the
+// active plugin (lib/plugin-interface.js), routes requests through the guarded
+// gateway, and lets the frontend read the plugin's capabilities to decide which
+// actions to show. Source-specific logic lives entirely in plugins/<name>.
+
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+const { callPlugin, loadActiveSource } = require('./lib/plugin-interface');
+
+const PORT = process.env.PORT || 4317;
+
+const source = loadActiveSource();
+
+// ---- http helpers -------------------------------------------------------
+
+const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.ogg': 'audio/ogg' };
+
+function sendJSON(res, code, obj) {
+  const body = JSON.stringify(obj);
+  res.writeHead(code, { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) });
+  res.end(body);
+}
+
+function serveStatic(req, res, urlPath) {
+  const rel = urlPath === '/' ? '/index.html' : urlPath;
+  const file = path.join(__dirname, 'public', path.normalize(rel).replace(/^(\.\.[/\\])+/, ''));
+  fs.readFile(file, (err, buf) => {
+    if (err) return sendJSON(res, 404, { error: 'not found' });
+    const type = MIME[path.extname(file)] || 'application/octet-stream';
+    // Always send Content-Length (never chunked) and advertise range support.
+    // Media needs this: without a known length the browser reports duration
+    // Infinity and treats the stream as unseekable, so setting audio
+    // currentTime is silently ignored (the page-turn start-offset regression).
+    const range = req.headers.range && /^bytes=(\d*)-(\d*)$/.exec(req.headers.range);
+    if (range) {
+      const start = range[1] ? parseInt(range[1], 10) : 0;
+      const end = range[2] ? parseInt(range[2], 10) : buf.length - 1;
+      if (start > end || end >= buf.length) {
+        res.writeHead(416, { 'content-range': `bytes */${buf.length}` });
+        return res.end();
+      }
+      const slice = buf.subarray(start, end + 1);
+      res.writeHead(206, {
+        'content-type': type,
+        'content-length': slice.length,
+        'content-range': `bytes ${start}-${end}/${buf.length}`,
+        'accept-ranges': 'bytes',
+      });
+      return res.end(slice);
+    }
+    res.writeHead(200, { 'content-type': type, 'content-length': buf.length, 'accept-ranges': 'bytes' });
+    res.end(buf);
+  });
+}
+
+async function readBody(req) {
+  const chunks = [];
+  for await (const c of req) chunks.push(c);
+  return chunks.length ? JSON.parse(Buffer.concat(chunks).toString('utf8')) : {};
+}
+
+// Route a request through the active plugin's method via the guarded gateway.
+const call = (method, ...args) => callPlugin(source.plugin, method, args);
+
+// ---- routing ------------------------------------------------------------
+
+const server = http.createServer(async (req, res) => {
+  const url = new URL(req.url, `http://localhost:${PORT}`);
+  const p = url.pathname;
+  const q = url.searchParams;
+  try {
+    // The frontend reads this once to learn who it's acting as and which actions
+    // the active source supports, then hides the rest.
+    if (p === '/api/source') {
+      return sendJSON(res, 200, { name: source.name, me: source.plugin.me, capabilities: source.capabilities });
+    }
+
+    // Lazy hierarchy: no `parent` => roots (epics); otherwise that node's children.
+    // `project` (a source grouping id) scopes the roots when the source supports
+    // projects; it's one more filter dimension alongside assignee and status.
+    if (p === '/api/children' && req.method === 'GET') {
+      const filters = { assignee: q.get('assignee') || source.plugin.me, status: q.get('status') || 'Open' };
+      if (source.capabilities.projects && q.get('project')) filters.project = q.get('project');
+      const nodes = await call('getChildren', q.get('parent') || null, filters);
+      return sendJSON(res, 200, { parent: q.get('parent') || null, assignee: filters.assignee, nodes });
+    }
+
+    if (source.capabilities.projects && p === '/api/projects' && req.method === 'GET') {
+      return sendJSON(res, 200, { projects: await call('listProjects') });
+    }
+
+    if (source.capabilities.searchAssignees && p === '/api/assignees' && req.method === 'GET') {
+      return sendJSON(res, 200, { users: await call('searchAssignees', q.get('q') || '') });
+    }
+
+    if (source.capabilities.stepOptions && p === '/api/steps' && req.method === 'GET') {
+      return sendJSON(res, 200, { steps: await call('stepOptions', { project: q.get('project') }) });
+    }
+
+    const itemMatch = p.match(/^\/api\/item\/([^/]+)$/);
+    if (itemMatch && req.method === 'GET') {
+      return sendJSON(res, 200, { item: await call('readItem', itemMatch[1]) });
+    }
+
+    const editMatch = p.match(/^\/api\/item\/([^/]+)\/edit$/);
+    if (editMatch && req.method === 'POST') {
+      const { field, value } = await readBody(req);
+      return sendJSON(res, 200, { item: await call('editField', editMatch[1], field, value) });
+    }
+
+    // Comments: add (POST), edit/delete a specific comment by id (POST/DELETE).
+    const commentAdd = p.match(/^\/api\/item\/([^/]+)\/comment$/);
+    if (commentAdd && req.method === 'POST') {
+      const { message } = await readBody(req);
+      return sendJSON(res, 200, { item: await call('addComment', commentAdd[1], message) });
+    }
+    const commentOne = p.match(/^\/api\/item\/([^/]+)\/comment\/([^/]+)$/);
+    if (commentOne && req.method === 'POST') {
+      const { message } = await readBody(req);
+      return sendJSON(res, 200, { item: await call('editComment', commentOne[1], commentOne[2], message) });
+    }
+    if (commentOne && req.method === 'DELETE') {
+      return sendJSON(res, 200, { item: await call('deleteComment', commentOne[1], commentOne[2]) });
+    }
+
+    if (p.startsWith('/api/')) return sendJSON(res, 404, { error: 'unknown endpoint' });
+    // serve the smoke-drift Web Component (npm dep) from node_modules
+    if (p === '/vendor/smoke-drift.js') {
+      return fs.readFile(require.resolve('smoke-drift'), (err, buf) => {
+        if (err) return sendJSON(res, 404, { error: 'smoke-drift not installed — run npm install' });
+        res.writeHead(200, { 'content-type': 'text/javascript' });
+        res.end(buf);
+      });
+    }
+    return serveStatic(req, res, p);
+  } catch (err) {
+    sendJSON(res, err.status || 500, { error: err.message });
+  }
+});
+
+// A stray plugin promise rejection must not take down the http server.
+process.on('unhandledRejection', (e) => console.error('[ledger] unhandled rejection', e));
+
+server.listen(PORT, '127.0.0.1', () => {
+  console.log(`\n  The Ledger  ·  http://localhost:${PORT}`);
+  console.log(`  source:   ${source.name} (as ${source.plugin.me})`);
+  console.log(`  supports: ${Object.entries(source.capabilities).filter(([, v]) => v && (!Array.isArray(v) || v.length)).map(([k]) => k).join(', ')}\n`);
+});

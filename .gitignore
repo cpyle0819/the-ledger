@@ -1,0 +1,19 @@
+# Reinstallable from package.json (smoke-drift comes from GitHub)
+node_modules/
+
+# Server/runtime noise
+*.log
+build.log
+.DS_Store
+
+# Never track anything credential-adjacent — nothing secret should ever live in
+# the repo, but guard against an accidental local copy landing here.
+*cookie*
+.env
+.env.*
+
+# Source plugins that integrate with a private/internal backend live only on the
+# machines that use them, never in this repo. The bundled local-file source is
+# the committed reference; add other plugins under plugins/ and they stay local.
+/plugins/*/
+!/plugins/local-file/

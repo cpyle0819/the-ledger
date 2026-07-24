@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>The Ledger — an archive of works</title>
+  <link rel="icon" href="/seal.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <a class="skip-link" href="#stage">Skip to content</a>
+  <div class="grain" aria-hidden="true"></div>
+  <div class="vignette" aria-hidden="true"></div>
+
+  <!-- pipe smoke: the smoke-drift Web Component (npm: github:cpyle0819/smoke-drift),
+       served from node_modules at /vendor/smoke-drift.js. Parchment-toned to match. -->
+  <smoke-drift color="rgb(232 222 196)" opacity="0.5" wind="300" fire></smoke-drift>
+
+  <!-- <ledger-board> is the app root: a light-DOM element that owns the model,
+       filters, and lens rendering. Its children (masthead, controls, stage) keep
+       their global styling; the element supplies behavior, not encapsulation. -->
+  <ledger-board>
+  <header class="masthead">
+    <div class="mast-left">
+      <div class="mark">
+        <h1 class="ledger-title" aria-label="The Ledger"></h1>
+      </div>
+      <p class="mast-sub">an archive of <em>epics</em>, <em>stories</em> &amp; <em>tasks</em></p>
+    </div>
+    <div class="mast-right">
+      <p class="ident" id="ident">
+        <span class="ident-dot" aria-hidden="true"></span>
+        <span class="sr-only">Signed in as</span>
+        <span id="ident-name">…</span>
+      </p>
+      <button class="ghost-btn" id="refresh" aria-keyshortcuts="r" title="Refresh (r)">
+        <span aria-hidden="true">↻ </span>refresh
+      </button>
+    </div>
+  </header>
+
+  <nav class="controls" aria-label="Filters and view">
+    <div class="ctl" role="group" aria-labelledby="assignee-label">
+      <span class="ctl-label" id="assignee-label">assignee</span>
+      <div class="seg" id="assignee-seg" role="group" aria-labelledby="assignee-label">
+        <button type="button" data-assignee="" class="on" aria-pressed="true">me</button>
+        <button type="button" data-assignee="anyone" aria-pressed="false">anyone</button>
+        <input type="text" id="assignee-input" placeholder="a name…" spellcheck="false" aria-label="Filter by a specific assignee" />
+      </div>
+    </div>
+    <!-- Shown only when the active source declares the `projects` capability;
+         populated from /api/projects at startup. -->
+    <div class="ctl" id="project-ctl" role="group" aria-labelledby="project-label" hidden>
+      <span class="ctl-label" id="project-label">project</span>
+      <select id="project-select" class="ctl-select" aria-labelledby="project-label">
+        <option value="">all projects</option>
+      </select>
+    </div>
+    <div class="ctl">
+      <label class="switch" title="Closed items are hidden by default">
+        <input type="checkbox" id="show-closed" />
+        <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+        <span class="switch-text">show closed items</span>
+      </label>
+    </div>
+    <div class="ctl grow"></div>
+    <div class="ctl" role="group" aria-labelledby="view-label">
+      <span class="ctl-label" id="view-label">view</span>
+      <div class="seg" id="lens-seg" role="group" aria-labelledby="view-label">
+        <button type="button" data-lens="columns" class="on" aria-pressed="true" aria-keyshortcuts="1" title="Columns (1)"><span aria-hidden="true">▚ </span>columns</button>
+        <button type="button" data-lens="outline" aria-pressed="false" aria-keyshortcuts="2" title="Outline (2)"><span aria-hidden="true">☰ </span>outline</button>
+      </div>
+    </div>
+  </nav>
+
+  <main id="stage" class="stage" data-lens="columns" tabindex="-1" aria-label="Epics, stories and tasks">
+    <p class="loading" id="loading" role="status"><span class="spin" aria-hidden="true"></span> reading the archive…</p>
+  </main>
+  </ledger-board>
+
+  <!-- Reading drawer — the manuscript page. The <ledger-drawer> element renders
+       the whole overlay (fields, description editor, contains list, comment
+       thread, focus trap) in its own shadow DOM; app.js injects the api/fetch
+       services and listens for item-changed to patch the board. -->
+  <ledger-drawer id="drawer"></ledger-drawer>
+
+  <div class="toast" id="toast" role="status" aria-live="assertive"></div>
+
+  <script type="module" src="/vendor/smoke-drift.js"></script>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,126 @@
+{
+  "projects": [
+    { "id": "reading-room", "name": "Reading Room" },
+    { "id": "archive", "name": "Archive" }
+  ],
+  "items": [
+    {
+      "id": "E-1",
+      "type": "EPIC",
+      "title": "Ship the reading-room redesign",
+      "status": "Open",
+      "assignee": "me",
+      "project": "reading-room",
+      "description": "Rework the reading room so a reader can move through a\ncollection without losing their place.\n\n- Persistent shelf position\n- Faster first paint\n- Keyboard-first navigation"
+    },
+    {
+      "id": "S-1",
+      "type": "STORY",
+      "parent": "E-1",
+      "title": "A reader resumes where they left off",
+      "status": "Open",
+      "assignee": "me",
+      "description": "Returning to the room restores the last-open volume and scroll position.",
+      "comments": [
+        { "id": "c-1", "author": "quill", "message": "Do we persist per-device or per-account?", "createDate": "2026-07-20T15:00:00.000Z" }
+      ]
+    },
+    {
+      "id": "T-1",
+      "type": "TASK",
+      "parent": "S-1",
+      "title": "Store shelf position in local storage",
+      "status": "Open",
+      "assignee": "me",
+      "estimate": 3
+    },
+    {
+      "id": "T-2",
+      "type": "TASK",
+      "parent": "S-1",
+      "title": "Restore position on load",
+      "status": "Resolved",
+      "assignee": "me",
+      "estimate": 2
+    },
+    {
+      "id": "T-3",
+      "type": "TASK",
+      "parent": "E-1",
+      "title": "Audit first-paint cost of the room shell",
+      "status": "Open",
+      "assignee": "me",
+      "description": "Measure and cut the time to first meaningful paint on the room."
+    },
+    {
+      "id": "T-6",
+      "type": "TASK",
+      "parent": "S-1",
+      "title": "Add a per-account sync option",
+      "status": "Open",
+      "assignee": "quill",
+      "estimate": 2
+    },
+    {
+      "id": "E-2",
+      "type": "EPIC",
+      "title": "Archive export",
+      "status": "Open",
+      "assignee": "me",
+      "project": "archive",
+      "description": "Let a reader export a collection as a single portable file."
+    },
+    {
+      "id": "E-3",
+      "type": "EPIC",
+      "title": "Catalog search overhaul",
+      "status": "Open",
+      "assignee": "quill",
+      "project": "reading-room",
+      "description": "Owned by another author; surfaces here only because it holds work assigned to the reader."
+    },
+    {
+      "id": "S-2",
+      "type": "STORY",
+      "parent": "E-3",
+      "title": "Fuzzy title matching",
+      "status": "Open",
+      "assignee": "quill",
+      "description": "Also owned elsewhere; the context path down to the reader's task."
+    },
+    {
+      "id": "T-4",
+      "type": "TASK",
+      "parent": "S-2",
+      "title": "Tune the match ranking weights",
+      "status": "Open",
+      "assignee": "me",
+      "estimate": 5
+    },
+    {
+      "id": "T-5",
+      "type": "TASK",
+      "parent": "E-3",
+      "title": "Benchmark search latency",
+      "status": "Open",
+      "assignee": "me",
+      "estimate": 3
+    },
+    {
+      "id": "OS-1",
+      "type": "STORY",
+      "title": "Loose story with no epic",
+      "status": "Open",
+      "assignee": "me",
+      "description": "A story assigned to the reader that belongs to no epic."
+    },
+    {
+      "id": "OT-1",
+      "type": "TASK",
+      "title": "Loose task with no parent",
+      "status": "Open",
+      "assignee": "me",
+      "estimate": 1
+    }
+  ]
+}
