@@ -139,6 +139,18 @@ export function refreshDownstreamColumns(h: ViewHandlers): void {
   cols.children[1]?.replaceWith(buildStoryCol(false, h));
   cols.children[2]?.replaceWith(buildTaskCol(false, h));
 }
+// Swap just the epic column in place, preserving its scroll — used when the
+// story/task rollups arrive after first paint, so the downstream columns and
+// their selection don't tear down.
+export function refreshEpicColumn(h: ViewHandlers): void {
+  const cols = $('.columns'); if (!cols) return;
+  const body = (cols.children[0] as HTMLElement)?.shadowRoot?.querySelector('.col-body') as HTMLElement | undefined;
+  const top = body?.scrollTop ?? 0;
+  const next = buildEpicCol(false, h);
+  cols.children[0]?.replaceWith(next);
+  const nb = next.shadowRoot?.querySelector('.col-body') as HTMLElement | undefined;
+  if (nb) nb.scrollTop = top;
+}
 export function refreshTaskColumn(h: ViewHandlers): void {
   const cols = $('.columns'); if (!cols) return;
   cols.children[2]?.replaceWith(buildTaskCol(false, h));

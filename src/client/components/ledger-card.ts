@@ -13,7 +13,7 @@
 // within the element's tree, so a document-level filter would not reach here —
 // each card carries its own, which also makes the element reusable anywhere.
 
-import { el, asButton } from './util.js';
+import { el, asButton, plural } from './util.js';
 import { chromeSheet, idTag } from './shared-styles.js';
 import type { LedgerNode } from '../../shared/contract';
 
@@ -179,7 +179,28 @@ export class LedgerCard extends HTMLElement {
       meta.append(who);
     }
     if (item.estimate != null && item.estimate > 0) meta.append(el('span', 'pill', `${item.estimate} pts`));
-    if (item.childCount > 0) meta.append(el('span', 'pill count-badge', `${item.childCount} within`));
+    // Rollup badges. An epic with resolved counts shows "N stories" + "N tasks"
+    // (see EpicCounts — tasks is direct + under-story, stories is immediate),
+    // filtered like the board. The counts arrive after first paint, so the epic
+    // shows NO count badge until they land — the `rollup` attribute marks that the
+    // source produces them, so a not-yet-loaded epic reads as loading (blank), not
+    // as "N within". A source without the epicCounts capability sets no attribute
+    // and keeps the raw "N within" fallback. A story's children are all tasks in
+    // this three-tier model, so its badge reads "N tasks" (from the raw child
+    // count); a task keeps the generic "N within" for any sub-items it carries.
+    const counts = (item as { counts?: { stories: number; tasks: number } }).counts;
+    const rollup = this.hasAttribute('rollup');
+    if (item.kind === 'epic' && rollup) {
+      if (counts) {
+        if (counts.stories > 0) meta.append(el('span', 'pill count-badge', plural(counts.stories, 'story', 'stories')));
+        if (counts.tasks > 0) meta.append(el('span', 'pill count-badge', plural(counts.tasks, 'task', 'tasks')));
+      }
+      // else: counts still loading — show nothing.
+    } else if (item.kind === 'story' && item.childCount > 0) {
+      meta.append(el('span', 'pill count-badge', plural(item.childCount, 'task', 'tasks')));
+    } else if (item.childCount > 0) {
+      meta.append(el('span', 'pill count-badge', `${item.childCount} within`));
+    }
 
     body.append(top, title, meta);
 

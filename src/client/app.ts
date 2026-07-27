@@ -16,7 +16,7 @@ import './components/ledger-compose.js';
 
 import { state } from './core/state.js';
 import { api, loadProjects } from './core/api.js';
-import { loadTree, render, wireDrawer, wireCompose, reconcile } from './core/board.js';
+import { loadTree, render, wireDrawer, wireCompose, reconcile, syncUrl, hydrateStateFromUrl, restoreFromUrl, wireDeepLinkNav } from './core/board.js';
 import { buildTitle } from './ui/title-seal.js';
 import { $, need } from './ui/dom.js';
 import type { LedgerDrawer } from './components/ledger-drawer.js';
@@ -61,6 +61,19 @@ function syncLensSeg(): void {
   });
 }
 
+// Reflect the current filter/lens state into the controls, so a view restored
+// from the URL shows the matching toolbar (the project select is set in
+// fillProjects, once its options exist). Runs on startup after hydration.
+function syncControls(): void {
+  syncLensSeg();
+  need<HTMLInputElement>('#show-closed').checked = state.status !== 'Open';
+  const aSeg = need('#assignee-seg'); const aInput = need<HTMLInputElement>('#assignee-input');
+  const preset = [...aSeg.querySelectorAll('button')].find((b) => (b.dataset.assignee || '') === state.assignee);
+  aSeg.querySelectorAll('button').forEach((x) => { const on = x === preset; x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on)); });
+  // A specific-assignee filter (no matching preset button) shows in the free-text input.
+  aInput.value = preset ? '' : state.assignee;
+}
+
 // Poll for changes made outside The Ledger, incrementally (see board.reconcile).
 // Reconcile when the tab regains focus or becomes visible — the "I came back to
 // it" case — and on a modest timer while the tab is visible. The timer is stopped
@@ -81,20 +94,20 @@ function wireReconcile(): void {
 
 function wire(): void {
   // Closed items are hidden by default (status 'Open'); the toggle reveals them.
-  need<HTMLInputElement>('#show-closed').onchange = (e) => { state.status = (e.target as HTMLInputElement).checked ? 'ALL' : 'Open'; loadTree(); };
-  segWire('#lens-seg', (d) => { state.lens = (d.lens as typeof state.lens); render({ animate: true }); });
+  need<HTMLInputElement>('#show-closed').onchange = (e) => { state.status = (e.target as HTMLInputElement).checked ? 'ALL' : 'Open'; syncUrl(); loadTree(); };
+  segWire('#lens-seg', (d) => { state.lens = (d.lens as typeof state.lens); syncUrl(); render({ animate: true }); });
 
   const aSeg = need('#assignee-seg'); const aInput = need<HTMLInputElement>('#assignee-input');
-  aSeg.querySelectorAll('button').forEach((b) => { b.onclick = () => { setPressed(aSeg, b); aInput.value = ''; state.assignee = b.dataset.assignee || ''; loadTree(); }; });
+  aSeg.querySelectorAll('button').forEach((b) => { b.onclick = () => { setPressed(aSeg, b); aInput.value = ''; state.assignee = b.dataset.assignee || ''; syncUrl(); loadTree(); }; });
   aInput.onkeydown = (e) => {
     if (e.key === 'Enter' && aInput.value.trim()) {
       aSeg.querySelectorAll('button').forEach((x) => { x.classList.remove('on'); x.setAttribute('aria-pressed', 'false'); });
-      state.assignee = aInput.value.trim(); loadTree();
+      state.assignee = aInput.value.trim(); syncUrl(); loadTree();
     }
   };
 
   // Project scope: null (all) or a source project id. Reloads the tree scoped.
-  need<HTMLSelectElement>('#project-select').onchange = (e) => { state.project = (e.target as HTMLSelectElement).value || null; loadTree(); };
+  need<HTMLSelectElement>('#project-select').onchange = (e) => { state.project = (e.target as HTMLSelectElement).value || null; syncUrl(); loadTree(); };
 
   need('#refresh').onclick = () => loadTree();
   wireDrawer();
@@ -109,8 +122,8 @@ function wire(): void {
     if (need('#drawer').hasAttribute('open')) return;
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === 'r') loadTree();
-    else if (e.key === '1') { state.lens = 'columns'; syncLensSeg(); render({ animate: true }); }
-    else if (e.key === '2') { state.lens = 'outline'; syncLensSeg(); render(); }
+    else if (e.key === '1') { state.lens = 'columns'; syncLensSeg(); syncUrl(); render({ animate: true }); }
+    else if (e.key === '2') { state.lens = 'outline'; syncLensSeg(); syncUrl(); render(); }
   });
 }
 
@@ -124,7 +137,12 @@ class LedgerBoard extends HTMLElement {
   async connectedCallback(): Promise<void> {
     if (this.#started) return;   // connectedCallback can fire again on a move
     this.#started = true;
+    // Fold the deep link into state before the first load, so the tree is fetched
+    // through the linked filters and the linked selection resolves against it.
+    const urlState = hydrateStateFromUrl();
     wire();
+    wireDeepLinkNav();
+    syncControls();
     buildTitle();
     // One handshake: who we act as and which actions the active source supports.
     try {
@@ -141,7 +159,10 @@ class LedgerBoard extends HTMLElement {
         compose.caps = state.caps; compose.me = me; compose.projects = projects;
       }
     } catch { const name = $('#ident-name'); if (name) name.textContent = 'unknown'; }
-    loadTree();
+    await loadTree();
+    // The tree is loaded; restore what it can't rebuild alone — the outline's
+    // expanded subtrees and the open drawer from the deep link.
+    restoreFromUrl(urlState);
   }
 }
 if (!customElements.get('ledger-board')) customElements.define('ledger-board', LedgerBoard);

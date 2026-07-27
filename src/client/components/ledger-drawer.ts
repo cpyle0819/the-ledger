@@ -19,7 +19,7 @@
 // Open with .open(node); the node's known fields paint immediately, then the
 // full item is fetched and the drawer repaints.
 
-import { el, asButton, copyLink } from './util.js';
+import { el, asButton, copyLink, plural } from './util.js';
 import { chromeSheet, idTag } from './shared-styles.js';
 import { renderInto } from './markdown.js';
 import './ledger-comment-thread.js';
@@ -282,6 +282,9 @@ export class LedgerDrawer extends HTMLElement {
     if (this.#trap) { document.removeEventListener('keydown', this.#trap, true); this.#trap = null; }
     if (this.#lastFocus && this.#lastFocus.isConnected) this.#lastFocus.focus();
     this.#lastFocus = null;
+    // The host keeps the URL in step with what's open; a close is a state change
+    // it must hear about (to drop the ?item= key, or to pop the pushed entry).
+    this.dispatchEvent(new CustomEvent('drawer-closed', { bubbles: true, composed: true }));
   }
 
   // Focus trap that descends into nested shadow roots (the comment thread), so
@@ -505,7 +508,11 @@ export class LedgerDrawer extends HTMLElement {
         list.forEach((child) => {
           const line = el('div', 'cline');
           line.append(el('span', `chip t-${child.type}`, child.type), el('span', 'ct', child.title));
-          if (child.childCount) line.append(el('span', 'pill', `${child.childCount} within`));
+          // A story's children are all tasks in this three-tier model, so its line
+          // reads "N tasks"; anything else keeps the generic "N within".
+          if (child.childCount) {
+            line.append(el('span', 'pill', child.kind === 'story' ? plural(child.childCount, 'task', 'tasks') : `${child.childCount} within`));
+          }
           asButton(line, () => this.open(child), `${child.type} ${child.shortId}: ${child.title}. Open details.`);
           g.append(line);
         });

@@ -54,6 +54,11 @@ export async function copyLink(url: string, btn?: HTMLElement | null): Promise<b
   } catch { return false; }
 }
 
+/** A count with a singular/plural noun ("1 story", "2 stories"). */
+export function plural(n: number, one: string, many: string): string {
+  return `${n} ${n === 1 ? one : many}`;
+}
+
 // A compact relative time ("3d ago", "2h ago", "just now"); falls back to a date.
 export function relTime(iso: string | null | undefined): string {
   if (!iso) return '';

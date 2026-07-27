@@ -5,13 +5,16 @@
 // single source of truth for lookup: every view renders from the one instance a
 // node id maps to, so a single Object.assign on an edited item updates the board.
 
-import type { Capabilities, LedgerNode, StatusFilter } from '../../shared/contract';
+import type { Capabilities, EpicCounts, LedgerNode, StatusFilter } from '../../shared/contract';
 
 // A cached node also carries its lazily-loaded children and load bookkeeping.
 export interface CachedNode extends LedgerNode {
   children?: CachedNode[];
   loaded?: boolean;
   _loading?: Promise<CachedNode[]> | null;
+  // Story/task rollup for epic nodes, filled in after the roots render (see
+  // fetchEpicCounts). Absent until it arrives; the card falls back to childCount.
+  counts?: EpicCounts;
 }
 
 export interface BoardState {

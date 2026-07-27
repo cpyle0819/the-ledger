@@ -36,6 +36,15 @@ export interface Filters {
   project?: string | null;
 }
 
+/** The story/task rollup shown on an epic card, replacing the raw "N within".
+ *  `stories` is the epic's immediate story children; `tasks` is its direct task
+ *  children plus the tasks under those stories. Both honor the same filters as
+ *  the board, so the numbers describe exactly what the current view contains. */
+export interface EpicCounts {
+  stories: number;
+  tasks: number;
+}
+
 /** A cheap list node — what getChildren returns. Rich enough to render a card
  *  without a per-item fetch; the full Item is fetched lazily when a drawer opens. */
 export interface LedgerNode {
@@ -144,6 +153,10 @@ export interface Capabilities {
   stepOptions: boolean;
   projects: boolean;
   attachments: boolean;
+  /** Whether the source can roll up story/task counts for a set of epics
+   *  (backed by countEpicTasks). When absent, the card falls back to the raw
+   *  "N within" child count. */
+  epicCounts: boolean;
 }
 
 /** The plugin contract every source implements. A source module exports a
@@ -175,6 +188,12 @@ export interface SourcePlugin {
   searchAssignees?(query: string): MaybePromise<User[]>;
   stepOptions?(opts: { project?: string | null }): MaybePromise<string[]>;
   listProjects?(): MaybePromise<Project[]>;
+
+  /** Roll up each epic's story/task counts under the given filters, keyed by
+   *  epic id. Missing/absent epics simply don't appear in the map. Gated by the
+   *  epicCounts capability; the board calls it after the roots render, so a slow
+   *  or unavailable rollup never blocks the first paint. */
+  countEpicTasks?(epicIds: string[], filters: Filters): MaybePromise<Record<string, EpicCounts>>;
 }
 
 /** A plugin method may answer synchronously or with a Promise; the host awaits

@@ -9,11 +9,12 @@
 // "everything blinks" bug.
 
 import { state, byId, indexNodes, clearNodes, parentOf, type CachedNode } from './state.js';
-import { api, fetchChildren, fetchNodesRaw, ensureChildren, type ApiError } from './api.js';
+import { api, fetchChildren, fetchNodesRaw, ensureChildren, fetchEpicCounts, type ApiError } from './api.js';
+import { parseHash, writeHash, type UrlState } from './url.js';
 import { sfx } from './sound.js';
 import { $, need } from '../ui/dom.js';
 import { toast, showLoading } from '../ui/feedback.js';
-import { renderColumns, refreshDownstreamColumns, refreshTaskColumn, refreshAllColumns } from '../views/columns.js';
+import { renderColumns, refreshDownstreamColumns, refreshTaskColumn, refreshAllColumns, refreshEpicColumn } from '../views/columns.js';
 import { renderOutline } from '../views/outline.js';
 import { emptyMsg } from '../views/render-helpers.js';
 import type { ViewHandlers, AddRequest } from '../views/types.js';
@@ -23,6 +24,21 @@ import type { Item } from '../../shared/contract';
 
 const drawer = (): LedgerDrawer => need<LedgerDrawer>('#drawer');
 const compose = (): LedgerCompose => need<LedgerCompose>('#compose');
+
+// The item the drawer is currently showing (null when closed) — the one piece of
+// view state that doesn't live on `state`, so the URL sync reads it from here.
+let openItemId: string | null = null;
+// True when the open drawer added its own history entry (a user opened it), so a
+// user-driven close pops that entry (Back-closes-the-drawer). A drawer opened by
+// restoring a link has no entry of its own; closing it replaces the URL instead.
+let drawerPushed = false;
+// Set while closing the drawer in response to popstate, so the drawer's own
+// close event doesn't try to move history again (which would double-navigate).
+let closingFromPop = false;
+
+/** Reflect the live filter/selection state plus the open item into the URL hash.
+ *  Selection and filters replace the current entry; opening the drawer pushes one. */
+export function syncUrl(push = false): void { writeHash(openItemId, push); }
 
 // The handler bundle the views receive. Defined once and passed down so a view
 // never imports the controller (keeps the module graph acyclic).
@@ -47,10 +63,19 @@ export async function loadTree(): Promise<void> {
     state.orphanStories = roots.filter((n) => n.kind === 'story');
     state.orphanTasks = roots.filter((n) => n.kind === 'task');
     if (!byId(state.selEpic)) { state.selEpic = state.epics[0]?.id || null; state.selStory = null; }
+    // The tree just settled the selection (the linked epic, or the first epic as
+    // the default). Reflect it so even an unlinked load carries its selection in
+    // the URL, and a link whose epic the current filters exclude corrects to what
+    // actually rendered.
+    syncUrl();
     render({ animate: true });
     // Warm the selected epic's children so the story/task columns aren't empty
     // on first paint; the render above already showed the epics.
     if (state.selEpic) { ensureChildren(byId(state.selEpic)).then(() => { if (state.lens === 'columns') refreshDownstreamColumns(handlers); }); }
+    // Roll up each epic's story/task counts after first paint (the cards show the
+    // raw child count until these land). Fire-and-forget: a rollup failure leaves
+    // the fallback badge, never the loading state.
+    warmEpicCounts(state.epics.map((e) => e.id));
   } catch (err) {
     const e = err as ApiError;
     // 422: the filter combination is intentionally unsupported (e.g. anyone +
@@ -70,6 +95,139 @@ export async function loadTree(): Promise<void> {
   } finally {
     showLoading(false);
   }
+}
+
+// Fetch story/task rollups for the given epics and fold them onto the cached
+// nodes, then repaint the epics so the cards swap "N within" for "N stories · N
+// tasks". Gated by the source capability; a source without it just keeps the raw
+// badge. Best-effort — a fetch failure is swallowed so the fallback badge stays.
+// Guarded against a filter change landing mid-flight: the counts are computed for
+// the filters at call time, so a stale response is dropped if the epic set moved.
+async function warmEpicCounts(epicIds: string[]): Promise<void> {
+  if (!state.caps.epicCounts || !epicIds.length) return;
+  const wanted = new Set(epicIds);
+  let counts: Record<string, import('../../shared/contract').EpicCounts>;
+  try { counts = await fetchEpicCounts(epicIds); }
+  catch { return; }
+  // Drop a response whose epics no longer match the board (a filter change
+  // reloaded the tree while this was in flight).
+  if (state.epics.length && !state.epics.some((e) => wanted.has(e.id))) return;
+  let any = false;
+  for (const [id, c] of Object.entries(counts)) {
+    const node = byId(id);
+    if (node) { node.counts = c; any = true; }
+  }
+  if (!any) return;
+  if (state.lens === 'columns') refreshEpicColumn(handlers);
+  else render();
+}
+
+// ---- deep linking: hydrate on load, restore after load, follow Back/Forward ----
+
+// Fold the URL hash into `state` before the tree loads, so the tree is fetched
+// through the linked filters (the filter context is what makes the linked
+// selection visible — restore it first or byId can't find the selected node).
+// Selection/expansion are set here too; loadTree and restoreFromUrl consume them.
+// Returns the parsed state so the caller can restore the drawer + sync controls.
+export function hydrateStateFromUrl(): UrlState {
+  const u = parseHash();
+  if (u.lens) state.lens = u.lens;
+  state.assignee = u.assignee ?? '';
+  if (u.status) state.status = u.status;
+  state.project = u.project ?? null;
+  state.selEpic = u.epic ?? null;
+  state.selStory = u.story ?? null;
+  state.expanded = new Set(u.expanded ?? []);
+  return u;
+}
+
+// Restore what loadTree can't on its own: the outline's expanded subtrees (their
+// children load lazily) and the open drawer. Runs once after the initial load.
+export async function restoreFromUrl(u: UrlState): Promise<void> {
+  if (state.lens === 'outline' && state.expanded.size) await loadExpandedSubtrees();
+  // Columns: a restored selected story's tasks load lazily. The story is a child
+  // of the selected epic, so its node only exists once the epic's children load —
+  // loadTree kicks that off but doesn't await it. Load the epic's children FIRST
+  // (coalesced with loadTree's warm via _loading, so it's one fetch), then the
+  // story's, so byId(selStory) resolves and the task column leaves its loading
+  // state. Skipping this leaves the story's tasks stuck "Loading…" forever.
+  if (state.lens === 'columns' && state.selStory) {
+    const epic = byId(state.selEpic);
+    if (epic && !epic.loaded) await ensureChildren(epic).catch(() => []);
+    const story = byId(state.selStory);
+    if (story && !story.loaded) await ensureChildren(story).catch(() => []);
+    if (state.lens === 'columns') refreshTaskColumn(handlers);
+  }
+  if (u.item) await reopenItem(u.item);
+}
+
+// Load children for every expanded outline row, deepest-first by iteration: a row
+// can only be expanded once its parent's children are cached, so repeat until a
+// pass loads nothing new (a bounded walk down the expanded chain).
+async function loadExpandedSubtrees(): Promise<void> {
+  for (let guard = 0; guard < 20; guard++) {
+    const pending = [...state.expanded].map(byId).filter((n): n is CachedNode => !!n && !n.loaded);
+    if (!pending.length) break;
+    await Promise.all(pending.map((n) => ensureChildren(n).catch(() => [])));
+  }
+  if (state.lens === 'outline') render();
+}
+
+// Reopen the linked item. Prefer the cached node (the tree load usually holds it);
+// otherwise read it from the source so a deep link to an off-screen item still
+// opens. A read failure is non-fatal — the board still shows, just without the
+// drawer.
+async function reopenItem(id: string): Promise<void> {
+  let node = byId(id);
+  if (!node) {
+    try { const { item } = await api<{ item: Item }>(`/api/item/${id}`); indexNodes([item as CachedNode]); node = byId(id) || (item as CachedNode); }
+    catch { return; }
+  }
+  openItemId = id;
+  drawer().open(node);
+  // Opened from a link the URL already carries — don't push a second entry.
+  drawerPushed = false;
+}
+
+// Follow Back/Forward: re-read the hash and move the board to match it. A filter
+// change reloads the tree (the visible set differs); otherwise selection and the
+// drawer are reconciled in place. The drawer close here is flagged so it doesn't
+// push history back (popstate already moved it).
+export function wireDeepLinkNav(): void {
+  window.addEventListener('popstate', () => {
+    const u = parseHash();
+    const filtersDiffer = (u.lens ?? 'columns') !== state.lens
+      || (u.assignee ?? '') !== state.assignee
+      || (u.status ?? 'Open') !== state.status
+      || (u.project ?? null) !== state.project;
+    if (filtersDiffer) {
+      hydrateStateFromUrl();
+      loadTree().then(() => restoreFromUrl(u));
+      return;
+    }
+    // Same filters: reconcile selection, expansion, and the drawer in place.
+    state.selEpic = u.epic ?? null;
+    state.selStory = u.story ?? null;
+    state.expanded = new Set(u.expanded ?? []);
+    if (state.lens === 'columns') refreshAllColumns(handlers); else render();
+    if (state.lens === 'outline' && state.expanded.size) loadExpandedSubtrees();
+    reconcileDrawerWithUrl(u.item ?? null);
+  });
+}
+
+// Open, switch, or close the drawer to match the URL's item after a Back/Forward.
+// Closing is flagged (closingFromPop) so the drawer's close handler doesn't move
+// history a second time.
+function reconcileDrawerWithUrl(item: string | null): void {
+  if (item === openItemId) return;
+  if (!item) {
+    closingFromPop = true;
+    drawer().close();
+    closingFromPop = false;
+    openItemId = null;
+    return;
+  }
+  reopenItem(item);
 }
 
 export function handleError(err: ApiError): void {
@@ -98,6 +256,7 @@ export function render({ animate = false }: { animate?: boolean } = {}): void {
 function selectEpic(id: string): void {
   if (state.selEpic === id) { const n = byId(id); if (n) openDrawer(n); return; } // re-click = read it
   state.selEpic = id; state.selStory = null;
+  syncUrl();
   const cols = $('.columns'); if (!cols) return render();
   cols.querySelectorAll('ledger-column[data-tier="epic"] ledger-card').forEach((cd) => (cd as HTMLElement).toggleAttribute('selected', (cd as HTMLElement).dataset.id === id));
   refreshDownstreamColumns(handlers);
@@ -107,6 +266,7 @@ function selectEpic(id: string): void {
 function selectStory(id: string): void {
   if (state.selStory === id) { const n = byId(id); if (n) openDrawer(n); return; }
   state.selStory = id;
+  syncUrl();
   const cols = $('.columns'); if (!cols) return render();
   cols.querySelectorAll('ledger-column[data-tier="story"] ledger-card').forEach((cd) => (cd as HTMLElement).toggleAttribute('selected', (cd as HTMLElement).dataset.id === id));
   refreshTaskColumn(handlers);
@@ -117,14 +277,23 @@ function selectStory(id: string): void {
 // Expand fetches children on first open (lazy); collapse just hides them. A
 // re-render after the fetch resolves shows the loaded subtree.
 function toggleExpand(node: CachedNode): void {
-  if (state.expanded.has(node.id)) { state.expanded.delete(node.id); render(); return; }
+  if (state.expanded.has(node.id)) { state.expanded.delete(node.id); syncUrl(); render(); return; }
   state.expanded.add(node.id);
+  syncUrl();
   render();
   if (!node.loaded) ensureChildren(node).then(() => { if (state.expanded.has(node.id) && state.lens === 'outline') render(); }).catch(handleError);
 }
 
 // ---- drawer ----
-function openDrawer(node: CachedNode): void { drawer().open(node); }
+// Opening the drawer records the open item and pushes a history entry, so Back
+// closes it and a refresh reopens it. Reopening the already-open item (or opening
+// while restoring a link, which sets the URL itself) doesn't push a duplicate.
+function openDrawer(node: CachedNode): void {
+  const alreadyOpen = openItemId === node.id && drawer().hasAttribute('open');
+  openItemId = node.id;
+  drawer().open(node);
+  if (!alreadyOpen) { syncUrl(true); drawerPushed = true; }
+}
 
 // Wire the drawer's injected host services once. The drawer stays
 // transport-agnostic; the board hands it the api/fetch/caps/sfx/toast it needs
@@ -137,6 +306,17 @@ export function wireDrawer(): void {
   d.toast = toast;
   d.fetchChildren = ensureChildren;
   d.addEventListener('item-changed', (e) => { if (e.detail?.item) patchNode(e.detail.item); });
+  // The drawer closed. Forget the open item and take it out of the URL. A drawer
+  // the user opened pushed a history entry, so a user-driven close pops it (Back's
+  // job, done for the ✕/scrim/Esc paths too); one opened by restoring a link had
+  // no entry, so its URL is just replaced. A close triggered by popstate already
+  // moved history — skip both and only clear the id.
+  d.addEventListener('drawer-closed', () => {
+    openItemId = null;
+    if (closingFromPop) return;
+    if (drawerPushed) { drawerPushed = false; history.back(); }
+    else syncUrl();
+  });
   // A per-section "Add <tier>" in the drawer opens the compose sheet with the open
   // item as the fixed parent. The full ancestor chain is resolved from the cache
   // (the drawer's item is cached); if it somehow isn't, the event's own parent

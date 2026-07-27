@@ -125,6 +125,20 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, { parent: q.get('parent') || null, assignee: filters.assignee, nodes });
     }
 
+    // Story/task rollup for a set of epics, under the current filters. Called
+    // after the roots render, so it never blocks first paint; the card shows the
+    // raw child count until the counts arrive. `epics` is a comma-separated id list.
+    if (source.capabilities.epicCounts && p === '/api/counts' && req.method === 'GET') {
+      const filters: Filters = {
+        assignee: q.get('assignee') || source.plugin.me,
+        status: (q.get('status') as Filters['status']) || 'Open',
+      };
+      if (source.capabilities.projects && q.get('project')) filters.project = q.get('project');
+      const epicIds = (q.get('epics') || '').split(',').filter(Boolean);
+      const counts = epicIds.length ? await call('countEpicTasks', epicIds, filters) : {};
+      return sendJSON(res, 200, { counts });
+    }
+
     if (source.capabilities.projects && p === '/api/projects' && req.method === 'GET') {
       return sendJSON(res, 200, { projects: await call('listProjects') });
     }

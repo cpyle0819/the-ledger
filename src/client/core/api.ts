@@ -3,7 +3,7 @@
 // talks to a source backend directly — credentials stay server-side.
 
 import { state, indexNodes, type CachedNode } from './state.js';
-import type { Project } from '../../shared/contract';
+import type { EpicCounts, Project } from '../../shared/contract';
 
 /** An error carrying the HTTP status, so callers can react to the transport-level
  *  outcome (e.g. 401 = not authenticated, 422 = unsupported filter combo) without
@@ -58,4 +58,16 @@ export async function ensureChildren(node: CachedNode | null): Promise<CachedNod
 export async function loadProjects(): Promise<Project[]> {
   const { projects } = await api<{ projects: Project[] }>('/api/projects');
   return projects || [];
+}
+
+// Story/task rollups for a set of epics under the current filters. Called after
+// the roots render (the card shows the raw child count until this resolves), so
+// the filter params mirror fetchNodesRaw's. Gated by the epicCounts capability.
+export async function fetchEpicCounts(epicIds: string[]): Promise<Record<string, EpicCounts>> {
+  if (!epicIds.length) return {};
+  const q = new URLSearchParams({ status: state.status, epics: epicIds.join(',') });
+  if (state.assignee) q.set('assignee', state.assignee);
+  if (state.project) q.set('project', state.project);
+  const { counts } = await api<{ counts: Record<string, EpicCounts> }>(`/api/counts?${q}`);
+  return counts || {};
 }

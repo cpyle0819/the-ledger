@@ -48,6 +48,7 @@ export function resolveCapabilities(plugin: SourcePlugin): Capabilities {
     stepOptions: !!c.stepOptions && has('stepOptions'),
     projects: !!c.projects && has('listProjects'),
     attachments: !!c.attachments,
+    epicCounts: !!c.epicCounts && has('countEpicTasks'),
   };
 }
 

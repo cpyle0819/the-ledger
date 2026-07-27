@@ -7,7 +7,7 @@ import { el, asButton } from '../components/util.js';
 import { idTag } from '../components/shared-styles.js';
 import type { LedgerColumn } from '../components/ledger-column.js';
 import type { LedgerCard } from '../components/ledger-card.js';
-import type { CachedNode } from '../core/state.js';
+import { state, type CachedNode } from '../core/state.js';
 
 /** A <ledger-column>: shadow chrome + a light-DOM body its children slot into.
  *  `col` and `body` are the same node; both keys are kept so call sites read
@@ -36,6 +36,11 @@ export function card(item: CachedNode, { drill = false, animate = false, onActiv
   c.dataset.id = item.id;
   if (drill) c.setAttribute('drill', '');
   if (animate) c.setAttribute('animate', '');
+  // Mark epics whose source produces story/task rollups: the card then shows a
+  // blank (loading) count area until the rollup lands, instead of the raw "N
+  // within". Sources without the capability leave the attribute off and keep the
+  // fallback badge.
+  if (item.kind === 'epic' && state.caps.epicCounts) c.setAttribute('rollup', '');
   c.item = item;
   if (onActivate) c.addEventListener('card-activate', () => onActivate(item));
   if (onOpen) c.addEventListener('card-open', () => onOpen(item));
