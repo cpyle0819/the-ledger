@@ -48,6 +48,20 @@ export const chromeSheet = sheet(`
   .who.context::before { content: "↳ "; opacity: .7; }
   .who.context b { color: var(--ink-soft, #5b4a30); font-weight: 500; }
   .count-badge { color: var(--ink-red, #8f2f22); }
+  /* Missing-estimate flag: a data gap (no points set), distinct from the planning
+     risk tones — a muted amber chip with a warning glyph, sitting where the points
+     would be (or beside the type chip on a card). Neutral-but-noticeable so it
+     draws the eye to fill it in without competing with selection or the risk meter. */
+  .no-est {
+    font-family: var(--fell, serif); font-weight: 600; font-size: 13px; line-height: 1; letter-spacing: .02em;
+    display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 2px;
+    color: #f6eed6; background: var(--risk-under, #b8842a); border: 1px solid rgba(0,0,0,.25);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 1px 2px rgba(0,0,0,.3); white-space: nowrap;
+  }
+  .no-est::before { content: "⚠"; font-size: 12px; }
+  /* Icon-only variant (the ⚠ glyph alone, tooltip carries the meaning): used in the
+     Planning list where the points pill would sit. */
+  .no-est-icon { font-size: 15px; line-height: 1; color: var(--risk-under, #b8842a); cursor: help; }
 
   .card-id { font-family: var(--fell, serif); font-style: italic; font-size: 14px; color: var(--ink-red, #8f2f22); letter-spacing: .01em; opacity: .85; }
   .id-tag { display: inline-flex; align-items: center; gap: 4px; }
@@ -65,6 +79,26 @@ export const chromeSheet = sheet(`
 
   :focus-visible { outline: 2px solid var(--wax, #7c2b22); outline-offset: 2px; border-radius: 2px; }
 `);
+
+// The "no estimate" flag chip, built once so every surface (card, outline row,
+// Planning line) renders it identically. aria-label carries the full meaning; the
+// ⚠ glyph is decorative (added via ::before).
+export function noEstimateChip(): HTMLSpanElement {
+  const chip = el('span', 'no-est', 'no estimate');
+  chip.setAttribute('aria-label', 'No estimate set');
+  chip.title = 'No estimate set';
+  return chip;
+}
+
+// The icon-only missing-estimate flag: the ⚠ glyph alone with a tooltip, for the
+// Planning list where a full chip would crowd the line.
+export function noEstimateIcon(): HTMLSpanElement {
+  const icon = el('span', 'no-est-icon', '⚠');
+  icon.setAttribute('role', 'img');
+  icon.setAttribute('aria-label', 'No estimate set');
+  icon.title = 'No estimate set';
+  return icon;
+}
 
 // Build the "№ <shortId>" unit used on cards, rows, and the drawer, with a
 // copy-link button when the item carries a `url` (the source supplies the link;

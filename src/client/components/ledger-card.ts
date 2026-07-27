@@ -14,7 +14,7 @@
 // each card carries its own, which also makes the element reusable anywhere.
 
 import { el, asButton, plural } from './util.js';
-import { chromeSheet, idTag } from './shared-styles.js';
+import { chromeSheet, idTag, noEstimateChip } from './shared-styles.js';
 import type { LedgerNode } from '../../shared/contract';
 
 const cardSheet = new CSSStyleSheet();
@@ -167,7 +167,11 @@ export class LedgerCard extends HTMLElement {
 
     const body = el('div', 'body');
     const top = el('div', 'card-top');
-    top.append(el('span', `chip t-${item.type}`, item.type), idTag(item.shortId, item.url));
+    top.append(el('span', `chip t-${item.type}`, item.type));
+    // Flag an item with no estimate (any tier), right beside the type chip. A
+    // missing estimate is a data gap worth filling regardless of status.
+    if (!(item.estimate != null && item.estimate > 0)) top.append(noEstimateChip());
+    top.append(idTag(item.shortId, item.url));
     const title = el('p', 'card-title', item.title); title.setAttribute('part', 'title');
 
     const meta = el('div', 'card-meta');

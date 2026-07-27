@@ -20,7 +20,7 @@
 // full item is fetched and the drawer repaints.
 
 import { el, asButton, copyLink, plural } from './util.js';
-import { chromeSheet, idTag } from './shared-styles.js';
+import { chromeSheet, idTag, noEstimateIcon } from './shared-styles.js';
 import { renderInto } from './markdown.js';
 import './ledger-comment-thread.js';
 import type { LedgerCommentThread } from './ledger-comment-thread.js';
@@ -99,6 +99,9 @@ sheet.replaceSync(`
   .d-rule { height: 2px; background: linear-gradient(90deg, var(--brass-lo, #7a5f30), transparent); margin-bottom: 20px; }
   .d-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 22px; margin-bottom: 20px; }
   .d-field label { display: block; font-family: var(--fell, serif); font-style: italic; font-size: 15px; color: var(--ink-soft, #5b4a30); margin-bottom: 5px; }
+  /* A missing-estimate warning glyph beside the estimate label (the drawer's own
+     item — just the icon, per the flag's window treatment). */
+  .est-warn { margin-left: 7px; font-style: normal; font-size: 13px; color: var(--risk-under, #b8842a); }
   .d-field select, .d-field input, .d-typeahead input {
     box-sizing: border-box; width: 100%; background: rgba(255,250,235,.7); color: var(--ink, #33291a); border: 1px solid var(--parch-edge, #c4ac7c);
     border-radius: 2px; padding: 8px 10px; font-family: var(--gara, serif); font-size: 15px; outline: none;
@@ -251,7 +254,7 @@ export class LedgerDrawer extends HTMLElement {
               <ul class="typeahead-list" id="d-assignee-list" role="listbox" hidden></ul>
             </div>
           </div>
-          <div class="d-field" id="d-estimate-field"><label for="d-estimate-edit">estimate (points)</label><input type="number" id="d-estimate-edit" min="0" step="1" spellcheck="false" placeholder="—" /></div>
+          <div class="d-field" id="d-estimate-field"><label for="d-estimate-edit">estimate (points)<span class="est-warn" id="d-estimate-warn" title="No estimate set" aria-label="No estimate set" hidden>⚠</span></label><input type="number" id="d-estimate-edit" min="0" step="1" spellcheck="false" placeholder="—" /></div>
         </div>
         <div class="d-contains" id="d-contains" hidden></div>
         <div class="d-desc-head">
@@ -401,7 +404,10 @@ export class LedgerDrawer extends HTMLElement {
     this.#$('#d-assignee-field').hidden = !canEdit('assignee');
     this.#$('#d-estimate-field').hidden = !canEdit('estimate');
 
-    this.#$<HTMLInputElement>('#d-estimate-edit').value = item.estimate != null && item.estimate > 0 ? String(item.estimate) : '';
+    const hasEstimate = item.estimate != null && item.estimate > 0;
+    this.#$<HTMLInputElement>('#d-estimate-edit').value = hasEstimate ? String(item.estimate) : '';
+    // Flag the open item's own missing estimate beside the label (icon only).
+    this.#$('#d-estimate-warn').hidden = hasEstimate;
     const sel = this.#$<HTMLSelectElement>('#d-status-edit'); sel.innerHTML = '';
     const opts = STATUSES.includes(item.status) ? STATUSES : [item.status, ...STATUSES];
     [...new Set(opts)].forEach((s) => { const o = el('option', null, s); o.value = s; if (s === item.status) o.selected = true; sel.append(o); });
@@ -428,7 +434,11 @@ export class LedgerDrawer extends HTMLElement {
         method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ field, value }),
       });
       Object.assign(node, item); this.#item = node;
-      if (field === 'estimate') this.#$<HTMLInputElement>('#d-estimate-edit').value = item.estimate != null && item.estimate > 0 ? String(item.estimate) : '';
+      if (field === 'estimate') {
+        const hasEstimate = item.estimate != null && item.estimate > 0;
+        this.#$<HTMLInputElement>('#d-estimate-edit').value = hasEstimate ? String(item.estimate) : '';
+        this.#$('#d-estimate-warn').hidden = hasEstimate;
+      }
       this.sfx?.quill();
       this.#setSaveState('saved', `${label.toLowerCase()} saved`);
       this.#emitChanged();
@@ -650,7 +660,9 @@ export class LedgerDrawer extends HTMLElement {
     const line = el('div', `cline${deemph ? ' deemph' : ''}`);
     line.append(el('span', `chip t-${child.type}`, child.type), el('span', 'ct', child.title));
     const pts = Number((child as { estimate?: number | null }).estimate) || 0;
-    if (pts > 0) line.append(el('span', 'pill', `${pts} pts`));
+    // Where the points pill would sit: show it, or flag a missing estimate with the
+    // icon-only marker (tooltip carries the meaning) so the line stays uncluttered.
+    line.append(pts > 0 ? el('span', 'pill', `${pts} pts`) : noEstimateIcon());
     asButton(line, () => this.open(child), `${child.type} ${child.shortId}: ${child.title}. Open details.`);
     return line;
   }

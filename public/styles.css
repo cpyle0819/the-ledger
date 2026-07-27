@@ -298,6 +298,17 @@ ledger-card.deemph:hover {
    component's shadow DOM (public/components/ledger-card.js), not here. The leaf
    classes below (.card-id, .id-tag, .copy-link, .card-title, .chip, .pill, …)
    remain because the outline lens and drawer still render them in light DOM. */
+/* Missing-estimate flag for the outline lens (light DOM). Mirrors the .no-est
+   chip in chromeSheet used by the card/drawer shadow roots — kept in sync so the
+   flag reads identically on every surface. */
+.no-est {
+  font-family: var(--fell); font-weight: 600; font-size: 13px; line-height: 1; letter-spacing: .02em;
+  display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 2px;
+  color: #f6eed6; background: var(--risk-under); border: 1px solid rgba(0,0,0,.25);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 1px 2px rgba(0,0,0,.3); white-space: nowrap;
+}
+.no-est::before { content: "⚠"; font-size: 12px; }
+
 .card-id { font-family: var(--fell); font-style: italic; font-size: 14px; color: var(--ink-red); letter-spacing: .01em; opacity: .85; }
 
 /* ticket number + copy-link, as one inline unit */

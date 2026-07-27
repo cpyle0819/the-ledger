@@ -5,7 +5,7 @@
 
 import { state, storiesOf, directTasksOf, type CachedNode } from '../core/state.js';
 import { el, asButton } from '../components/util.js';
-import { idTag } from '../components/shared-styles.js';
+import { idTag, noEstimateChip } from '../components/shared-styles.js';
 import { emptyMsg, whoChip } from './render-helpers.js';
 import type { ViewHandlers } from './types.js';
 
@@ -66,6 +66,8 @@ function regRow(item: CachedNode, caretGlyph: string, onToggle: () => void, expa
   const caret = el('span', 'ol-caret', caretGlyph); caret.setAttribute('aria-hidden', 'true');
   const title = el('span', 'card-title', item.title);
   row.append(caret, el('span', `chip t-${item.type}`, item.type), idTag(item.shortId, item.url), title);
+  // Flag an epic/story with no estimate (any tier gets flagged where it's visible).
+  if (!(item.estimate != null && item.estimate > 0)) row.append(noEstimateChip());
   // A context epic/story shows its (elsewhere-)assignee so the pulled-in row is
   // legible as context, matching the card treatment.
   if (item.context && item.assignee) row.append(whoChip(item));
@@ -95,6 +97,7 @@ function taskRow(t: CachedNode, direct: boolean, h: ViewHandlers): HTMLElement {
   const r = el('div', `ol-task-row${direct ? ' direct' : ''}`);
   const status = el('span', `pill st-${t.status}`); const dot = el('span', 'dot'); dot.setAttribute('aria-hidden', 'true'); status.append(dot);
   r.append(el('span', `chip t-${t.type}`, t.type), idTag(t.shortId, t.url), el('span', 'card-title', t.title), status);
+  if (!(t.estimate != null && t.estimate > 0)) r.append(noEstimateChip());
   if (t.assignee) r.append(whoChip(t));
   asButton(r, () => h.openDrawer(t),
     `${t.type} ${t.shortId}: ${t.title}. Status ${t.status}. Open details.`);
