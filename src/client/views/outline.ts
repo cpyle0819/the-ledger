@@ -44,15 +44,17 @@ function outlineNode(node: CachedNode, tier: 'epic' | 'story' | 'direct', h: Vie
   if (open) {
     const children = el('div', 'ol-children');
     if (!node.loaded) children.append(el('div', 'ol-sub-label', 'loading…'));
-    else {
+    else if (node.kind === 'epic') {
+      // An epic separates its stories from the tasks parented directly on it.
       storiesOf(node).forEach((s) => children.append(outlineNode(s, 'story', h)));
       const direct = directTasksOf(node);
       if (direct.length) {
         children.append(el('div', 'ol-sub-label', 'tasks directly on this epic'));
         direct.forEach((t) => children.append(taskRow(t, true, h)));
       }
-      // A story's children are all tasks; render them directly.
-      if (node.kind === 'story') (node.children || []).forEach((t) => children.append(taskRow(t, false, h)));
+    } else {
+      // A story's children are all tasks; render them directly, no divider.
+      (node.children || []).forEach((t) => children.append(taskRow(t, false, h)));
     }
     box.append(children);
   }
@@ -71,6 +73,18 @@ function regRow(item: CachedNode, caretGlyph: string, onToggle: () => void, expa
   asButton(row, onToggle,
     `${item.type} ${item.shortId}: ${item.title}${expandable ? ', expand or collapse' : ''}`);
   if (expandable) row.setAttribute('aria-expanded', String(state.expanded.has(item.id)));
+  // Per-row add affordances, gated on the create capability: an epic can add a
+  // story or a task, a story can add a task. Parenting the new item on this row's
+  // node, via the same handler the columns use.
+  if (state.caps.create) {
+    const addBtn = (label: string, type: 'STORY' | 'TASK') => {
+      const b = el('span', 'ol-add', label);
+      asButton(b, (ev: Event) => { ev.stopPropagation(); h.addItem({ type, parentNode: item }); }, `${label} to ${item.shortId}`);
+      row.append(b);
+    };
+    if (item.kind === 'epic') { addBtn('+ story', 'STORY'); addBtn('+ task', 'TASK'); }
+    else if (item.kind === 'story') addBtn('+ task', 'TASK');
+  }
   const read = el('span', 'ol-read', 'read');
   asButton(read, (ev: Event) => { ev.stopPropagation(); h.openDrawer(item); }, `Read ${item.shortId}`);
   row.append(read);

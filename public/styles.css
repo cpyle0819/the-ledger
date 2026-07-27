@@ -346,9 +346,20 @@ smoke-drift { z-index: 0; }
 .ol-children { padding: 2px 0 8px; }
 .ol-story { position: relative; }
 .ol-story > .ol-row { padding-left: 40px; }
-.ol-task-row { display: flex; align-items: center; gap: 11px; padding: 9px 18px 9px 62px; cursor: pointer; font-family: var(--gara); font-size: 15px; color: var(--ink); border-bottom: 1px dotted rgba(91,74,48,.2); }
+/* A story's tasks are indented well past the story row, with a vertical guide
+   from the story down its task list, so a task reads as living under its story
+   rather than floating at the epic's level. The guide sits at the story row's
+   text indent; tasks clear it. */
+.ol-story > .ol-children { position: relative; }
+.ol-story > .ol-children::before {
+  content: ""; position: absolute; left: 48px; top: 0; bottom: 8px;
+  width: 1px; background: var(--parch-edge); opacity: .7;
+}
+.ol-task-row { display: flex; align-items: center; gap: 11px; padding: 9px 18px 9px 72px; cursor: pointer; font-family: var(--gara); font-size: 15px; color: var(--ink); border-bottom: 1px dotted rgba(91,74,48,.2); }
 .ol-task-row:last-child { border-bottom: 0; }
 .ol-task-row:hover { background: rgba(176,141,79,.12); }
+/* A task parented directly on the epic sits at the story level (one under the
+   epic), NOT at the deeper story-task indent. */
 .ol-task-row.direct { padding-left: 40px; }
 .ol-task-row .card-title { font-family: var(--gara); font-size: 15px; flex: 1; }
 .ol-caret { font-family: var(--fell); color: var(--ink-soft); width: 13px; display: inline-block; transition: transform .15s; }
@@ -367,6 +378,16 @@ smoke-drift { z-index: 0; }
   padding: 0 9px; cursor: pointer; transition: .12s; background: rgba(243,234,208,.7); line-height: 1.4;
 }
 .ol-read:hover { background: var(--ink-red); color: var(--parch-hi); border-color: transparent; }
+/* Per-row add affordance, revealed on hover/focus of the row (or when focused
+   itself, so it's keyboard-reachable). Mirrors the drawer's per-section add. */
+.ol-add {
+  font-family: var(--fell); font-style: italic; font-size: 14px; letter-spacing: .02em;
+  color: var(--brass-hi); background: linear-gradient(180deg, var(--leather), var(--leather-2));
+  border: 1px solid var(--brass-lo); border-radius: 2px; padding: 0 9px; cursor: pointer;
+  line-height: 1.4; transition: .12s; opacity: 0;
+}
+.ol-row:hover .ol-add, .ol-add:focus-visible { opacity: 1; }
+.ol-add:hover { color: #fff; border-color: var(--brass); }
 
 /* ===== READING DRAWER ================================================
    The drawer is the <ledger-drawer> custom element — its panel, scrim, fields,
