@@ -8,7 +8,7 @@ import * as http from 'node:http';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { callPlugin, loadActiveSource, REPO_ROOT } from './plugin-interface';
-import type { Filters, SourcePlugin } from '../shared/contract';
+import type { CreatableField, CreateInput, Filters, SourcePlugin } from '../shared/contract';
 
 const PORT = Number(process.env.PORT) || 4317;
 
@@ -79,6 +79,26 @@ async function readBody(req: http.IncomingMessage): Promise<Record<string, unkno
 // Route a request through the active plugin's method via the guarded gateway.
 const call = (method: keyof SourcePlugin, ...args: unknown[]) => callPlugin(source.plugin, method, args);
 
+// Build a CreateInput from a request body against the source's declared
+// createFields. `type` and `title` are always required; every other field is
+// carried only when the source declares it, so a client can't smuggle a field
+// the source never advertised. Throws a 400 the http layer maps for the caller.
+function buildCreateInput(body: Record<string, unknown>, createFields: CreatableField[]): CreateInput {
+  const bad = (msg: string) => Object.assign(new Error(msg), { status: 400 });
+  const type = typeof body.type === 'string' ? body.type.trim() : '';
+  const title = typeof body.title === 'string' ? body.title.trim() : '';
+  if (!type) throw bad('type is required');
+  if (!title) throw bad('title is required');
+  const input: CreateInput = { type, title };
+  const declared = new Set(createFields);
+  if (declared.has('parent') && body.parent != null) input.parent = String(body.parent);
+  if (declared.has('project') && body.project != null) input.project = String(body.project);
+  if (declared.has('assignee') && body.assignee != null) input.assignee = String(body.assignee);
+  if (declared.has('description') && body.description != null) input.description = String(body.description);
+  if (declared.has('estimate') && body.estimate != null) input.estimate = Number(body.estimate) || null;
+  return input;
+}
+
 // ---- routing ------------------------------------------------------------
 
 const server = http.createServer(async (req, res) => {
@@ -115,6 +135,15 @@ const server = http.createServer(async (req, res) => {
 
     if (source.capabilities.stepOptions && p === '/api/steps' && req.method === 'GET') {
       return sendJSON(res, 200, { steps: await call('stepOptions', { project: q.get('project') }) });
+    }
+
+    // Create: forward a validated create request to the active plugin. Rejected
+    // when the source doesn't advertise create; the body is validated against the
+    // source's declared createFields before the plugin is called.
+    if (p === '/api/item' && req.method === 'POST') {
+      if (!source.capabilities.create) return sendJSON(res, 400, { error: `Source '${source.name}' does not support create` });
+      const input = buildCreateInput(await readBody(req), source.capabilities.createFields);
+      return sendJSON(res, 200, { item: await call('createItem', input) });
     }
 
     const itemMatch = p.match(/^\/api\/item\/([^/]+)$/);
