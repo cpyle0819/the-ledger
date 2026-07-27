@@ -523,7 +523,11 @@ export class LedgerDrawer extends HTMLElement {
     const parent = this.#item;
     if (!parent) return;
     this.dispatchEvent(new CustomEvent('item-add-child', {
-      detail: { type, parentId: parent.id, parentName: parent.title, project: parent.project ?? null },
+      detail: {
+        type, parentId: parent.id, parentName: parent.title,
+        parentShortId: parent.shortId ?? null, parentUrl: parent.url ?? null,
+        project: parent.project ?? null,
+      },
       bubbles: true, composed: true,
     }));
   }

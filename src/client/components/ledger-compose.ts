@@ -24,7 +24,7 @@
 // the project picker; a child inherits its parent's project silently.
 
 import { el } from './util.js';
-import { chromeSheet } from './shared-styles.js';
+import { chromeSheet, idTag } from './shared-styles.js';
 import type { Item, CreateInput, CreatableField, Capabilities, Project } from '../../shared/contract';
 
 /** The fetch wrapper the board injects (see app's api()). */
@@ -34,13 +34,16 @@ export interface Sfx { pageTurn(): void; quill(): void }
 /** Optional toast surface. */
 export type ToastFn = (msg: string, isErr?: boolean) => void;
 /** The fixed context an add affordance opens the sheet with: the tier to create,
- *  and the parent it's created under (name + id + project). `parentId` null means
- *  a root; `project` is the parent's project (inherited) or, for a root, the
- *  board's current project scope. */
+ *  and the parent it's created under. `parentId` null means a root; `project` is
+ *  the parent's project (inherited) or, for a root, the board's current project
+ *  scope. `parentShortId`/`parentUrl` render the parent's linkable "№ …" tag, the
+ *  same the cards show; `parentUrl` absent falls back to plain id text. */
 export interface ComposeContext {
   type: string;
   parentId?: string | null;
   parentName?: string | null;
+  parentShortId?: string | null;
+  parentUrl?: string | null;
   project?: string | null;
 }
 
@@ -95,8 +98,9 @@ sheet.replaceSync(`
   .c-field select:focus, .c-field input:focus, .c-field textarea:focus { border-color: var(--brass-lo, #7a5f30); background: #fffaeb; }
 
   /* Fixed (locked) fields — type and parent — are shown, not edited: the tier as
-     its wax chip, the parent by name. They read as settled facts about the item. */
-  .c-fixed { display: inline-flex; align-items: center; min-height: 37px; }
+     its wax chip, the parent by name plus its "№ …" id tag (the same linkable id
+     the cards render, via idTag). They read as settled facts about the item. */
+  .c-fixed { display: inline-flex; align-items: center; gap: 10px; min-height: 37px; flex-wrap: wrap; }
   .c-parent-name { font-family: var(--gara, serif); font-size: 15px; color: var(--ink, #33291a); }
   .c-parent-name.none { font-style: italic; color: var(--ink-faint, #6f5c3e); }
 
@@ -137,7 +141,7 @@ export class LedgerCompose extends HTMLElement {
           </div>
           <div class="c-field" id="c-parent-field" hidden>
             <label>parent</label>
-            <span class="c-fixed"><span class="c-parent-name" id="c-parent-name"></span></span>
+            <span class="c-fixed"><span class="c-parent-name" id="c-parent-name"></span><span class="c-parent-id" id="c-parent-id"></span></span>
           </div>
           <div class="c-field full" id="c-title-field">
             <label for="c-title">title <span class="req" aria-hidden="true">*</span></label>
@@ -228,13 +232,18 @@ export class LedgerCompose extends HTMLElement {
 
     this.#$<HTMLInputElement>('#c-title').value = '';
 
-    // Parent is read-only: shown by name when creating a child, hidden for a root.
+    // Parent is read-only: shown by name plus its linkable "№ …" id tag (the same
+    // idTag the cards render, so a source's item link opens from here too). Hidden
+    // for a root. Falls back to the raw id when the source gives no shortId.
     const parentField = this.#$('#c-parent-field');
     parentField.hidden = !hasParent;
     if (hasParent) {
       const name = this.#$('#c-parent-name');
-      name.textContent = this.#ctx.parentName || this.#ctx.parentId || '';
+      name.textContent = this.#ctx.parentName || this.#ctx.parentShortId || this.#ctx.parentId || '';
       name.classList.remove('none');
+      const idBox = this.#$('#c-parent-id'); idBox.innerHTML = '';
+      const short = this.#ctx.parentShortId || this.#ctx.parentId;
+      if (short) idBox.append(idTag(short, this.#ctx.parentUrl));
     }
 
     // Project: a child inherits its parent's project silently (no picker). A root

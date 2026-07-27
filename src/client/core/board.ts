@@ -141,8 +141,8 @@ export function wireDrawer(): void {
   // item as the fixed, read-only parent. The drawer supplies the parent name and
   // project, so this doesn't depend on the parent being in the node cache.
   d.addEventListener('item-add-child', (e) => {
-    const { type, parentId, parentName, project } = e.detail;
-    if (state.caps.create) compose().open({ type, parentId, parentName, project });
+    const { type, parentId, parentName, parentShortId, parentUrl, project } = e.detail;
+    if (state.caps.create) compose().open({ type, parentId, parentName, parentShortId, parentUrl, project });
   });
 }
 
@@ -180,6 +180,8 @@ function addItem(req: AddRequest): void {
     type: req.type,
     parentId: parent?.id ?? null,
     parentName: parent?.title ?? null,
+    parentShortId: parent?.shortId ?? null,
+    parentUrl: parent?.url ?? null,
     project: parent ? (parent.project ?? null) : state.project,
   });
 }

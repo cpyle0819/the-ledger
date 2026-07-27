@@ -31,7 +31,7 @@ declare global {
     'item-changed': CustomEvent<{ item: Item }>;
     // ledger-drawer: a per-section "Add <tier>" was clicked; carries the tier and
     // the open item as the (read-only) parent for the compose sheet.
-    'item-add-child': CustomEvent<{ type: 'STORY' | 'TASK'; parentId: string; parentName: string; project: string | null }>;
+    'item-add-child': CustomEvent<{ type: 'STORY' | 'TASK'; parentId: string; parentName: string; parentShortId: string | null; parentUrl: string | null; project: string | null }>;
     // ledger-compose: a create succeeded; carries the new item and the input that
     // made it (the input's parent/project place it in the tree — Item has no
     // parent pointer).
