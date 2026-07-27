@@ -31,12 +31,11 @@ Needs Node ≥ 18. Install and start — the default `local-file` plugin serves
 sample data on port 4317, so this alone gives you a working board on any OS:
 
 ```bash
-npm install && npm run serve
+npm install && npm run serve -- 4317
 ```
 
-Then open http://localhost:4317. Pass a port with `npm run serve -- 8080`. Pick
-a different plugin by setting `LEDGER_SOURCE` (default `local-file`), using your
-shell's env-var syntax:
+Then open http://localhost:4317. Pick a different plugin by setting
+`LEDGER_SOURCE` (default `local-file`), using your shell's env-var syntax:
 
 ```bash
 LEDGER_SOURCE=github npm run serve          # bash / zsh (Linux, macOS)
