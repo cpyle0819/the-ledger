@@ -106,7 +106,19 @@ sheet.replaceSync(`
   .cline:hover { color: var(--wax, #7c2b22); }
   .cline .ct { flex: 1; font-family: var(--gara, serif); }
   .cgroup { margin-top: 8px; }
-  .cgroup-label { font-family: var(--fell, serif); font-style: italic; font-size: 15px; color: var(--ink-soft, #5b4a30); margin: 10px 0 4px; }
+  .cgroup-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 10px 0 4px; }
+  .cgroup-label { font-family: var(--fell, serif); font-style: italic; font-size: 15px; color: var(--ink-soft, #5b4a30); }
+  /* The per-section add button is revealed on hover/focus of its group, so the
+     contents list stays calm until you reach for it. It stays visible while
+     keyboard-focused so it's reachable without a pointer. */
+  .cgroup-add {
+    font-family: var(--fell, serif); font-style: italic; font-size: 13px; color: var(--brass-hi, #d8b878);
+    background: linear-gradient(180deg, var(--leather, #2a1c10), var(--leather-2, #33230f));
+    border: 1px solid var(--brass-lo, #7a5f30); border-radius: 2px; padding: 3px 10px; cursor: pointer;
+    opacity: 0; transition: opacity .12s, color .12s, border-color .12s;
+  }
+  .cgroup:hover .cgroup-add, .cgroup-add:focus-visible { opacity: 1; }
+  .cgroup-add:hover { color: #fff; border-color: var(--brass, #b08d4f); }
 
   .d-desc-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
   .d-desc-label { font-family: var(--fell-sc, serif); font-size: 15px; letter-spacing: .08em; color: var(--ink-red, #8f2f22); }
@@ -441,10 +453,22 @@ export class LedgerDrawer extends HTMLElement {
   }
 
   // ---- contains (children summary) ----
+  // Renders the item's children, grouped by tier, and — when the source can
+  // create and the item can hold that tier — a per-section "Add <tier>" button
+  // (revealed on hover) that parents the new item on THIS item. An epic always
+  // shows a Stories and a Tasks section and a story a Tasks section, even when
+  // empty, so the add affordance is always reachable; a task holds nothing, so it
+  // renders no contents. Sections render for a leaf-only item too (the sole reason
+  // to show contents used to be existing children; now the add affordances count).
   async #renderContains(item: LedgerNode & Partial<Item>): Promise<void> {
     const box = this.#$('#d-contains');
-    if (!item.childCount) { box.hidden = true; box.innerHTML = ''; return; }
-    if (!(item as { loaded?: boolean }).loaded && this.fetchChildren) {
+    const canCreate = !!this.#caps.create;
+    // A task is a leaf: no children, nothing to add under it.
+    if (item.kind === 'task') { box.hidden = true; box.innerHTML = ''; return; }
+    // Nothing to show and can't add? Then there's no section to render.
+    if (!item.childCount && !canCreate) { box.hidden = true; box.innerHTML = ''; return; }
+
+    if (item.childCount && !(item as { loaded?: boolean }).loaded && this.fetchChildren) {
       box.hidden = false; box.innerHTML = '';
       box.append(el('h4', null, 'Contents'), el('div', 'cgroup-label', 'loading…'));
       try { await this.fetchChildren(item); } catch { /* leave loading */ }
@@ -453,28 +477,55 @@ export class LedgerDrawer extends HTMLElement {
     const children: LedgerNode[] = (item as { children?: LedgerNode[] }).children || [];
     const stories = children.filter((n) => n.kind === 'story');
     const direct = children.filter((n) => n.kind !== 'story');
-    const groups: [string, LedgerNode[]][] = [];
-    if (item.kind === 'epic') {
-      if (stories.length) groups.push(['Stories', stories]);
-      if (direct.length) groups.push(['Tasks directly on this epic', direct]);
-    } else if (children.length) {
-      groups.push(['Tasks', children]);
-    }
-    if (!groups.length) { box.hidden = true; box.innerHTML = ''; return; }
+    // Each group: a heading, an optional add-tier, and the child lines. Groups are
+    // always shown for the addable tiers so the affordance is reachable when empty.
+    const groups: { label: string; list: LedgerNode[]; addType: 'STORY' | 'TASK' }[] =
+      item.kind === 'epic'
+        ? [
+            { label: 'Stories', list: stories, addType: 'STORY' },
+            { label: 'Tasks directly on this epic', list: direct, addType: 'TASK' },
+          ]
+        : [{ label: 'Tasks', list: children, addType: 'TASK' }];
+
     box.hidden = false; box.innerHTML = '';
     box.append(el('h4', null, 'Contents'));
-    for (const [label, list] of groups) {
+    for (const { label, list, addType } of groups) {
       const g = el('div', 'cgroup');
-      g.append(el('div', 'cgroup-label', `${label} · ${list.length}`));
-      list.forEach((child) => {
-        const line = el('div', 'cline');
-        line.append(el('span', `chip t-${child.type}`, child.type), el('span', 'ct', child.title));
-        if (child.childCount) line.append(el('span', 'pill', `${child.childCount} within`));
-        asButton(line, () => this.open(child), `${child.type} ${child.shortId}: ${child.title}. Open details.`);
-        g.append(line);
-      });
+      const head = el('div', 'cgroup-head');
+      head.append(el('div', 'cgroup-label', list.length ? `${label} · ${list.length}` : label));
+      if (canCreate) {
+        const add = el('button', 'cgroup-add', `+ Add ${addType.toLowerCase()}`);
+        add.type = 'button';
+        add.setAttribute('aria-label', `Add ${addType.toLowerCase()} to ${item.title}`);
+        add.addEventListener('click', () => this.#emitAddChild(addType));
+        head.append(add);
+      }
+      g.append(head);
+      if (list.length) {
+        list.forEach((child) => {
+          const line = el('div', 'cline');
+          line.append(el('span', `chip t-${child.type}`, child.type), el('span', 'ct', child.title));
+          if (child.childCount) line.append(el('span', 'pill', `${child.childCount} within`));
+          asButton(line, () => this.open(child), `${child.type} ${child.shortId}: ${child.title}. Open details.`);
+          g.append(line);
+        });
+      } else {
+        g.append(el('div', 'cline', `No ${addType.toLowerCase()}s yet.`));
+      }
       box.append(g);
     }
+  }
+
+  // Ask the host to compose a new child of a fixed tier under the open item. The
+  // drawer performs no write itself; the board maps this to the compose sheet with
+  // this item as the (read-only) parent.
+  #emitAddChild(type: 'STORY' | 'TASK'): void {
+    const parent = this.#item;
+    if (!parent) return;
+    this.dispatchEvent(new CustomEvent('item-add-child', {
+      detail: { type, parentId: parent.id, parentName: parent.title, project: parent.project ?? null },
+      bubbles: true, composed: true,
+    }));
   }
 
   // ---- assignee typeahead ----

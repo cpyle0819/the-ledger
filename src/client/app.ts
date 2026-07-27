@@ -16,7 +16,7 @@ import './components/ledger-compose.js';
 
 import { state } from './core/state.js';
 import { api, loadProjects } from './core/api.js';
-import { loadTree, render, wireDrawer, wireCompose, openCompose } from './core/board.js';
+import { loadTree, render, wireDrawer, wireCompose } from './core/board.js';
 import { buildTitle } from './ui/title-seal.js';
 import { $, need } from './ui/dom.js';
 import type { LedgerDrawer } from './components/ledger-drawer.js';
@@ -79,7 +79,6 @@ function wire(): void {
   need<HTMLSelectElement>('#project-select').onchange = (e) => { state.project = (e.target as HTMLSelectElement).value || null; loadTree(); };
 
   need('#refresh').onclick = () => loadTree();
-  need('#new-item').onclick = () => openCompose();
   wireDrawer();
   wireCompose();
 
@@ -91,7 +90,6 @@ function wire(): void {
     if (need('#drawer').hasAttribute('open')) return;
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === 'r') loadTree();
-    else if (e.key === 'n' && state.caps.create) openCompose();
     else if (e.key === '1') { state.lens = 'columns'; syncLensSeg(); render({ animate: true }); }
     else if (e.key === '2') { state.lens = 'outline'; syncLensSeg(); render(); }
   });
@@ -116,12 +114,12 @@ class LedgerBoard extends HTMLElement {
       need<LedgerDrawer>('#drawer').caps = state.caps;   // gate the drawer's fields on capabilities
       const name = $('#ident-name'); if (name) name.textContent = me;
       const projects = await fillProjects();        // fills + reveals the project picker if supported
-      // Reveal the compose trigger only when the source can create; hand the sheet
-      // the identity + project options it needs to prefill.
+      // Hand the compose sheet the identity + project options it needs. The add
+      // affordances that open it (column "+", drawer sections) show only when the
+      // source declares create; the sheet itself no-ops on open without it.
       if (state.caps.create) {
         const compose = need<LedgerCompose>('#compose');
         compose.caps = state.caps; compose.me = me; compose.projects = projects;
-        need('#new-item').hidden = false;
       }
     } catch { const name = $('#ident-name'); if (name) name.textContent = 'unknown'; }
     loadTree();

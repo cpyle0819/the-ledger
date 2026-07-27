@@ -29,10 +29,16 @@ declare global {
     'card-open': CustomEvent<{ id: string; item: LedgerNode }>;
     // ledger-drawer: an edit/comment write succeeded; carries the fresh item.
     'item-changed': CustomEvent<{ item: Item }>;
+    // ledger-drawer: a per-section "Add <tier>" was clicked; carries the tier and
+    // the open item as the (read-only) parent for the compose sheet.
+    'item-add-child': CustomEvent<{ type: 'STORY' | 'TASK'; parentId: string; parentName: string; project: string | null }>;
     // ledger-compose: a create succeeded; carries the new item and the input that
     // made it (the input's parent/project place it in the tree — Item has no
     // parent pointer).
     'item-created': CustomEvent<{ item: Item; input: CreateInput }>;
+    // ledger-column: the column's "+" affordance was clicked (the board knows
+    // which tier from the column that emitted it).
+    'column-add': CustomEvent<void>;
     // ledger-comment-thread: composer/row intents (the host performs the write).
     'comment-add': CustomEvent<{ message: string }>;
     'comment-edit': CustomEvent<{ id: string; message: string }>;

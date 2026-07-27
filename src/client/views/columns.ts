@@ -9,7 +9,17 @@ import { state, byId, storiesOf, directTasksOf, type CachedNode } from '../core/
 import { $ } from '../ui/dom.js';
 import { column, card, emptyMsg, hint, laneLabel } from './render-helpers.js';
 import type { LedgerColumn } from '../components/ledger-column.js';
-import type { ViewHandlers } from './types.js';
+import type { ViewHandlers, AddRequest } from './types.js';
+
+// Attach a column's "+" affordance: set its tooltip/label and forward the click
+// to addItem with the tier and parent this column composes into. Gated on the
+// create capability — no label means the column renders no "+". The parent is
+// resolved lazily at click time so it tracks the current selection.
+function wireAdd(col: LedgerColumn, label: string, h: ViewHandlers, req: () => AddRequest): void {
+  if (!state.caps.create) return;
+  col.setAttribute('add-label', label);
+  col.addEventListener('column-add', () => h.addItem(req()));
+}
 
 export function renderColumns(stage: HTMLElement, animate: boolean, h: ViewHandlers): void {
   const wrap = document.createElement('div'); wrap.className = 'columns';
@@ -19,6 +29,7 @@ export function renderColumns(stage: HTMLElement, animate: boolean, h: ViewHandl
 
 function buildEpicCol(animate: boolean, h: ViewHandlers): LedgerColumn {
   const { col, body } = column('epic', 'Epics', state.epics.length);
+  wireAdd(col, 'Add epic', h, () => ({ type: 'EPIC', parentNode: null }));
   if (!state.epics.length) body.append(emptyMsg('No epics.', 'Try changing your filters.'));
   state.epics.forEach((e) => {
     const cd = card(e, { drill: true, animate, onActivate: () => h.selectEpic(e.id), onOpen: h.openDrawer });
@@ -50,14 +61,18 @@ function buildStoryCol(animate: boolean, h: ViewHandlers): LedgerColumn {
     else body.append(emptyMsg('No stories.', 'Try changing your filters.'));
     return col;
   }
+  // A story needs an epic parent; the "+" is offered whenever an epic is selected.
+  const addStory = (col: LedgerColumn) => wireAdd(col, 'Add story', h, () => ({ type: 'STORY', parentNode: byId(state.selEpic) }));
   if (!epic.loaded) {
     const { col, body } = column('story', 'Stories', orphans.length);
+    addStory(col);
     body.append(hint('Loading', 'stories…'));
     appendOrphans(body);
     return col;
   }
   const stories = storiesOf(epic);
   const { col, body } = column('story', 'Stories', stories.length + orphans.length);
+  addStory(col);
   if (stories.length) stories.forEach((s) => body.append(storyCard(s)));
   else if (!orphans.length) body.append(emptyMsg('No stories.', 'This epic has no stories.'));
   appendOrphans(body);
@@ -84,8 +99,14 @@ function buildTaskCol(animate: boolean, h: ViewHandlers): LedgerColumn {
     else body.append(emptyMsg('No tasks.', 'Try changing your filters.'));
     return col;
   }
+  // A new task parents to the selected story when there is one, else the selected
+  // epic (a direct-on-epic task) — matching what the column shows.
+  const addTask2 = (col: LedgerColumn) => wireAdd(col, 'Add task', h, () => ({
+    type: 'TASK', parentNode: byId(state.selStory) || byId(state.selEpic),
+  }));
   if (!epic.loaded) {
     const { col, body } = column('task', 'Tasks', orphans.length);
+    addTask2(col);
     body.append(hint('Loading', 'tasks…'));
     appendOrphans(body);
     return col;
@@ -95,6 +116,7 @@ function buildTaskCol(animate: boolean, h: ViewHandlers): LedgerColumn {
   const storyTasks = story ? (story.loaded ? story.children ?? [] : null) : [];
   const total = (storyTasks?.length || 0) + directTasks.length + orphans.length;
   const { col, body } = column('task', 'Tasks', total);
+  addTask2(col);
 
   if (story && !story.loaded) body.append(hint('Loading', 'tasks…'));
   else if (storyTasks?.length) storyTasks.forEach((t) => addTask(body, t));

@@ -16,7 +16,7 @@ import { toast, showLoading } from '../ui/feedback.js';
 import { renderColumns, refreshDownstreamColumns, refreshTaskColumn, refreshAllColumns } from '../views/columns.js';
 import { renderOutline } from '../views/outline.js';
 import { emptyMsg } from '../views/render-helpers.js';
-import type { ViewHandlers } from '../views/types.js';
+import type { ViewHandlers, AddRequest } from '../views/types.js';
 import type { LedgerDrawer } from '../components/ledger-drawer.js';
 import type { LedgerCompose } from '../components/ledger-compose.js';
 import type { Item } from '../../shared/contract';
@@ -31,6 +31,7 @@ export const handlers: ViewHandlers = {
   selectStory,
   openDrawer,
   toggleExpand,
+  addItem,
 };
 
 // ---- load ----
@@ -136,6 +137,13 @@ export function wireDrawer(): void {
   d.toast = toast;
   d.fetchChildren = ensureChildren;
   d.addEventListener('item-changed', (e) => { if (e.detail?.item) patchNode(e.detail.item); });
+  // A per-section "Add <tier>" in the drawer opens the compose sheet with the open
+  // item as the fixed, read-only parent. The drawer supplies the parent name and
+  // project, so this doesn't depend on the parent being in the node cache.
+  d.addEventListener('item-add-child', (e) => {
+    const { type, parentId, parentName, project } = e.detail;
+    if (state.caps.create) compose().open({ type, parentId, parentName, project });
+  });
 }
 
 // Merge an edited item back into the cached node and refresh what's visible. The
@@ -161,14 +169,19 @@ export function wireCompose(): void {
   c.addEventListener('item-created', (e) => { if (e.detail?.item) insertNode(e.detail.item, e.detail.input?.parent ?? null); });
 }
 
-// Open the compose sheet, pre-filling placement from the current selection: a
-// selected story (else the selected epic) becomes the default parent, and the
-// active project scope carries over. The sheet shows only the fields the source
-// declares, so a prefill for a field the source drops is simply ignored.
-export function openCompose(): void {
+// Open the compose sheet for a new item of a fixed tier under a fixed parent,
+// decided by the add affordance that fired (a column "+", a drawer section). The
+// parent is shown read-only by name; a child inherits the parent's project, a
+// root defaults to the board's current project scope.
+function addItem(req: AddRequest): void {
   if (!state.caps.create) return;
-  const parent = state.selStory || state.selEpic || null;
-  compose().open({ parent, project: state.project });
+  const parent = req.parentNode;
+  compose().open({
+    type: req.type,
+    parentId: parent?.id ?? null,
+    parentName: parent?.title ?? null,
+    project: parent ? (parent.project ?? null) : state.project,
+  });
 }
 
 // Place a newly created item into the tree without a full reload. The created

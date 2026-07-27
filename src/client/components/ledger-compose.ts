@@ -14,11 +14,14 @@
 //   sfx               -> { pageTurn(), quill() } (optional)
 //   toast(msg, isErr) -> surface an error (optional)
 //
-// Events out (composed): item-created {item} when the create succeeds, so the
-// board can place the new item in the tree without a reload.
+// Events out (composed): item-created {item, input} when the create succeeds, so
+// the board can place the new item in the tree without a reload.
 //
-// Open with .open(context?), where context pre-fills parent/project from the
-// board's current selection; the type/title fields start empty and focused.
+// Open with .open(context): the tier and parent are decided by which add
+// affordance fired (a column "+", a drawer section), so both are fixed here —
+// the type shows as a read-only chip, the parent as a read-only name — and only
+// title/assignee/description/estimate are editable. A root item (no parent) shows
+// the project picker; a child inherits its parent's project silently.
 
 import { el } from './util.js';
 import { chromeSheet } from './shared-styles.js';
@@ -30,13 +33,16 @@ export type ApiFn = <T = unknown>(path: string, opts?: RequestInit) => Promise<T
 export interface Sfx { pageTurn(): void; quill(): void }
 /** Optional toast surface. */
 export type ToastFn = (msg: string, isErr?: boolean) => void;
-/** The board's current selection, used to pre-fill placement fields. */
-export interface ComposeContext { parent?: string | null; project?: string | null }
-
-// The tier/type labels offered, matching the tier→color chips (t-EPIC/…). A
-// source derives its own `kind` from the label; these four cover the hierarchy
-// plus the common bug type without hard-coding any one source's vocabulary.
-const TYPES = ['EPIC', 'STORY', 'TASK', 'BUG'];
+/** The fixed context an add affordance opens the sheet with: the tier to create,
+ *  and the parent it's created under (name + id + project). `parentId` null means
+ *  a root; `project` is the parent's project (inherited) or, for a root, the
+ *  board's current project scope. */
+export interface ComposeContext {
+  type: string;
+  parentId?: string | null;
+  parentName?: string | null;
+  project?: string | null;
+}
 
 const sheet = new CSSStyleSheet();
 sheet.replaceSync(`
@@ -74,6 +80,9 @@ sheet.replaceSync(`
 
   .c-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px 20px; margin-bottom: 18px; }
   .c-field { display: flex; flex-direction: column; }
+  /* [hidden] must win over the flex display above, or a hidden field still lays
+     out (the project picker leaking in for a child that inherits its parent's). */
+  .c-field[hidden] { display: none; }
   .c-field.full { grid-column: 1 / -1; }
   .c-field label { font-family: var(--fell, serif); font-style: italic; font-size: 15px; color: var(--ink-soft, #5b4a30); margin-bottom: 5px; }
   .c-field .req { color: var(--ink-red, #8f2f22); }
@@ -84,6 +93,12 @@ sheet.replaceSync(`
   }
   .c-field textarea { min-height: 96px; resize: vertical; line-height: 1.55; }
   .c-field select:focus, .c-field input:focus, .c-field textarea:focus { border-color: var(--brass-lo, #7a5f30); background: #fffaeb; }
+
+  /* Fixed (locked) fields — type and parent — are shown, not edited: the tier as
+     its wax chip, the parent by name. They read as settled facts about the item. */
+  .c-fixed { display: inline-flex; align-items: center; min-height: 37px; }
+  .c-parent-name { font-family: var(--gara, serif); font-size: 15px; color: var(--ink, #33291a); }
+  .c-parent-name.none { font-style: italic; color: var(--ink-faint, #6f5c3e); }
 
   .foot { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 4px; }
   .c-err { flex: 1; font-family: var(--gara, serif); font-size: 14px; color: var(--wax, #7c2b22); }
@@ -97,7 +112,7 @@ export class LedgerCompose extends HTMLElement {
   projects: Project[] = [];
   me = '';
   #caps: Partial<Capabilities> = {};
-  #ctx: ComposeContext = {};
+  #ctx: ComposeContext = { type: 'TASK' };
   #lastFocus: HTMLElement | null = null;
   #submitting = false;
   #trap: ((e: KeyboardEvent) => void) | null = null;
@@ -117,20 +132,20 @@ export class LedgerCompose extends HTMLElement {
         <div class="c-rule" aria-hidden="true"></div>
         <div class="c-grid">
           <div class="c-field" id="c-type-field">
-            <label for="c-type">type <span class="req" aria-hidden="true">*</span></label>
-            <select id="c-type" required></select>
+            <label>type</label>
+            <span class="c-fixed"><span class="chip" id="c-type-chip">TASK</span></span>
           </div>
-          <div class="c-field" id="c-estimate-field" hidden>
-            <label for="c-estimate">estimate (points)</label>
-            <input type="number" id="c-estimate" min="0" step="1" spellcheck="false" placeholder="—" />
+          <div class="c-field" id="c-parent-field" hidden>
+            <label>parent</label>
+            <span class="c-fixed"><span class="c-parent-name" id="c-parent-name"></span></span>
           </div>
           <div class="c-field full" id="c-title-field">
             <label for="c-title">title <span class="req" aria-hidden="true">*</span></label>
             <input type="text" id="c-title" spellcheck="false" required autocomplete="off" placeholder="a short, plain title" />
           </div>
-          <div class="c-field" id="c-parent-field" hidden>
-            <label for="c-parent">parent id</label>
-            <input type="text" id="c-parent" spellcheck="false" autocomplete="off" placeholder="none (a root)" />
+          <div class="c-field" id="c-estimate-field" hidden>
+            <label for="c-estimate">estimate (points)</label>
+            <input type="number" id="c-estimate" min="0" step="1" spellcheck="false" placeholder="—" />
           </div>
           <div class="c-field" id="c-project-field" hidden>
             <label for="c-project">project</label>
@@ -165,22 +180,23 @@ export class LedgerCompose extends HTMLElement {
     this.shadowRoot!.addEventListener('keydown', (e) => { if ((e as KeyboardEvent).key === 'Escape') this.close(); });
   }
 
-  // Which create fields the source declared. type/title always show; the rest
-  // are gated on membership so the sheet never offers a field the source drops.
+  // Which create fields the source declared. type/title are always required; the
+  // rest are gated on membership so the sheet never offers a field the source drops.
   #declares(f: CreatableField): boolean {
     return (this.#caps.createFields || []).includes(f);
   }
 
   // ---- open / close ----
-  open(context: ComposeContext = {}): void {
+  // The tier and parent are fixed by the caller (which add affordance fired), so
+  // both are shown read-only and only the editable fields take input.
+  open(context: ComposeContext): void {
     if (!this.#caps.create) return;
-    this.#ctx = context || {};
+    this.#ctx = context || { type: 'TASK' };
     this.#paint();
     this.sfx?.pageTurn();
     this.#lastFocus = document.activeElement as HTMLElement | null;
     this.setAttribute('open', '');
-    // Type first, then title: title is the field a user most wants to type into,
-    // so focus it once the sheet is painted.
+    // Title is the one field a user always fills, so focus it on open.
     this.#$<HTMLInputElement>('#c-title').focus();
     this.#trap = (e: KeyboardEvent) => this.#trapFocus(e);
     document.addEventListener('keydown', this.#trap, true);
@@ -199,19 +215,35 @@ export class LedgerCompose extends HTMLElement {
     this.#setErr('');
     this.#setSubmitting(false);
 
-    const typeSel = this.#$<HTMLSelectElement>('#c-type'); typeSel.innerHTML = '';
-    TYPES.forEach((t, i) => { const o = el('option', null, t); o.value = t; if (i === 0) o.selected = true; typeSel.append(o); });
+    const type = String(this.#ctx.type || 'TASK').toUpperCase();
+    const typeLabel = type.charAt(0) + type.slice(1).toLowerCase();
+    const hasParent = !!this.#ctx.parentId;
+
+    // Heading + type chip reflect the fixed tier; the chip reuses the tier→color
+    // chrome (t-EPIC/…) shared with cards.
+    this.#$('#c-heading').textContent = hasParent
+      ? `Add ${typeLabel.toLowerCase()} to ${this.#ctx.parentName || 'this item'}`
+      : `Add ${typeLabel.toLowerCase()}`;
+    const chip = this.#$('#c-type-chip'); chip.textContent = type; chip.className = `chip t-${type}`;
 
     this.#$<HTMLInputElement>('#c-title').value = '';
 
-    // Placement + detail fields are gated on the source's declared createFields.
+    // Parent is read-only: shown by name when creating a child, hidden for a root.
     const parentField = this.#$('#c-parent-field');
-    parentField.hidden = !this.#declares('parent');
-    this.#$<HTMLInputElement>('#c-parent').value = this.#declares('parent') && this.#ctx.parent ? String(this.#ctx.parent) : '';
+    parentField.hidden = !hasParent;
+    if (hasParent) {
+      const name = this.#$('#c-parent-name');
+      name.textContent = this.#ctx.parentName || this.#ctx.parentId || '';
+      name.classList.remove('none');
+    }
 
+    // Project: a child inherits its parent's project silently (no picker). A root
+    // shows the picker, defaulted to the board's current scope, when the source
+    // declares the field.
     const projectField = this.#$('#c-project-field');
-    projectField.hidden = !this.#declares('project');
-    if (this.#declares('project')) {
+    const showProject = this.#declares('project') && !hasParent;
+    projectField.hidden = !showProject;
+    if (showProject) {
       const sel = this.#$<HTMLSelectElement>('#c-project'); sel.innerHTML = '';
       const none = el('option', null, 'none'); none.value = ''; sel.append(none);
       for (const p of this.projects) { const o = el('option', null, p.name || p.id); o.value = p.id; sel.append(o); }
@@ -232,13 +264,18 @@ export class LedgerCompose extends HTMLElement {
   // ---- submit ----
   async #submit(): Promise<void> {
     if (this.#submitting || !this.api) return;
-    const type = this.#$<HTMLSelectElement>('#c-type').value;
+    const type = String(this.#ctx.type || 'TASK').toUpperCase();
     const title = this.#$<HTMLInputElement>('#c-title').value.trim();
     if (!title) { this.#setErr('A title is required.'); this.#$<HTMLInputElement>('#c-title').focus(); return; }
 
     const input: CreateInput = { type, title };
-    if (this.#declares('parent')) { const v = this.#$<HTMLInputElement>('#c-parent').value.trim(); if (v) input.parent = v; }
-    if (this.#declares('project')) { const v = this.#$<HTMLSelectElement>('#c-project').value; if (v) input.project = v; }
+    // Parent comes from the fixed context, not a field. A child inherits its
+    // parent's project; a root uses the picker's value.
+    if (this.#declares('parent') && this.#ctx.parentId) input.parent = String(this.#ctx.parentId);
+    if (this.#declares('project')) {
+      const v = this.#ctx.parentId ? (this.#ctx.project || '') : this.#$<HTMLSelectElement>('#c-project').value;
+      if (v) input.project = String(v);
+    }
     if (this.#declares('assignee')) { const v = this.#$<HTMLInputElement>('#c-assignee').value.trim(); if (v) input.assignee = v; }
     if (this.#declares('description')) { const v = this.#$<HTMLTextAreaElement>('#c-description').value; if (v.trim()) input.description = v; }
     if (this.#declares('estimate')) { const v = this.#$<HTMLInputElement>('#c-estimate').value.trim(); if (v) input.estimate = Number(v) || null; }
