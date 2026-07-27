@@ -35,12 +35,14 @@ to source. A `prepare` hook builds automatically after `npm install`, and the
 ```bash
 npm install            # install deps + compile (prepare hook)
 npm run serve          # build + start on http://localhost:4317
+npm run serve -- 8080  # ...or on a port you choose (default 4317)
 npm run build          # just compile (tsc -b)
 npm run dev            # tsc --watch for development
 ```
 
-Then open http://localhost:4317. The port defaults to 4317; override it with a
-`npm run serve -- <port>` arg or the `PORT` env var (the arg wins).
+Then open http://localhost:4317 (or the port you chose). The port defaults to
+4317; set it with the `npm run serve -- <port>` arg or the `PORT` env var — the
+arg wins.
 
 **Point it at a plugin.** The board renders whichever plugin `LEDGER_SOURCE`
 names (default `local-file`); each plugin reads its own env vars for the rest of
