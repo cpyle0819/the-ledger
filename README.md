@@ -39,7 +39,8 @@ npm run build          # just compile (tsc -b)
 npm run dev            # tsc --watch for development
 ```
 
-Then open http://localhost:4317.
+Then open http://localhost:4317. The port defaults to 4317; override it with a
+`npm run serve -- <port>` arg or the `PORT` env var (the arg wins).
 
 **Point it at a plugin.** The board renders whichever plugin `LEDGER_SOURCE`
 names (default `local-file`); each plugin reads its own env vars for the rest of

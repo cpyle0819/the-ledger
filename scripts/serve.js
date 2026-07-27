@@ -12,7 +12,10 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const REPO = path.resolve(__dirname, '..');
-const PORT = parseInt(process.env.PORT || '4317', 10);
+// Port precedence: a CLI arg (`npm run serve -- 8080`) wins, then the PORT env
+// var, then the default. The server reads PORT from its env, so a CLI arg is
+// forwarded by setting PORT for the spawned process below.
+const PORT = parseInt(process.argv[2] || process.env.PORT || '4317', 10);
 
 // Resolves true if something is already accepting connections on PORT.
 function portInUse() {
@@ -47,6 +50,7 @@ async function main() {
   const server = spawnSync(process.execPath, [path.join(REPO, 'dist', 'server', 'server.js')], {
     cwd: REPO,
     stdio: 'inherit',
+    env: { ...process.env, PORT: String(PORT) },
   });
   process.exit(server.status ?? 0);
 }
