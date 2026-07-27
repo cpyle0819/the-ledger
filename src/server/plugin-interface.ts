@@ -40,6 +40,8 @@ export function resolveCapabilities(plugin: SourcePlugin): Capabilities {
     hierarchy: !!c.hierarchy && has('getChildren'),
     readItem: !!c.readItem && has('readItem'),
     editFields: Array.isArray(c.editFields) && has('editField') ? c.editFields : [],
+    create: !!c.create && has('createItem'),
+    createFields: !!c.create && has('createItem') && Array.isArray(c.createFields) ? c.createFields : [],
     comment: !!c.comment && has('addComment'),
     editOwnComments: !!c.editOwnComments && has('editComment') && has('deleteComment'),
     searchAssignees: !!c.searchAssignees && has('searchAssignees'),

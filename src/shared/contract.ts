@@ -104,6 +104,27 @@ export interface User {
  *  on membership in Capabilities.editFields. */
 export type EditableField = 'status' | 'description' | 'assignee' | 'estimate' | 'workflowAction';
 
+/** The fields a create request may carry. A source declares which it accepts in
+ *  Capabilities.createFields (parallel to editFields); the compose UI shows a
+ *  control per declared field. `type` (the tier/type) and `title` are the
+ *  minimum a create needs; the rest are optional placement/detail. */
+export type CreatableField = 'type' | 'title' | 'parent' | 'project' | 'assignee' | 'description' | 'estimate';
+
+/** A create request the host validates against a source's declared createFields
+ *  before calling createItem. `type` and `title` are always required; every other
+ *  field is honored only when the source declares it in createFields. `parent` is
+ *  the id of the item the new one is parented on (null/absent => a root). */
+export interface CreateInput {
+  /** The tier/type label (EPIC, STORY, TASK, BUG, …); the source derives `kind`. */
+  type: string;
+  title: string;
+  parent?: string | null;
+  project?: string | null;
+  assignee?: string | null;
+  description?: string;
+  estimate?: number | null;
+}
+
 /** What a source can do, as the host resolves it (a declared flag is trusted
  *  only when the backing method actually exists — see resolveCapabilities). The
  *  board reads this once and hides actions the source can't perform. */
@@ -112,6 +133,11 @@ export interface Capabilities {
   readItem: boolean;
   /** The subset of fields the drawer may edit; empty disables editing. */
   editFields: EditableField[];
+  /** Whether the source can create items (backed by createItem). */
+  create: boolean;
+  /** The subset of fields a create request may carry; the compose UI gates each
+   *  control on membership. Meaningful only when `create` is true. */
+  createFields: CreatableField[];
   comment: boolean;
   editOwnComments: boolean;
   searchAssignees: boolean;
@@ -141,6 +167,9 @@ export interface SourcePlugin {
   editField(id: string, field: EditableField, value: unknown): MaybePromise<Item>;
   addComment(id: string, message: string): MaybePromise<Item>;
 
+  /** Create a new item from a validated CreateInput and return it, so the caller
+   *  can place it in the tree without a reload. Gated by the create capability. */
+  createItem?(input: CreateInput): MaybePromise<Item>;
   editComment?(id: string, commentId: string, message: string): MaybePromise<Item>;
   deleteComment?(id: string, commentId: string): MaybePromise<Item>;
   searchAssignees?(query: string): MaybePromise<User[]>;
