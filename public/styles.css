@@ -327,6 +327,22 @@ smoke-drift { z-index: 0; }
 .col-hint .k { font-family: var(--mono); font-style: normal; font-size: 11px; border: 1px solid var(--brass-lo); border-radius: 2px; padding: 1px 6px; color: var(--brass); }
 
 /* ===== REGISTER LENS (the bound register) ============================ */
+/* Rank here is built the way a bound register builds it — an illuminated chapter
+   head (epic), ruled section heads (stories), indented entry lines (tasks) —
+   using the three hierarchy devices in descending strength:
+     1. a type SCALE. Titles step epic 22 → story 18 → task 15 down a ~1.22
+        ratio, so each tier is a distinct "note" and size alone reads as rank
+        (the typographic scale; Butterick — get the ratio right and the rest
+        follows).
+     2. INDENT + a guide RAIL at every level. A child sits under a vertical spine
+        dropping from its parent, so lineage is a path the eye follows, not an
+        inference from indent alone (Gestalt continuity / uniform connectedness).
+     3. WHITESPACE. A parent hugs its children (tight rows) while sibling groups
+        are parted by a gap — proximity does the grouping (Gestalt proximity).
+   The type chips are deliberately QUIET and shrink down the tree: indent + size
+   already encode the tier, so a saturated seal on every row would be a second
+   signal fighting the first — "if everything is contrasted, nothing stands out"
+   (NN/g). Flattened and desaturated, they survive only as a soft colour-key. */
 .outline { height: 100%; overflow-y: auto; padding: 26px 40px 70px; }
 .ol-epic {
   margin: 0 auto 26px; max-width: 1000px;
@@ -335,37 +351,66 @@ smoke-drift { z-index: 0; }
   box-shadow: 3px 5px 16px rgba(0,0,0,.45);
   color: var(--ink);
 }
-.ol-epic > .ol-row { background: linear-gradient(90deg, rgba(138,90,43,.14), transparent 45%); border-bottom: 1px solid var(--parch-edge); }
+/* The epic head — the illuminated chapter opening: largest type, a warm wash in
+   from the binding edge, and a heavier rubric rule closing it off from its
+   entries below. */
+.ol-epic > .ol-row { background: linear-gradient(90deg, rgba(138,90,43,.17), transparent 48%); border-bottom: 1.5px solid var(--parch-edge); }
 .ol-row {
-  display: flex; align-items: center; gap: 13px; padding: 13px 18px; cursor: pointer;
-  border-bottom: 1px dotted rgba(91,74,48,.3); transition: background .13s;
+  display: flex; align-items: center; gap: 12px; padding: 12px 18px; cursor: pointer;
+  transition: background .13s;
 }
 .ol-row:hover { background: rgba(176,141,79,.12); }
-.ol-row .card-title { flex: 1; font-family: var(--fell); font-size: 17px; }
-.ol-row .card-id { font-family: var(--fell); font-style: italic; font-size: 14px; color: var(--ink-red); margin-left: 0; }
-.ol-children { padding: 2px 0 8px; }
+/* Type scale — the primary rank signal. Epic largest; story a clear step down. */
+.ol-row .card-title { flex: 1; font-family: var(--fell); font-size: 18px; }
+.ol-epic > .ol-row .card-title { font-size: 22px; letter-spacing: .01em; }
+.ol-row .card-id { font-family: var(--fell); font-style: italic; font-size: 13px; color: var(--ink-red); margin-left: 0; }
+
+/* Chips as a quiet colour-key, not a wall of seals: flat (no pressed-wax
+   shadow), smaller, and fading with depth so titles lead and the eye still gets
+   a tier tint. Scoped to the outline — cards keep the full seal. */
+.outline .chip {
+  font-size: 10px; padding: 3px 7px; letter-spacing: .1em;
+  box-shadow: none; border-color: rgba(0,0,0,.16); opacity: .9;
+}
+.ol-task-row .chip { font-size: 9px; padding: 2px 6px; opacity: .68; }
+
+/* Continuity at the epic level: a faint spine drops from the epic head down its
+   stories, so a story reads as hanging off the epic, not merely indented. */
+.ol-children { padding: 0 0 6px; }
+.ol-epic > .ol-children { position: relative; }
+.ol-epic > .ol-children::before {
+  content: ""; position: absolute; left: 27px; top: 2px; bottom: 10px;
+  width: 1px; background: var(--parch-edge); opacity: .45;
+}
+
 .ol-story { position: relative; }
-.ol-story > .ol-row { padding-left: 40px; }
-/* A story's tasks are indented well past the story row, with a vertical guide
-   from the story down its task list, so a task reads as living under its story
-   rather than floating at the epic's level. The guide sits at the story row's
-   text indent; tasks clear it. */
+/* Proximity: part one story-group from the next, so "a story and its tasks"
+   coheres as a unit and siblings don't blur together. */
+.ol-story + .ol-story { margin-top: 6px; }
+.ol-story > .ol-row { padding-left: 44px; }
+/* A story's tasks are indented past the story row under their own spine, so a
+   task reads as living under its story rather than floating at the epic's level.
+   The indent is set so the task TITLE lands clearly right of the story title —
+   the story's caret + chip + id push its title well past the row edge, so the
+   task padding has to clear all of that plus a margin, not just match the story
+   row's own indent (otherwise a task's own chip pushes its title back LEFT of the
+   story title and the nesting inverts). The spine sits just left of the task
+   content so the line and the rows it groups stay visually tied. */
 .ol-story > .ol-children { position: relative; }
 .ol-story > .ol-children::before {
-  content: ""; position: absolute; left: 48px; top: 0; bottom: 8px;
+  content: ""; position: absolute; left: 100px; top: 0; bottom: 6px;
   width: 1px; background: var(--parch-edge); opacity: .7;
 }
-.ol-task-row { display: flex; align-items: center; gap: 11px; padding: 9px 18px 9px 72px; cursor: pointer; font-family: var(--gara); font-size: 15px; color: var(--ink); border-bottom: 1px dotted rgba(91,74,48,.2); }
-.ol-task-row:last-child { border-bottom: 0; }
+.ol-task-row { display: flex; align-items: center; gap: 11px; padding: 7px 18px 7px 128px; cursor: pointer; font-family: var(--gara); font-size: 15px; color: var(--ink); }
 .ol-task-row:hover { background: rgba(176,141,79,.12); }
 /* A task parented directly on the epic sits at the story level (one under the
    epic), NOT at the deeper story-task indent. */
-.ol-task-row.direct { padding-left: 40px; }
+.ol-task-row.direct { padding-left: 44px; }
 .ol-task-row .card-title { font-family: var(--gara); font-size: 15px; flex: 1; }
 .ol-caret { font-family: var(--fell); color: var(--ink-soft); width: 13px; display: inline-block; transition: transform .15s; }
 .collapsed .ol-caret { transform: rotate(-90deg); }
 .collapsed .ol-children { display: none; }
-.ol-sub-label { font-family: var(--fell-sc); font-size: 12px; letter-spacing: .08em; color: var(--ink-red); padding: 10px 18px 5px 40px; }
+.ol-sub-label { font-family: var(--fell-sc); font-size: 12px; letter-spacing: .08em; color: var(--ink-red); padding: 12px 18px 5px 44px; }
 /* Orphan groups reuse the epic-card chrome (.ol-epic) so their sub-label + rows
    sit on parchment. Their rows are top-level, not nested under an epic caret, so
    pull the label and row indents back to the card's own edge. */
