@@ -25,31 +25,12 @@ lens on work that lives elsewhere.
 - The UI is a composition of Web Components (board, column, card, drawer, comment
   thread, title), each self-contained with its own styles and usable on its own.
 
-## Sources
+## Setup
 
-A **source plugin** lives at `plugins/<name>/index.js` and exports a factory that
-returns an object implementing the contract in `src/shared/contract.ts`. The host
-loads one active source and exposes a small plugin-agnostic API to the browser; the
-UI reads the source's declared capabilities and hides actions it can't perform.
-Plugins stay plain JavaScript (they're the language-agnostic extension boundary).
-
-The bundled source, `plugins/local-file/`, renders items from a JSON file
-(`plugins/local-file/sample.json` by default, override with `LEDGER_FILE`). It is
-the reference implementation and the default. Select the active source with the
-`LEDGER_SOURCE` env var (default `local-file`).
-
-`plugins/github/` renders a GitHub repo as the board (Project → Milestone →
-Issue), authenticating through the `gh` CLI. See its README for setup:
-`LEDGER_SOURCE=github GITHUB_REPO=owner/name npm start`.
-
-To add a source, drop a new folder under `plugins/`, implement the interface, and
-point `LEDGER_SOURCE` at it.
-
-## Build & run
-
-The app is authored in TypeScript, compiled with `tsc` (no bundler) to one JS file
-per module so devtools maps 1:1 to source. A `prepare` hook builds automatically
-after `npm install`, and the `serve`/`register` scripts build before starting.
+Requires Node ≥ 18 and TypeScript ≥ 7. The app is authored in TypeScript,
+compiled with `tsc` (no bundler) to one JS file per module so devtools maps 1:1
+to source. A `prepare` hook builds automatically after `npm install`, and the
+`serve`/`register` scripts build before starting.
 
 ```bash
 npm install            # install deps + compile (prepare hook)
@@ -58,7 +39,17 @@ npm run build          # just compile (tsc -b)
 npm run dev            # tsc --watch for development
 ```
 
-Then open http://localhost:4317. Requires Node ≥ 18 and TypeScript ≥ 7.
+Then open http://localhost:4317.
+
+**Point it at a plugin.** The board renders whichever plugin `LEDGER_SOURCE`
+names (default `local-file`); each plugin reads its own env vars for the rest of
+its config. The two bundled plugins:
+
+```bash
+npm run serve                                   # local-file (default): reads plugins/local-file/sample.json
+LEDGER_FILE=/path/to/board.json npm run serve   # local-file, pointed at your own JSON
+LEDGER_SOURCE=github GITHUB_REPO=owner/name npm run serve   # a GitHub repo (auth via the gh CLI)
+```
 
 To keep it always running in the background (starts on boot, survives
 logout/login), register it as a per-user service:
@@ -70,6 +61,31 @@ npm run register       # systemd (Linux) / launchd (macOS) / Task Scheduler (Win
 `register` is idempotent — re-run it after a Node upgrade to refresh the service's
 baked-in interpreter path. When the background service is up, `npm run serve`
 detects it and declines to start a second instance.
+
+## Plugins
+
+Each **plugin** is one backing source — an issue tracker, a code host, a local
+file — rendered onto the board through the common contract in
+`src/shared/contract.ts`. A plugin lives at `plugins/<name>/index.js`, stays
+plain JavaScript, and holds its own credentials; the app talks only to the local
+host, which calls plugin methods. `LEDGER_SOURCE` picks the one active plugin.
+
+Two ship in the box:
+
+- **`local-file`** (default) — items from a JSON file, `sample.json` unless
+  `LEDGER_FILE` overrides it. The reference implementation.
+- **`github`** — a GitHub repo as the board (Project → Milestone → Issue),
+  authenticating through the `gh` CLI. Set `GITHUB_REPO=owner/name`; see its own
+  README for details.
+
+To add your own plugin to this install:
+
+1. Create `plugins/<name>/index.js` exporting a factory that returns an object
+   implementing the `src/shared/contract.ts` interface (list the hierarchy, read
+   an item, edit fields, comment). Declare the capabilities the source supports —
+   the UI hides actions a plugin doesn't offer.
+2. Start the app with `LEDGER_SOURCE=<name>` (plus whatever env vars your plugin
+   reads for its own config). Copy `plugins/local-file/` as a starting point.
 
 ### Keyboard
 
