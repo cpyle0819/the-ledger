@@ -12,30 +12,33 @@
 import './components/ledger-card.js';
 import './components/ledger-column.js';
 import './components/ledger-drawer.js';
+import './components/ledger-compose.js';
 
 import { state } from './core/state.js';
 import { api, loadProjects } from './core/api.js';
-import { loadTree, render, wireDrawer } from './core/board.js';
+import { loadTree, render, wireDrawer, wireCompose, openCompose } from './core/board.js';
 import { buildTitle } from './ui/title-seal.js';
 import { $, need } from './ui/dom.js';
 import type { LedgerDrawer } from './components/ledger-drawer.js';
-import type { Capabilities } from '../shared/contract';
+import type { LedgerCompose } from './components/ledger-compose.js';
+import type { Capabilities, Project } from '../shared/contract';
 
 // ---- controls ----
 
 // Populate the project picker from the source, when it supports projects. A
 // failure here is non-fatal: the picker stays hidden and the board shows every
 // project (the unscoped default), so a rooms-endpoint hiccup can't block the tree.
-async function fillProjects(): Promise<void> {
-  if (!state.caps.projects) return;
+async function fillProjects(): Promise<Project[]> {
+  if (!state.caps.projects) return [];
   try {
     const projects = await loadProjects();
-    if (!projects.length) return;
+    if (!projects.length) return [];
     const sel = need<HTMLSelectElement>('#project-select');
     for (const p of projects) { const opt = document.createElement('option'); opt.value = p.id; opt.textContent = p.name; sel.append(opt); }
     sel.value = state.project || '';
     need('#project-ctl').hidden = false;
-  } catch { /* leave the picker hidden; the board stays unscoped */ }
+    return projects;
+  } catch { return []; /* leave the picker hidden; the board stays unscoped */ }
 }
 
 // Set the pressed button in a segmented group: visual `.on` + `aria-pressed`.
@@ -76,7 +79,9 @@ function wire(): void {
   need<HTMLSelectElement>('#project-select').onchange = (e) => { state.project = (e.target as HTMLSelectElement).value || null; loadTree(); };
 
   need('#refresh').onclick = () => loadTree();
+  need('#new-item').onclick = () => openCompose();
   wireDrawer();
+  wireCompose();
 
   // Single-key view shortcuts. The drawer owns its own Escape and internal keys;
   // these stay dormant while it's open (and never hijack modifier combos or keys
@@ -86,6 +91,7 @@ function wire(): void {
     if (need('#drawer').hasAttribute('open')) return;
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === 'r') loadTree();
+    else if (e.key === 'n' && state.caps.create) openCompose();
     else if (e.key === '1') { state.lens = 'columns'; syncLensSeg(); render({ animate: true }); }
     else if (e.key === '2') { state.lens = 'outline'; syncLensSeg(); render(); }
   });
@@ -109,7 +115,14 @@ class LedgerBoard extends HTMLElement {
       state.me = me; state.caps = capabilities || {};
       need<LedgerDrawer>('#drawer').caps = state.caps;   // gate the drawer's fields on capabilities
       const name = $('#ident-name'); if (name) name.textContent = me;
-      await fillProjects();        // fills + reveals the project picker if supported
+      const projects = await fillProjects();        // fills + reveals the project picker if supported
+      // Reveal the compose trigger only when the source can create; hand the sheet
+      // the identity + project options it needs to prefill.
+      if (state.caps.create) {
+        const compose = need<LedgerCompose>('#compose');
+        compose.caps = state.caps; compose.me = me; compose.projects = projects;
+        need('#new-item').hidden = false;
+      }
     } catch { const name = $('#ident-name'); if (name) name.textContent = 'unknown'; }
     loadTree();
   }

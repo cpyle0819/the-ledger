@@ -8,7 +8,7 @@
 // columns) so upstream columns never tear down and re-animate — that was the
 // "everything blinks" bug.
 
-import { state, byId, clearNodes, type CachedNode } from './state.js';
+import { state, byId, indexNodes, clearNodes, type CachedNode } from './state.js';
 import { api, fetchChildren, ensureChildren, type ApiError } from './api.js';
 import { sfx } from './sound.js';
 import { $, need } from '../ui/dom.js';
@@ -18,9 +18,11 @@ import { renderOutline } from '../views/outline.js';
 import { emptyMsg } from '../views/render-helpers.js';
 import type { ViewHandlers } from '../views/types.js';
 import type { LedgerDrawer } from '../components/ledger-drawer.js';
+import type { LedgerCompose } from '../components/ledger-compose.js';
 import type { Item } from '../../shared/contract';
 
 const drawer = (): LedgerDrawer => need<LedgerDrawer>('#drawer');
+const compose = (): LedgerCompose => need<LedgerCompose>('#compose');
 
 // The handler bundle the views receive. Defined once and passed down so a view
 // never imports the controller (keeps the module graph acyclic).
@@ -145,4 +147,62 @@ function patchNode(item: Item): void {
   if (node) Object.assign(node, item);
   if (state.lens === 'columns') refreshAllColumns(handlers);
   else render();
+}
+
+// ---- compose (create) ----
+// Wire the compose sheet's injected services once (parallel to wireDrawer) and
+// listen for item-created to drop the new item into the tree without a reload.
+export function wireCompose(): void {
+  const c = compose();
+  c.api = api;
+  c.caps = state.caps;
+  c.sfx = sfx;
+  c.toast = toast;
+  c.addEventListener('item-created', (e) => { if (e.detail?.item) insertNode(e.detail.item, e.detail.input?.parent ?? null); });
+}
+
+// Open the compose sheet, pre-filling placement from the current selection: a
+// selected story (else the selected epic) becomes the default parent, and the
+// active project scope carries over. The sheet shows only the fields the source
+// declares, so a prefill for a field the source drops is simply ignored.
+export function openCompose(): void {
+  if (!state.caps.create) return;
+  const parent = state.selStory || state.selEpic || null;
+  compose().open({ parent, project: state.project });
+}
+
+// Place a newly created item into the tree without a full reload. The created
+// item is indexed, then attached to its parent's loaded children (or a root
+// lane); the affected columns/outline are rebuilt the same way patchNode does
+// after an edit, and the new item is selected/expanded so it's visible.
+function insertNode(item: Item, parentId: string | null): void {
+  const node = item as CachedNode;
+  indexNodes([node]);
+
+  const parent = parentId ? byId(parentId) : null;
+  if (parent) {
+    // Attach under the parent only when its children are already loaded; an
+    // unloaded parent picks the item up on its next lazy fetch, so avoid seeding
+    // a partial child list that would suppress that fetch.
+    if (parent.loaded) {
+      parent.children = parent.children || [];
+      if (!parent.children.some((c) => c.id === node.id)) parent.children.push(node);
+    }
+    parent.childCount = (parent.childCount || 0) + 1;
+    // Reveal the new item: select the lane it lands in. A task under a story
+    // selects that story; a story under an epic selects that epic. (Nodes carry
+    // no parent pointer, so selection keys off the immediate parent's kind.)
+    if (node.kind === 'task' && parent.kind === 'story') state.selStory = parent.id;
+    else if (node.kind === 'story' && parent.kind === 'epic') state.selEpic = parent.id;
+    state.expanded.add(parent.id);
+  } else {
+    // A root: goes in the matching lane (epic, or the orphan story/task lanes).
+    const lane = node.kind === 'epic' ? state.epics : node.kind === 'story' ? state.orphanStories : state.orphanTasks;
+    if (!lane.some((n) => n.id === node.id)) lane.push(node);
+    if (node.kind === 'epic') state.selEpic = node.id;
+  }
+
+  if (state.lens === 'columns') refreshAllColumns(handlers);
+  else render();
+  toast(`Created ${item.type} ${item.shortId}`);
 }

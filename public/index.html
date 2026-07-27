@@ -36,6 +36,9 @@
         <span class="sr-only">Signed in as</span>
         <span id="ident-name">…</span>
       </p>
+      <button class="ghost-btn" id="new-item" aria-keyshortcuts="n" title="New item (n)" hidden>
+        <span aria-hidden="true">✎ </span>new item
+      </button>
       <button class="ghost-btn" id="refresh" aria-keyshortcuts="r" title="Refresh (r)">
         <span aria-hidden="true">↻ </span>refresh
       </button>
@@ -86,6 +89,12 @@
        thread, focus trap) in its own shadow DOM; app.js injects the api/fetch
        services and listens for item-changed to patch the board. -->
   <ledger-drawer id="drawer"></ledger-drawer>
+
+  <!-- Compose sheet — the "new entry" leaf. Shown only when the active source
+       advertises `create`. Renders the fields the source declares it accepts,
+       posts to the create route, and emits item-created for the board to place
+       the new item in the tree without a reload. -->
+  <ledger-compose id="compose"></ledger-compose>
 
   <div class="toast" id="toast" role="status" aria-live="assertive"></div>
 
