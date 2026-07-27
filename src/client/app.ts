@@ -81,10 +81,17 @@ function syncControls(): void {
 // are guarded inside reconcile, so the extra call when focus + visibility fire
 // together is harmless.
 const RECONCILE_MS = 30000;
+// Restart the poll timer from now — called on every filter change so a poll can't
+// fire mid-transition (right as the tree reloads under the new filter). Set by
+// wireReconcile; a no-op until then.
+let resetReconcileTimer: () => void = () => {};
 function wireReconcile(): void {
   let timer = 0;
   const start = (): void => { if (!timer) timer = window.setInterval(() => { if (document.visibilityState === 'visible') reconcile(); }, RECONCILE_MS); };
   const stop = (): void => { if (timer) { clearInterval(timer); timer = 0; } };
+  // Reset = stop then start, so the next poll is a full interval away from the
+  // filter change rather than whatever was left on the old cycle.
+  resetReconcileTimer = (): void => { if (document.visibilityState === 'visible') { stop(); start(); } };
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') { reconcile(); start(); } else stop();
   });
@@ -92,22 +99,30 @@ function wireReconcile(): void {
   if (document.visibilityState === 'visible') start();
 }
 
+// A filter change reloads the tree AND pushes the next poll a full interval out,
+// so no in-flight poll races the reload. One helper for every filter control.
+function reloadForFilterChange(): void {
+  syncUrl();
+  resetReconcileTimer();
+  loadTree();
+}
+
 function wire(): void {
   // Closed items are hidden by default (status 'Open'); the toggle reveals them.
-  need<HTMLInputElement>('#show-closed').onchange = (e) => { state.status = (e.target as HTMLInputElement).checked ? 'ALL' : 'Open'; syncUrl(); loadTree(); };
+  need<HTMLInputElement>('#show-closed').onchange = (e) => { state.status = (e.target as HTMLInputElement).checked ? 'ALL' : 'Open'; reloadForFilterChange(); };
   segWire('#lens-seg', (d) => { state.lens = (d.lens as typeof state.lens); syncUrl(); render({ animate: true }); });
 
   const aSeg = need('#assignee-seg'); const aInput = need<HTMLInputElement>('#assignee-input');
-  aSeg.querySelectorAll('button').forEach((b) => { b.onclick = () => { setPressed(aSeg, b); aInput.value = ''; state.assignee = b.dataset.assignee || ''; syncUrl(); loadTree(); }; });
+  aSeg.querySelectorAll('button').forEach((b) => { b.onclick = () => { setPressed(aSeg, b); aInput.value = ''; state.assignee = b.dataset.assignee || ''; reloadForFilterChange(); }; });
   aInput.onkeydown = (e) => {
     if (e.key === 'Enter' && aInput.value.trim()) {
       aSeg.querySelectorAll('button').forEach((x) => { x.classList.remove('on'); x.setAttribute('aria-pressed', 'false'); });
-      state.assignee = aInput.value.trim(); syncUrl(); loadTree();
+      state.assignee = aInput.value.trim(); reloadForFilterChange();
     }
   };
 
   // Project scope: null (all) or a source project id. Reloads the tree scoped.
-  need<HTMLSelectElement>('#project-select').onchange = (e) => { state.project = (e.target as HTMLSelectElement).value || null; syncUrl(); loadTree(); };
+  need<HTMLSelectElement>('#project-select').onchange = (e) => { state.project = (e.target as HTMLSelectElement).value || null; reloadForFilterChange(); };
 
   need('#refresh').onclick = () => loadTree();
   wireDrawer();

@@ -51,14 +51,26 @@ export const handlers: ViewHandlers = {
 };
 
 // ---- load ----
+// Each loadTree bumps this generation token. Any async continuation kicked off by
+// a load (the selection warm, the count rollup) or by the background poll captures
+// the current value and bails if it changed — so a fetch issued under one filter
+// can't paint stale results after a newer load (e.g. the show/hide-closed toggle
+// reloading while a prior fetch is still in flight). `loadInFlight` lets the poll
+// skip entirely while a load is running.
+let loadGen = 0;
+let loadInFlight = false;
+
 // Load the roots and render. Roots are matching epics plus any orphan
 // stories/tasks (matches belonging to no epic), split here by kind. Epics head
 // the board; orphans render in below-the-fold lanes. Children load lazily.
 export async function loadTree(): Promise<void> {
+  const gen = ++loadGen;
+  loadInFlight = true;
   showLoading(true);
   try {
     clearNodes();
     const roots = await fetchChildren(null);
+    if (gen !== loadGen) return;                  // a newer load superseded this one
     state.epics = roots.filter((n) => n.kind === 'epic');
     state.orphanStories = roots.filter((n) => n.kind === 'story');
     state.orphanTasks = roots.filter((n) => n.kind === 'task');
@@ -69,9 +81,10 @@ export async function loadTree(): Promise<void> {
     // actually rendered.
     syncUrl();
     render({ animate: true });
-    // Warm the selected epic's children so the story/task columns aren't empty
-    // on first paint; the render above already showed the epics.
-    if (state.selEpic) { ensureChildren(byId(state.selEpic)).then(() => { if (state.lens === 'columns') refreshDownstreamColumns(handlers); }); }
+    // Warm the selected epic's children (and, if a story is selected, its tasks)
+    // so the story/task columns aren't left empty or stuck "Loading…" on first
+    // paint; the render above already showed the epics.
+    void warmSelection(gen);
     // Roll up each epic's story/task counts after first paint (the cards show the
     // raw child count until these land). Fire-and-forget: a rollup failure leaves
     // the fallback badge, never the loading state.
@@ -93,8 +106,24 @@ export async function loadTree(): Promise<void> {
       handleError(e);
     }
   } finally {
+    if (gen === loadGen) loadInFlight = false;
     showLoading(false);
   }
+}
+
+// Warm the columns lens's downstream data after a load: the selected epic's
+// children, then — if a story is selected — that story's tasks, so neither column
+// is left empty or stuck in its "Loading…" placeholder. Each await re-checks the
+// load generation so a filter change mid-warm can't repaint the superseded tree.
+async function warmSelection(gen: number): Promise<void> {
+  if (state.lens !== 'columns' || !state.selEpic) return;
+  const epic = byId(state.selEpic);
+  if (epic && !epic.loaded) await ensureChildren(epic).catch(() => []);
+  if (gen !== loadGen) return;
+  const story = state.selStory ? byId(state.selStory) : null;
+  if (story && !story.loaded) await ensureChildren(story).catch(() => []);
+  if (gen !== loadGen) return;
+  if (state.lens === 'columns') refreshDownstreamColumns(handlers);
 }
 
 // Fetch story/task rollups for the given epics and fold them onto the cached
@@ -489,13 +518,20 @@ let reconciling = false;
 
 export async function reconcile(): Promise<void> {
   if (reconciling) return;                       // drop overlapping polls
+  if (loadInFlight) return;                       // a full load is mid-flight; let it win
   if (!state.epics.length && !state.orphanStories.length && !state.orphanTasks.length) return; // nothing loaded yet
+  // Capture the load generation: if a loadTree (e.g. a filter toggle) runs while
+  // this poll's fetches are outstanding, the fetched nodes describe the OLD filter
+  // and must not be merged in — that's what flashed closed items back onto a board
+  // that had just hidden them. Bail before painting if the generation moved.
+  const gen = loadGen;
   reconciling = true;
   try {
     let changed = false;
 
     // Roots first (epics + orphan stories/tasks), split like loadTree does.
     const roots = await fetchNodesRaw(null);
+    if (gen !== loadGen) return;                  // a load superseded this poll
     const freshEpics = roots.filter((n) => n.kind === 'epic');
     const freshOStories = roots.filter((n) => n.kind === 'story');
     const freshOTasks = roots.filter((n) => n.kind === 'task');
@@ -514,10 +550,12 @@ export async function reconcile(): Promise<void> {
       const parent = byId(id);
       if (!parent || !parent.loaded) continue;
       const fresh = await fetchNodesRaw(id);
+      if (gen !== loadGen) return;                 // a load superseded this poll
       const m = mergeLevel(parent.children || [], fresh);
       parent.children = m.list; changed ||= m.changed;
     }
 
+    if (gen !== loadGen) return;                    // a load superseded this poll
     if (changed) {
       // Drop cache entries no longer reachable so byId can't resurrect stale nodes.
       if (state.selEpic && !byId(state.selEpic)) { state.selEpic = state.epics[0]?.id || null; state.selStory = null; }
