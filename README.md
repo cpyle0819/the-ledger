@@ -77,16 +77,3 @@ To add your own plugin to this install:
    the UI hides actions a plugin doesn't offer.
 2. Start the app with `LEDGER_SOURCE=<name>` (plus whatever env vars your plugin
    reads for its own config). Copy `plugins/local-file/` as a starting point.
-
-### Keyboard
-
-- `1` / `2` — columns / outline lens
-- `r` — refresh
-- `esc` — close the detail drawer
-- double-click any epic/story row — open its detail drawer
-
-## Scope
-
-Personal, single-user, local-only. It acts as *you*, using whatever credentials
-the active source's plugin holds. It is deliberately **not** a multi-user hosted
-service fronting a backend through a shared identity.
