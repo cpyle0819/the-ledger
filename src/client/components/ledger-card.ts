@@ -56,6 +56,14 @@ cardSheet.replaceSync(`
   .card:hover .paper { box-shadow: 2px 4px 9px rgba(0,0,0,.3), inset 0 0 30px rgba(160,120,60,.08), inset 0 0 0 1px rgba(196,172,124,.6); }
 
   :host([selected]) .card { transform: translateY(-1px) rotate(-.2deg); }
+  /* The active card is the column's focal point. Its dominance is carried mainly
+     by a VALUE lift on the parchment itself — a brightness/saturation bump on the
+     paper layer (an area-wide contrast shift the eye reads preattentively), backed
+     by the deeper shadow, the slight elevation, and the gilded frame as redundant
+     cues. The peer cards recede in parallel (see the column's dim rule in
+     styles.css), so the active card reads as figure against a receded ground —
+     a border alone shifts figure/ground too little to lead. The brightness rides
+     on the deckle filter (kept first so the torn edge is preserved). */
   :host([selected]) .paper {
     box-shadow: 2px 4px 12px rgba(0,0,0,.34), inset 0 0 34px rgba(160,120,60,.16);
     background:
@@ -64,6 +72,7 @@ cardSheet.replaceSync(`
       linear-gradient(180deg, var(--parch-hi, #f3ead0), var(--parch-hi, #f3ead0) 55%, var(--parch, #e8dbba));
     background-size: auto, 360px 260px, auto;
     background-blend-mode: multiply, multiply, normal;
+    filter: url(#ledger-deckle) brightness(1.07) saturate(1.12);
   }
   /* Selected: a bold gilded frame, applied like a shoddy gold-leaf job — the
      gild is laid on thick then run through the same deckle displacement as the
