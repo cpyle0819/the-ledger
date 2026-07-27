@@ -9,7 +9,7 @@
 // "everything blinks" bug.
 
 import { state, byId, indexNodes, clearNodes, parentOf, type CachedNode } from './state.js';
-import { api, fetchChildren, fetchNodesRaw, ensureChildren, fetchEpicCounts, type ApiError } from './api.js';
+import { api, fetchChildren, fetchNodesRaw, ensureChildren, fetchChildrenAllStatus, fetchEpicCounts, type ApiError } from './api.js';
 import { parseHash, writeHash, type UrlState } from './url.js';
 import { sfx } from './sound.js';
 import { $, need } from '../ui/dom.js';
@@ -324,6 +324,13 @@ export function wireDrawer(): void {
   d.sfx = sfx;
   d.toast = toast;
   d.fetchChildren = ensureChildren;
+  // Planning measures capacity against the full decomposition, so it needs every
+  // child regardless of status. When the board itself is already showing ALL, the
+  // cached children are the full set — reuse them (no extra fetch); otherwise
+  // fetch all-status separately without disturbing the filtered cache.
+  d.planningChildren = (node) => (state.status === 'ALL'
+    ? ensureChildren(node as CachedNode)
+    : fetchChildrenAllStatus(node.id));
   d.addEventListener('item-changed', (e) => { if (e.detail?.item) patchNode(e.detail.item); });
   // The drawer closed. Forget the open item and take it out of the URL. A drawer
   // the user opened pushed a history entry, so a user-driven close pops it (Back's

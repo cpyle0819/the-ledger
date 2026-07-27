@@ -31,6 +31,10 @@ export type ApiFn = <T = unknown>(path: string, opts?: RequestInit) => Promise<T
 /** The board's lazy child loader, injected so the contains-list uses the same
  *  filters as the board. */
 export type FetchChildrenFn = (node: LedgerNode) => Promise<LedgerNode[]>;
+/** Loads a parent's children at ALL statuses (closed included), for the Planning
+ *  rollup — capacity is measured against the full decomposition, not the board's
+ *  filtered view. Injected so the drawer stays transport-agnostic. */
+export type PlanningChildrenFn = (node: LedgerNode) => Promise<LedgerNode[]>;
 /** Optional foley cues. */
 export interface Sfx { pageTurn(): void; quill(): void }
 /** Optional toast surface. */
@@ -43,6 +47,12 @@ const STATUSES = ['Open', 'Resolved', 'Closed'];
 function sumEffort(nodes: LedgerNode[]): number {
   return nodes.reduce((s, n) => s + (Number((n as { estimate?: number | null }).estimate) || 0), 0);
 }
+
+// A done item's status reads 'Resolved' OR 'Closed' (tracker folds both into a
+// single terminal state); mirror the plugin's own definition so Planning counts
+// the same items as closed that the board's status filter does.
+const CLOSED_STATES = new Set(['Resolved', 'Closed']);
+const isClosed = (n: LedgerNode): boolean => CLOSED_STATES.has(n.status);
 
 const sheet = new CSSStyleSheet();
 sheet.replaceSync(`
@@ -144,6 +154,14 @@ sheet.replaceSync(`
   .cline:last-child { border-bottom: 0; }
   .cline:hover { color: var(--wax, #7c2b22); }
   .cline .ct { flex: 1; font-family: var(--gara, serif); }
+  /* A de-emphasized (closed) child line: dimmed/desaturated so done work recedes
+     behind the open decomposition, lifting on hover so it still reads as clickable. */
+  .cline.deemph { filter: brightness(.82) saturate(.72); opacity: .82; }
+  .cline.deemph:hover { filter: none; opacity: 1; }
+  /* The collapsed closed-children row and its caret; the revealed list is indented. */
+  .cclosed-toggle .ct { font-style: italic; color: var(--ink-soft, #5b4a30); }
+  .cclosed-caret { display: inline-block; width: 1em; color: var(--ink-faint, #6f5c3e); font-size: 12px; }
+  .cclosed-list { padding-left: 16px; }
   .cgroup { margin-top: 8px; }
   .cgroup-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 10px 0 4px; }
   .cgroup-label { font-family: var(--fell, serif); font-style: italic; font-size: 15px; color: var(--ink-soft, #5b4a30); }
@@ -192,6 +210,7 @@ interface TypeaheadState { items: User[]; active: number; seq: number; debounce:
 export class LedgerDrawer extends HTMLElement {
   api: ApiFn | null = null;
   fetchChildren: FetchChildrenFn | null = null;
+  planningChildren: PlanningChildrenFn | null = null;
   sfx: Sfx | null = null;
   toast: ToastFn | null = null;
   #caps: Partial<Capabilities> = {};
@@ -562,18 +581,21 @@ export class LedgerDrawer extends HTMLElement {
     // Nothing to show and can't add? Then there's no section to render.
     if (!item.childCount && !canCreate) { box.hidden = true; box.innerHTML = ''; risk.hidden = true; return; }
 
-    if (item.childCount && !(item as { loaded?: boolean }).loaded && this.fetchChildren) {
-      box.hidden = false; box.innerHTML = '';
-      box.append(el('h4', null, 'Planning'), el('div', 'cgroup-label', 'loading…'));
-      try { await this.fetchChildren(item); } catch { /* leave loading */ }
+    // Planning measures capacity against the full decomposition, so it loads the
+    // children at ALL statuses (closed included) rather than the board's filtered
+    // set. This is a separate fetch held locally — the board's cache stays filtered.
+    box.hidden = false; box.innerHTML = '';
+    box.append(el('h4', null, 'Planning'), el('div', 'cgroup-label', 'loading…'));
+    let children: LedgerNode[] = [];
+    if (this.planningChildren) {
+      try { children = await this.planningChildren(item); } catch { /* leave loading */ }
       if (this.#item?.id !== item.id) return;
     }
-    const children: LedgerNode[] = (item as { children?: LedgerNode[] }).children || [];
     const stories = children.filter((n) => n.kind === 'story');
     const direct = children.filter((n) => n.kind !== 'story');
-    // Direct children now known: the risk line contrasts this item's own estimate
-    // against the summed effort of ALL its direct children (stories + direct-on-
-    // epic tasks for an epic; tasks for a story).
+    // The risk line contrasts this item's own estimate against the summed effort of
+    // ALL its direct children (stories + direct-on-epic tasks for an epic; tasks for
+    // a story), closed work included — that's the capacity-utilization question.
     this.#renderRisk(item, children);
     // Each group: a heading, an optional add-tier, and the child lines. Groups are
     // always shown for the addable tiers so the affordance is reachable when empty.
@@ -588,13 +610,19 @@ export class LedgerDrawer extends HTMLElement {
     box.hidden = false; box.innerHTML = '';
     box.append(el('h4', null, 'Planning'));
     for (const { label, list, addType } of groups) {
+      const open = list.filter((n) => !isClosed(n));
+      const closed = list.filter(isClosed);
       const g = el('div', 'cgroup');
       const head = el('div', 'cgroup-head');
       const labelText = list.length ? `${label} · ${list.length}` : label;
       const headLeft = el('div', 'cgroup-label', labelText);
-      // Alongside the count, the summed effort of the group so the decomposed
-      // work is visible next to how much of it there is ("Stories · 3  ·  Effort · 28 pts").
-      if (list.length) headLeft.append(el('span', 'cgroup-effort', `Effort · ${sumEffort(list)} pts`));
+      // Alongside the count, the summed effort — with the closed portion broken out
+      // ("Effort · 34 pts (14 pts closed)") so capacity already spent is legible.
+      if (list.length) {
+        const total = sumEffort(list); const closedPts = sumEffort(closed);
+        const effortText = closedPts > 0 ? `Effort · ${total} pts (${closedPts} pts closed)` : `Effort · ${total} pts`;
+        headLeft.append(el('span', 'cgroup-effort', effortText));
+      }
       head.append(headLeft);
       if (canCreate) {
         const add = el('button', 'cgroup-add', `+ Add ${addType.toLowerCase()}`);
@@ -605,22 +633,48 @@ export class LedgerDrawer extends HTMLElement {
       }
       g.append(head);
       if (list.length) {
-        list.forEach((child) => {
-          const line = el('div', 'cline');
-          line.append(el('span', `chip t-${child.type}`, child.type), el('span', 'ct', child.title));
-          // A story's children are all tasks in this three-tier model, so its line
-          // reads "N tasks"; anything else keeps the generic "N within".
-          if (child.childCount) {
-            line.append(el('span', 'pill', child.kind === 'story' ? plural(child.childCount, 'task', 'tasks') : `${child.childCount} within`));
-          }
-          asButton(line, () => this.open(child), `${child.type} ${child.shortId}: ${child.title}. Open details.`);
-          g.append(line);
-        });
+        open.forEach((child) => g.append(this.#childLine(child)));
+        // Closed children collapse into one dimmed, expandable line so a long done
+        // list doesn't bury the open work; the summed closed effort rides the label.
+        if (closed.length) g.append(this.#closedGroup(closed, addType));
       } else {
         g.append(el('div', 'cline', `No ${addType.toLowerCase()}s yet.`));
       }
       box.append(g);
     }
+  }
+
+  // One child line in the Planning list. `deemph` dims it (used for closed items
+  // revealed under the expander). Shows the child's own estimate as a points pill.
+  #childLine(child: LedgerNode, deemph = false): HTMLElement {
+    const line = el('div', `cline${deemph ? ' deemph' : ''}`);
+    line.append(el('span', `chip t-${child.type}`, child.type), el('span', 'ct', child.title));
+    const pts = Number((child as { estimate?: number | null }).estimate) || 0;
+    if (pts > 0) line.append(el('span', 'pill', `${pts} pts`));
+    asButton(line, () => this.open(child), `${child.type} ${child.shortId}: ${child.title}. Open details.`);
+    return line;
+  }
+
+  // The collapsed closed-children line: "+ N closed stories (X pts)", expanding on
+  // click to reveal the individual (dimmed) lines. Closed work counts toward the
+  // rollup but is folded away so it doesn't crowd the open decomposition.
+  #closedGroup(closed: LedgerNode[], addType: 'STORY' | 'TASK'): HTMLElement {
+    const wrap = el('div', 'cclosed');
+    const noun = addType.toLowerCase();
+    const countNoun = `${closed.length} closed ${closed.length === 1 ? noun : `${noun}s`}`;
+    const summary = el('div', 'cline cclosed-toggle');
+    const caret = el('span', 'cclosed-caret', '▸');
+    summary.append(caret, el('span', 'ct', `+ ${countNoun}`), el('span', 'pill', `${sumEffort(closed)} pts`));
+    const list = el('div', 'cclosed-list'); list.hidden = true;
+    closed.forEach((child) => list.append(this.#childLine(child, true)));
+    asButton(summary, () => {
+      const nowHidden = !list.hidden; list.hidden = nowHidden;
+      caret.textContent = nowHidden ? '▸' : '▾';
+      summary.setAttribute('aria-expanded', String(!nowHidden));
+    }, `${countNoun}, ${sumEffort(closed)} points. Expand to view.`);
+    summary.setAttribute('aria-expanded', 'false');
+    wrap.append(summary, list);
+    return wrap;
   }
 
   // Ask the host to compose a new child of a fixed tier under the open item. The

@@ -46,6 +46,19 @@ export async function fetchChildren(node: CachedNode | null): Promise<CachedNode
   return nodes;
 }
 
+// Fetch a parent's children at ALL statuses, ignoring the board's status filter
+// (assignee/project still apply). Returned UNCACHED so the board's filtered cache
+// — which the columns and deep-linking read — is never overwritten with closed
+// items. Used by the drawer's Planning rollup, which measures capacity against the
+// complete decomposition (closed work included), not just what the board shows.
+export async function fetchChildrenAllStatus(parentId: string): Promise<CachedNode[]> {
+  const q = new URLSearchParams({ status: 'ALL', parent: parentId });
+  if (state.assignee) q.set('assignee', state.assignee);
+  if (state.project) q.set('project', state.project);
+  const { nodes } = await api<ChildrenResponse>(`/api/children?${q}`);
+  return nodes;
+}
+
 // Load a node's children once, coalescing concurrent callers onto one request.
 export async function ensureChildren(node: CachedNode | null): Promise<CachedNode[]> {
   if (!node || node.loaded) return node?.children || [];
