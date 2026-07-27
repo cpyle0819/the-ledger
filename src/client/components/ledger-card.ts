@@ -167,10 +167,12 @@ export class LedgerCard extends HTMLElement {
 
     const body = el('div', 'body');
     const top = el('div', 'card-top');
+    const hasPoints = this.hasAttribute('points');
     top.append(el('span', `chip t-${item.type}`, item.type));
     // Flag an item with no estimate (any tier), right beside the type chip. A
-    // missing estimate is a data gap worth filling regardless of status.
-    if (!(item.estimate != null && item.estimate > 0)) top.append(noEstimateChip());
+    // missing estimate is a data gap worth filling regardless of status. Only when
+    // the source has point estimates at all — a source without them isn't nagged.
+    if (hasPoints && !(item.estimate != null && item.estimate > 0)) top.append(noEstimateChip());
     top.append(idTag(item.shortId, item.url));
     const title = el('p', 'card-title', item.title); title.setAttribute('part', 'title');
 
@@ -191,7 +193,7 @@ export class LedgerCard extends HTMLElement {
       }
       meta.append(who);
     }
-    if (item.estimate != null && item.estimate > 0) meta.append(el('span', 'pill', `${item.estimate} pts`));
+    if (hasPoints && item.estimate != null && item.estimate > 0) meta.append(el('span', 'pill', `${item.estimate} pts`));
     // Rollup badges. An epic with resolved counts shows "N stories" + "N tasks"
     // (see EpicCounts — tasks is direct + under-story, stories is immediate),
     // filtered like the board. The counts arrive after first paint, so the epic

@@ -157,6 +157,12 @@ export interface Capabilities {
    *  (backed by countEpicTasks). When absent, the card falls back to the raw
    *  "N within" child count. */
   epicCounts: boolean;
+  /** Whether the source's items carry point estimates at all. When absent, the UI
+   *  shows no estimate figures, no planning risk meter, and no missing-estimate
+   *  warnings — a source with no concept of points (e.g. GitHub issues) isn't
+   *  nagged to fill in a field it doesn't have. Distinct from editFields carrying
+   *  'estimate', which is write permission, not whether the concept exists. */
+  points: boolean;
 }
 
 /** The plugin contract every source implements. A source module exports a

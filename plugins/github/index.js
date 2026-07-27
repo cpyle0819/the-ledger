@@ -290,6 +290,7 @@ module.exports = function createGithubPlugin() {
       stepOptions: false,
       projects: false,
       attachments: false,
+      points: false,   // GitHub issues have no point estimates
     },
 
     // parentId null => roots (projects with a visible task, orphan milestones,

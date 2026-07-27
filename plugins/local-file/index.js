@@ -142,6 +142,7 @@ module.exports = function createLocalFilePlugin() {
       stepOptions: false,
       projects: true,
       attachments: false,
+      points: true,
     },
 
     // The projects (declared in the file) the board can scope to. null project =

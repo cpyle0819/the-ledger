@@ -49,6 +49,7 @@ export function resolveCapabilities(plugin: SourcePlugin): Capabilities {
     projects: !!c.projects && has('listProjects'),
     attachments: !!c.attachments,
     epicCounts: !!c.epicCounts && has('countEpicTasks'),
+    points: !!c.points,
   };
 }
 

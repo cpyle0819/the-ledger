@@ -41,6 +41,10 @@ export function card(item: CachedNode, { drill = false, animate = false, onActiv
   // within". Sources without the capability leave the attribute off and keep the
   // fallback badge.
   if (item.kind === 'epic' && state.caps.epicCounts) c.setAttribute('rollup', '');
+  // Mark that the source has point estimates, so the card shows the points pill and
+  // flags a missing estimate. Off => no points UI at all (a source without the
+  // concept isn't nagged). Set via attribute so the card stays board-state-free.
+  if (state.caps.points) c.setAttribute('points', '');
   c.item = item;
   if (onActivate) c.addEventListener('card-activate', () => onActivate(item));
   if (onOpen) c.addEventListener('card-open', () => onOpen(item));

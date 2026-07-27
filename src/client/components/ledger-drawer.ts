@@ -406,8 +406,9 @@ export class LedgerDrawer extends HTMLElement {
 
     const hasEstimate = item.estimate != null && item.estimate > 0;
     this.#$<HTMLInputElement>('#d-estimate-edit').value = hasEstimate ? String(item.estimate) : '';
-    // Flag the open item's own missing estimate beside the label (icon only).
-    this.#$('#d-estimate-warn').hidden = hasEstimate;
+    // Flag the open item's own missing estimate beside the label (icon only) — only
+    // when the source has point estimates at all.
+    this.#$('#d-estimate-warn').hidden = hasEstimate || !caps.points;
     const sel = this.#$<HTMLSelectElement>('#d-status-edit'); sel.innerHTML = '';
     const opts = STATUSES.includes(item.status) ? STATUSES : [item.status, ...STATUSES];
     [...new Set(opts)].forEach((s) => { const o = el('option', null, s); o.value = s; if (s === item.status) o.selected = true; sel.append(o); });
@@ -537,6 +538,8 @@ export class LedgerDrawer extends HTMLElement {
   // budget to measure against, so they show a muted note instead of a meter.
   #renderRisk(item: LedgerNode & Partial<Item>, children: LedgerNode[]): void {
     const box = this.#$('#d-risk');
+    // A source with no point estimates has no budget to measure against — no meter.
+    if (!this.#caps.points) { box.hidden = true; box.innerHTML = ''; return; }
     const budget = Number(item.estimate) || 0;
     const actual = sumEffort(children);
 
@@ -628,7 +631,9 @@ export class LedgerDrawer extends HTMLElement {
       const headLeft = el('div', 'cgroup-label', labelText);
       // Alongside the count, the summed effort — with the closed portion broken out
       // ("Effort · 34 pts (14 pts closed)") so capacity already spent is legible.
-      if (list.length) {
+      // Only when the source has point estimates; otherwise the Planning section
+      // still shows the counts, just no effort figures.
+      if (list.length && this.#caps.points) {
         const total = sumEffort(list); const closedPts = sumEffort(closed);
         const effortText = closedPts > 0 ? `Effort · ${total} pts (${closedPts} pts closed)` : `Effort · ${total} pts`;
         headLeft.append(el('span', 'cgroup-effort', effortText));
@@ -659,10 +664,13 @@ export class LedgerDrawer extends HTMLElement {
   #childLine(child: LedgerNode, deemph = false): HTMLElement {
     const line = el('div', `cline${deemph ? ' deemph' : ''}`);
     line.append(el('span', `chip t-${child.type}`, child.type), el('span', 'ct', child.title));
-    const pts = Number((child as { estimate?: number | null }).estimate) || 0;
     // Where the points pill would sit: show it, or flag a missing estimate with the
     // icon-only marker (tooltip carries the meaning) so the line stays uncluttered.
-    line.append(pts > 0 ? el('span', 'pill', `${pts} pts`) : noEstimateIcon());
+    // Nothing at all when the source has no point estimates.
+    if (this.#caps.points) {
+      const pts = Number((child as { estimate?: number | null }).estimate) || 0;
+      line.append(pts > 0 ? el('span', 'pill', `${pts} pts`) : noEstimateIcon());
+    }
     asButton(line, () => this.open(child), `${child.type} ${child.shortId}: ${child.title}. Open details.`);
     return line;
   }
