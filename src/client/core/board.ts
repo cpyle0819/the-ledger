@@ -254,7 +254,17 @@ export function render({ animate = false }: { animate?: boolean } = {}): void {
 
 // ---- selection (partial updates — no upstream teardown, no re-animation) ----
 function selectEpic(id: string): void {
-  if (state.selEpic === id) { const n = byId(id); if (n) openDrawer(n); return; } // re-click = read it
+  // Re-clicking the selected epic deselects it (its children columns clear);
+  // reading details is the card's separate "view details" affordance. Clearing
+  // the epic also clears any story selection under it.
+  if (state.selEpic === id) {
+    state.selEpic = null; state.selStory = null;
+    syncUrl();
+    const cols = $('.columns'); if (!cols) return render();
+    cols.querySelectorAll('ledger-column[data-tier="epic"] ledger-card').forEach((cd) => (cd as HTMLElement).removeAttribute('selected'));
+    refreshDownstreamColumns(handlers);
+    return;
+  }
   state.selEpic = id; state.selStory = null;
   syncUrl();
   const cols = $('.columns'); if (!cols) return render();
@@ -264,7 +274,16 @@ function selectEpic(id: string): void {
   ensureChildren(epic).then(() => { if (state.selEpic === id) refreshDownstreamColumns(handlers); }).catch(handleError);
 }
 function selectStory(id: string): void {
-  if (state.selStory === id) { const n = byId(id); if (n) openDrawer(n); return; }
+  // Re-clicking the selected story deselects it (the task column falls back to
+  // the epic's direct tasks); "view details" opens the drawer instead.
+  if (state.selStory === id) {
+    state.selStory = null;
+    syncUrl();
+    const cols = $('.columns'); if (!cols) return render();
+    cols.querySelectorAll('ledger-column[data-tier="story"] ledger-card').forEach((cd) => (cd as HTMLElement).removeAttribute('selected'));
+    refreshTaskColumn(handlers);
+    return;
+  }
   state.selStory = id;
   syncUrl();
   const cols = $('.columns'); if (!cols) return render();
