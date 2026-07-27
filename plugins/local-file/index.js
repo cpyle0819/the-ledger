@@ -134,6 +134,8 @@ module.exports = function createLocalFilePlugin() {
       hierarchy: true,
       readItem: true,
       editFields: ['status', 'description', 'assignee', 'estimate'],
+      create: true,
+      createFields: ['type', 'title', 'parent', 'project', 'assignee', 'description', 'estimate'],
       comment: true,
       editOwnComments: false,
       searchAssignees: false,
@@ -188,6 +190,57 @@ module.exports = function createLocalFilePlugin() {
       if (!item) throw Object.assign(new Error('Item not found'), { status: 404 });
       item[field] = field === 'estimate' ? (Number(value) || null) : value;
       item.lastUpdatedDate = new Date().toISOString();
+      save(items);
+      return shapeItem(item, items);
+    },
+
+    // Create a new item from a validated CreateInput and return it. The id is a
+    // type-prefixed running number (E-/S-/T-) matching the sample's convention;
+    // the next number is one past the highest existing suffix for that prefix, so
+    // ids stay stable and readable. A parent that doesn't exist is rejected; when
+    // no project is given but a parent is, the project is inherited from the
+    // parent's root (project lives on the root and is inherited by the subtree).
+    createItem(input) {
+      const type = String(input.type || '').trim().toUpperCase();
+      const title = String(input.title || '').trim();
+      if (!type) throw Object.assign(new Error('type is required'), { status: 400 });
+      if (!title) throw Object.assign(new Error('title is required'), { status: 400 });
+
+      const { items } = load();
+      const byId = new Map(items.map((it) => [it.id, it]));
+
+      let parent = null;
+      if (input.parent != null && String(input.parent) !== '') {
+        parent = byId.get(String(input.parent));
+        if (!parent) throw Object.assign(new Error('Parent not found'), { status: 400 });
+      }
+
+      const prefix = kindOf(type) === 'epic' ? 'E' : kindOf(type) === 'story' ? 'S' : 'T';
+      const maxNum = items.reduce((max, it) => {
+        const m = /^([A-Z]+)-(\d+)$/.exec(it.id || '');
+        return m && m[1] === prefix ? Math.max(max, Number(m[2])) : max;
+      }, 0);
+      const id = `${prefix}-${maxNum + 1}`;
+
+      const project = input.project != null && String(input.project) !== ''
+        ? String(input.project)
+        : (parent ? (rootOf(parent, byId).project || parent.project || null) : null);
+
+      const now = new Date().toISOString();
+      const item = {
+        id,
+        type,
+        title,
+        status: 'Open',
+        assignee: input.assignee != null && String(input.assignee) !== '' ? String(input.assignee) : null,
+        project,
+        parent: parent ? parent.id : undefined,
+        description: input.description != null ? String(input.description) : '',
+        estimate: input.estimate != null ? (Number(input.estimate) || null) : null,
+        createDate: now,
+        lastUpdatedDate: now,
+      };
+      items.push(item);
       save(items);
       return shapeItem(item, items);
     },
