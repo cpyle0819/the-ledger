@@ -86,11 +86,19 @@ function buildStoryCol(animate: boolean, h: ViewHandlers): LedgerColumn {
 function buildTaskCol(animate: boolean, h: ViewHandlers): LedgerColumn {
   const epic = byId(state.selEpic);
   const orphans = state.orphanTasks;
-  const addTask = (body: LedgerColumn, t: CachedNode) => { body.append(card(t, { animate, onOpen: h.openDrawer })); };
-  const appendOrphans = (body: LedgerColumn) => {
+  // A de-emphasized task recedes like a non-selected card in the epic/story
+  // columns (same treatment, keyed off a class since tasks carry no selection):
+  // tasks outside the current focus (the selected story, else the selected epic)
+  // dim so the in-focus tasks lead. With no epic selected nothing recedes.
+  const addTask = (body: LedgerColumn, t: CachedNode, deemph = false) => {
+    const cd = card(t, { animate, onOpen: h.openDrawer });
+    if (deemph) cd.classList.add('deemph');
+    body.append(cd);
+  };
+  const appendOrphans = (body: LedgerColumn, deemph = false) => {
     if (!orphans.length) return;
     body.append(laneLabel(`tasks not in an epic · ${orphans.length}`, true));
-    orphans.forEach((t) => addTask(body, t));
+    orphans.forEach((t) => addTask(body, t, deemph));
   };
 
   if (!epic) {
@@ -108,7 +116,7 @@ function buildTaskCol(animate: boolean, h: ViewHandlers): LedgerColumn {
     const { col, body } = column('task', 'Tasks', orphans.length);
     addTask2(col);
     body.append(hint('Loading', 'tasks…'));
-    appendOrphans(body);
+    appendOrphans(body, true); // an epic is selected, so orphan tasks recede
     return col;
   }
   const story = storiesOf(epic).find((s) => s.id === state.selStory);
@@ -118,17 +126,21 @@ function buildTaskCol(animate: boolean, h: ViewHandlers): LedgerColumn {
   const { col, body } = column('task', 'Tasks', total);
   addTask2(col);
 
+  // The selected story's tasks are the focus and stay full-strength. A story
+  // selected means the epic's direct tasks are out of focus and recede; with no
+  // story selected the direct tasks ARE the focus. Orphan tasks always recede
+  // once an epic is selected (they belong to no epic).
   if (story && !story.loaded) body.append(hint('Loading', 'tasks…'));
   else if (storyTasks?.length) storyTasks.forEach((t) => addTask(body, t));
   if (directTasks.length) {
     body.append(laneLabel(`tasks directly on this epic · ${directTasks.length}`, true));
-    directTasks.forEach((t) => addTask(body, t));
+    directTasks.forEach((t) => addTask(body, t, !!story));
   }
   // Empty states: distinguish "story has none" from "nothing to select yet".
   // The orphan lane counts as content, so it suppresses both placeholders.
   if (story && story.loaded && !storyTasks?.length && !directTasks.length && !orphans.length) body.append(emptyMsg('No tasks.', 'This story has none yet.'));
   else if (!story && !directTasks.length && !orphans.length) body.append(hint('Select a story', 'to see its tasks.'));
-  appendOrphans(body);
+  appendOrphans(body, true); // an epic is selected, so orphan tasks recede
   return col;
 }
 

@@ -270,11 +270,21 @@ ledger-column:has(ledger-card[selected]) ledger-card:not([selected]) {
   opacity: .9;
   transition: filter .18s ease, opacity .18s ease;
 }
-/* Hovering a receded peer lifts it back to (just past) full brightness: the dim
+/* Task cards carry no [selected] state, so out-of-focus tasks are marked
+   `.deemph` at build time (see buildTaskCol): tasks outside the selected story —
+   or, with no story selected, outside the selected epic — recede the same way.
+   Same values as the peer recede above so the two lenses read consistently. */
+ledger-card.deemph {
+  filter: brightness(.82) saturate(.72);
+  opacity: .9;
+  transition: filter .18s ease, opacity .18s ease;
+}
+/* Hovering a receded card lifts it back to (just past) full brightness: the dim
    otherwise swallows the card's own hover shadow, hiding that it's clickable.
    Restoring the value on hover re-signals "activate me" and un-mutes the in-card
    hover cue, while non-hovered peers stay receded so the focal card still leads. */
-ledger-column:has(ledger-card[selected]) ledger-card:not([selected]):hover {
+ledger-column:has(ledger-card[selected]) ledger-card:not([selected]):hover,
+ledger-card.deemph:hover {
   filter: brightness(1.02) saturate(1);
   opacity: 1;
 }
