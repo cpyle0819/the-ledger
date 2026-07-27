@@ -27,30 +27,16 @@ lens on work that lives elsewhere.
 
 ## Setup
 
-Requires Node ≥ 18 and TypeScript ≥ 7. The app is authored in TypeScript,
-compiled with `tsc` (no bundler) to one JS file per module so devtools maps 1:1
-to source. A `prepare` hook builds automatically after `npm install`, and the
-`serve`/`register` scripts build before starting.
+Needs Node ≥ 18. Install and start (the default `local-file` plugin serves
+sample data, so this alone gives you a working board):
 
 ```bash
-npm install            # install deps + compile (prepare hook)
-npm run serve -- <port>  # build + start (default port 4317)
-npm run build          # just compile (tsc -b)
-npm run dev            # tsc --watch for development
+npm install && npm run serve
 ```
 
-**Point it at a plugin.** The board renders whichever plugin `LEDGER_SOURCE`
-names (default `local-file`); each plugin reads its own env vars for the rest of
-its config. The two bundled plugins:
+Then open http://localhost:4317. Pass a port with `npm run serve -- <port>`.
 
-```bash
-npm run serve                                   # local-file (default): reads plugins/local-file/sample.json
-LEDGER_FILE=/path/to/board.json npm run serve   # local-file, pointed at your own JSON
-LEDGER_SOURCE=github GITHUB_REPO=owner/name npm run serve   # a GitHub repo (auth via the gh CLI)
-```
-
-To keep it always running in the background (starts on boot, survives
-logout/login), register it as a per-user service:
+To keep it running in the background (starts on boot, survives logout):
 
 ```bash
 npm run register       # systemd (Linux) / launchd (macOS) / Task Scheduler (Windows)
