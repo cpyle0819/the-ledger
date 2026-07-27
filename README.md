@@ -31,10 +31,12 @@ Needs Node ≥ 18. Install and start (the default `local-file` plugin serves
 sample data, so this alone gives you a working board):
 
 ```bash
-npm install && npm run serve
+npm install && LEDGER_SOURCE=local-file npm run serve -- 4317   # defaults; both optional
 ```
 
-Then open http://localhost:4317. Pass a port with `npm run serve -- <port>`.
+Then open http://localhost:4317. `LEDGER_SOURCE` picks the plugin and the arg
+sets the port; both shown here are the defaults, so plain `npm run serve` is the
+same thing.
 
 To keep it running in the background (starts on boot, survives logout):
 
