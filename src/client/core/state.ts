@@ -59,6 +59,16 @@ export function byId(id: string | null): CachedNode | null {
 /** Drop the whole cache (on a full reload). */
 export function clearNodes(): void { nodeIndex.clear(); }
 
+/** Find a cached node's parent — the cached node whose loaded children include
+ *  it. Nodes carry no parent pointer (hierarchy is expressed through children),
+ *  so this scans the index. Returns null for a root, or when the parent isn't
+ *  cached (its children were never loaded). One parent per node, so first match
+ *  wins. */
+export function parentOf(node: CachedNode): CachedNode | null {
+  for (const n of nodeIndex.values()) if (n.children?.some((c) => c.id === node.id)) return n;
+  return null;
+}
+
 // An epic's children arrive as one list (stories, then the tasks parented
 // directly on the epic); split by kind. A story's children are all tasks.
 export const storiesOf = (node: CachedNode | null): CachedNode[] => (node?.children || []).filter((n) => n.kind === 'story');

@@ -8,7 +8,7 @@
 // columns) so upstream columns never tear down and re-animate — that was the
 // "everything blinks" bug.
 
-import { state, byId, indexNodes, clearNodes, type CachedNode } from './state.js';
+import { state, byId, indexNodes, clearNodes, parentOf, type CachedNode } from './state.js';
 import { api, fetchChildren, fetchNodesRaw, ensureChildren, type ApiError } from './api.js';
 import { sfx } from './sound.js';
 import { $, need } from '../ui/dom.js';
@@ -18,7 +18,7 @@ import { renderOutline } from '../views/outline.js';
 import { emptyMsg } from '../views/render-helpers.js';
 import type { ViewHandlers, AddRequest } from '../views/types.js';
 import type { LedgerDrawer } from '../components/ledger-drawer.js';
-import type { LedgerCompose } from '../components/ledger-compose.js';
+import type { LedgerCompose, ComposeAncestor } from '../components/ledger-compose.js';
 import type { Item } from '../../shared/contract';
 
 const drawer = (): LedgerDrawer => need<LedgerDrawer>('#drawer');
@@ -138,11 +138,17 @@ export function wireDrawer(): void {
   d.fetchChildren = ensureChildren;
   d.addEventListener('item-changed', (e) => { if (e.detail?.item) patchNode(e.detail.item); });
   // A per-section "Add <tier>" in the drawer opens the compose sheet with the open
-  // item as the fixed, read-only parent. The drawer supplies the parent name and
-  // project, so this doesn't depend on the parent being in the node cache.
+  // item as the fixed parent. The full ancestor chain is resolved from the cache
+  // (the drawer's item is cached); if it somehow isn't, the event's own parent
+  // fields still give a single-row chain, so the mini-outline never comes up bare.
   d.addEventListener('item-add-child', (e) => {
-    const { type, parentId, parentName, parentShortId, parentUrl, project } = e.detail;
-    if (state.caps.create) compose().open({ type, parentId, parentName, parentShortId, parentUrl, project });
+    if (!state.caps.create) return;
+    const { type, parentId, parentName, parentShortId, parentUrl, parentType, project } = e.detail;
+    const cached = byId(parentId);
+    const ancestors = cached
+      ? ancestorChain(cached)
+      : [{ type: parentType || '', shortId: parentShortId || parentId, url: parentUrl, title: parentName }];
+    compose().open({ type, parentId, ancestors, project });
   });
 }
 
@@ -179,11 +185,25 @@ function addItem(req: AddRequest): void {
   compose().open({
     type: req.type,
     parentId: parent?.id ?? null,
-    parentName: parent?.title ?? null,
-    parentShortId: parent?.shortId ?? null,
-    parentUrl: parent?.url ?? null,
+    ancestors: parent ? ancestorChain(parent) : [],
     project: parent ? (parent.project ?? null) : state.project,
   });
+}
+
+// The new item's ancestor path for the compose mini-outline: from the given
+// parent up to the epic, returned top-down (epic first). Nodes carry no parent
+// pointer, so parentOf scans the cache; the walk stops at a root or an
+// uncached parent, and a cycle guard bounds it defensively.
+export function ancestorChain(parent: CachedNode): ComposeAncestor[] {
+  const chain: ComposeAncestor[] = [];
+  const seen = new Set<string>();
+  let node: CachedNode | null = parent;
+  while (node && !seen.has(node.id)) {
+    seen.add(node.id);
+    chain.unshift({ type: node.type, shortId: node.shortId, url: node.url ?? null, title: node.title });
+    node = parentOf(node);
+  }
+  return chain;
 }
 
 // Place a newly created item into the tree without a full reload. The created

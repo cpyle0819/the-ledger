@@ -33,17 +33,26 @@ export type ApiFn = <T = unknown>(path: string, opts?: RequestInit) => Promise<T
 export interface Sfx { pageTurn(): void; quill(): void }
 /** Optional toast surface. */
 export type ToastFn = (msg: string, isErr?: boolean) => void;
+/** One node on the new item's ancestor path, rendered as an outline row in the
+ *  mini-outline heading. `url` gives its "№ …" tag a link (the same the cards
+ *  show); absent falls back to plain id text. */
+export interface ComposeAncestor {
+  type: string;
+  shortId: string;
+  url?: string | null;
+  title: string;
+}
+
 /** The fixed context an add affordance opens the sheet with: the tier to create,
  *  and the parent it's created under. `parentId` null means a root; `project` is
  *  the parent's project (inherited) or, for a root, the board's current project
- *  scope. `parentShortId`/`parentUrl` render the parent's linkable "№ …" tag, the
- *  same the cards show; `parentUrl` absent falls back to plain id text. */
+ *  scope. `ancestors` is the full chain from the epic down to the immediate
+ *  parent (empty for a root), rendered as the mini-outline heading so the new
+ *  item shows its place in the tree, not just its parent. */
 export interface ComposeContext {
   type: string;
   parentId?: string | null;
-  parentName?: string | null;
-  parentShortId?: string | null;
-  parentUrl?: string | null;
+  ancestors?: ComposeAncestor[];
   project?: string | null;
 }
 
@@ -68,9 +77,32 @@ sheet.replaceSync(`
   .panel > * { flex-shrink: 0; }
 
   .head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
-  .c-eyebrow { font-family: var(--fell-sc, serif); font-size: 13px; letter-spacing: .1em; color: var(--ink-red, #8f2f22); text-transform: uppercase; }
-  .c-title { font-family: var(--fell, serif); font-weight: 400; font-size: 26px; line-height: 1.15; margin: 2px 0 14px; color: var(--ink, #33291a); }
-  .c-rule { height: 2px; background: linear-gradient(90deg, var(--brass-lo, #7a5f30), transparent); margin-bottom: 18px; }
+  /* The eyebrow carries the tier chip: "new" + the wax seal of what's being made,
+     so the type reads as a settled fact of the entry (no field to fill). */
+  .c-eyebrow { display: inline-flex; align-items: center; gap: 9px; font-family: var(--fell-sc, serif); font-size: 13px; letter-spacing: .1em; color: var(--ink-red, #8f2f22); text-transform: uppercase; }
+  .c-rule { height: 2px; background: linear-gradient(90deg, var(--brass-lo, #7a5f30), transparent); margin: 14px 0 18px; }
+
+  /* Mini-outline preview — the heading, rebuilt as the item's place in the tree.
+     It borrows the register lens's three rank devices at a smaller base (same
+     ratios): a type SCALE (epic 19.5 → story 16 → task 13 down ~1.22), QUIET
+     chips (flat, shrunk — indent already encodes tier), and an indent + guide
+     SPINE so the new row reads as hanging off its parent, not merely below it. */
+  .mo { padding: 4px 2px 2px; }
+  .mo-row { display: flex; align-items: center; gap: 9px; padding: 4px 0; }
+  .mo-title { font-family: var(--fell, serif); color: var(--ink, #33291a); line-height: 1.2; }
+  .tier-EPIC  .mo-title { font-size: 19.5px; letter-spacing: .01em; }
+  .tier-STORY .mo-title { font-size: 16px; }
+  .tier-TASK .mo-title, .tier-BUG .mo-title, .tier-SUBTASK .mo-title { font-family: var(--gara, serif); font-size: 13px; }
+  /* The new row's title is blank until typed, then mirrors the field live; the
+     faint placeholder holds its place so the row never collapses. */
+  .mo-new .mo-title.empty { color: var(--ink-faint, #6f5c3e); font-style: italic; }
+  /* The id tag rides inline at the end of the title text with a small gap. */
+  .mo-title .id-tag { margin-left: 8px; }
+  .mo .chip { font-size: 9.5px; padding: 2px 6px; letter-spacing: .1em; box-shadow: none; border-color: rgba(0,0,0,.16); opacity: .85; }
+  /* A child hangs off its parent under an indented spine (Gestalt continuity);
+     a root new item has no parent row and sits flush. */
+  .mo-children.nested { position: relative; padding-left: 30px; }
+  .mo-children.nested::before { content: ""; position: absolute; left: 12px; top: 1px; bottom: 4px; width: 1px; background: var(--parch-edge, #c4ac7c); opacity: .6; }
 
   .ghost-btn {
     font-family: var(--fell, serif); font-style: italic; font-size: 16px; color: var(--brass-hi, #d8b878);
@@ -97,13 +129,6 @@ sheet.replaceSync(`
   .c-field textarea { min-height: 96px; resize: vertical; line-height: 1.55; }
   .c-field select:focus, .c-field input:focus, .c-field textarea:focus { border-color: var(--brass-lo, #7a5f30); background: #fffaeb; }
 
-  /* Fixed (locked) fields — type and parent — are shown, not edited: the tier as
-     its wax chip, the parent by name plus its "№ …" id tag (the same linkable id
-     the cards render, via idTag). They read as settled facts about the item. */
-  .c-fixed { display: inline-flex; align-items: center; gap: 10px; min-height: 37px; flex-wrap: wrap; }
-  .c-parent-name { font-family: var(--gara, serif); font-size: 15px; color: var(--ink, #33291a); }
-  .c-parent-name.none { font-style: italic; color: var(--ink-faint, #6f5c3e); }
-
   .foot { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 4px; }
   .c-err { flex: 1; font-family: var(--gara, serif); font-size: 14px; color: var(--wax, #7c2b22); }
   :focus-visible { outline: 2px solid var(--brass-hi, #d8b878); outline-offset: 3px; }
@@ -129,20 +154,12 @@ export class LedgerCompose extends HTMLElement {
       <div class="scrim" part="scrim"></div>
       <form class="panel" role="dialog" aria-modal="true" aria-labelledby="c-heading" tabindex="-1" part="panel">
         <div class="head">
-          <span class="c-eyebrow">new entry</span>
+          <span class="c-eyebrow" id="c-heading">new <span id="c-type-word">task</span></span>
           <button type="button" class="ghost-btn" id="c-close" aria-keyshortcuts="Escape" title="Close (Esc)"><span aria-hidden="true">✕ </span>close</button>
         </div>
-        <h2 class="c-title" id="c-heading">Inscribe a new item</h2>
+        <div class="mo" id="c-outline" aria-hidden="true"></div>
         <div class="c-rule" aria-hidden="true"></div>
         <div class="c-grid">
-          <div class="c-field" id="c-type-field">
-            <label>type</label>
-            <span class="c-fixed"><span class="chip" id="c-type-chip">TASK</span></span>
-          </div>
-          <div class="c-field" id="c-parent-field" hidden>
-            <label>parent</label>
-            <span class="c-fixed"><span class="c-parent-name" id="c-parent-name"></span><span class="c-parent-id" id="c-parent-id"></span></span>
-          </div>
           <div class="c-field full" id="c-title-field">
             <label for="c-title">title <span class="req" aria-hidden="true">*</span></label>
             <input type="text" id="c-title" spellcheck="false" required autocomplete="off" placeholder="a short, plain title" />
@@ -182,6 +199,8 @@ export class LedgerCompose extends HTMLElement {
     this.#$('#c-close').addEventListener('click', () => this.close());
     this.#$<HTMLFormElement>('.panel').addEventListener('submit', (e) => { e.preventDefault(); this.#submit(); });
     this.shadowRoot!.addEventListener('keydown', (e) => { if ((e as KeyboardEvent).key === 'Escape') this.close(); });
+    // The mini-outline's new-item title mirrors the title field live as it's typed.
+    this.#$<HTMLInputElement>('#c-title').addEventListener('input', () => this.#syncTitle());
   }
 
   // Which create fields the source declared. type/title are always required; the
@@ -220,31 +239,17 @@ export class LedgerCompose extends HTMLElement {
     this.#setSubmitting(false);
 
     const type = String(this.#ctx.type || 'TASK').toUpperCase();
-    const typeLabel = type.charAt(0) + type.slice(1).toLowerCase();
     const hasParent = !!this.#ctx.parentId;
 
-    // Heading + type chip reflect the fixed tier; the chip reuses the tier→color
-    // chrome (t-EPIC/…) shared with cards.
-    this.#$('#c-heading').textContent = hasParent
-      ? `Add ${typeLabel.toLowerCase()} to ${this.#ctx.parentName || 'this item'}`
-      : `Add ${typeLabel.toLowerCase()}`;
-    const chip = this.#$('#c-type-chip'); chip.textContent = type; chip.className = `chip t-${type}`;
+    // The eyebrow reads "new <type>" as plain text in the eyebrow's own style.
+    this.#$('#c-type-word').textContent = type.toLowerCase();
 
     this.#$<HTMLInputElement>('#c-title').value = '';
 
-    // Parent is read-only: shown by name plus its linkable "№ …" id tag (the same
-    // idTag the cards render, so a source's item link opens from here too). Hidden
-    // for a root. Falls back to the raw id when the source gives no shortId.
-    const parentField = this.#$('#c-parent-field');
-    parentField.hidden = !hasParent;
-    if (hasParent) {
-      const name = this.#$('#c-parent-name');
-      name.textContent = this.#ctx.parentName || this.#ctx.parentShortId || this.#ctx.parentId || '';
-      name.classList.remove('none');
-      const idBox = this.#$('#c-parent-id'); idBox.innerHTML = '';
-      const short = this.#ctx.parentShortId || this.#ctx.parentId;
-      if (short) idBox.append(idTag(short, this.#ctx.parentUrl));
-    }
+    // The mini-outline heading: the new item's full ancestry (epic → … → parent)
+    // with the new item nested at the bottom, rendered the way the outline lens
+    // renders rows. The new row's title mirrors the field as it's typed.
+    this.#paintOutline(type);
 
     // Project: a child inherits its parent's project silently (no picker). A root
     // shows the picker, defaulted to the board's current scope, when the source
@@ -268,6 +273,49 @@ export class LedgerCompose extends HTMLElement {
 
     this.#$('#c-estimate-field').hidden = !this.#declares('estimate');
     this.#$<HTMLInputElement>('#c-estimate').value = '';
+  }
+
+  // Build the mini-outline heading: the new item's full place in the tree. The
+  // ancestor chain (epic → … → immediate parent) renders top-down, each level
+  // nested one step deeper under a guide spine, with the new item at the bottom.
+  // A root (no ancestors) is a single flush row. The new row's title is blank on
+  // open and mirrors the title field via #syncTitle. A tier class per row drives
+  // the type scale (epic > story > task) the same way the outline lens does.
+  #paintOutline(type: string): void {
+    const box = this.#$('#c-outline'); box.innerHTML = '';
+
+    const moRow = (tier: string, isNew: boolean, title?: string, shortId?: string | null, url?: string | null): HTMLElement => {
+      const row = el('div', `mo-row tier-${tier}${isNew ? ' mo-new' : ''}`);
+      const titleEl = el('span', 'mo-title', title || '');
+      // The id trails the title text INLINE, as a span within the title element
+      // (chip · "title №"), so it reads as part of the same phrase, not a separate
+      // column. The item being created has no id yet, so it shows none.
+      if (!isNew && shortId) titleEl.append(idTag(shortId, url));
+      row.append(el('span', `chip t-${tier}`, tier), titleEl);
+      return row;
+    };
+
+    // Walk the ancestor chain, each level nesting one step deeper; the current
+    // container is where the next-deeper row/spine is appended.
+    let container = box;
+    for (const a of this.#ctx.ancestors || []) {
+      container.append(moRow(String(a.type || '').toUpperCase() || '·', false, a.title, a.shortId, a.url));
+      const kids = el('div', 'mo-children nested');
+      container.append(kids);
+      container = kids;
+    }
+    container.append(moRow(type, true, ''));
+    this.#syncTitle();
+  }
+
+  // Mirror the title field into the new-item row of the mini-outline; a blank
+  // field shows a faint placeholder so the row keeps its height.
+  #syncTitle(): void {
+    const t = this.#$<HTMLInputElement>('#c-title')?.value.trim() || '';
+    const cell = this.shadowRoot!.querySelector('.mo-new .mo-title') as HTMLElement | null;
+    if (!cell) return;
+    cell.textContent = t || 'untitled';
+    cell.classList.toggle('empty', !t);
   }
 
   // ---- submit ----

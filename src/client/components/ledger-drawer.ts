@@ -526,6 +526,7 @@ export class LedgerDrawer extends HTMLElement {
       detail: {
         type, parentId: parent.id, parentName: parent.title,
         parentShortId: parent.shortId ?? null, parentUrl: parent.url ?? null,
+        parentType: parent.type ?? null,
         project: parent.project ?? null,
       },
       bubbles: true, composed: true,
