@@ -27,16 +27,22 @@ lens on work that lives elsewhere.
 
 ## Setup
 
-Needs Node ≥ 18. Install and start (the default `local-file` plugin serves
-sample data, so this alone gives you a working board):
+Needs Node ≥ 18. Install and start — the default `local-file` plugin serves
+sample data on port 4317, so this alone gives you a working board on any OS:
 
 ```bash
-npm install && LEDGER_SOURCE=local-file npm run serve -- 4317   # defaults; both optional
+npm install && npm run serve
 ```
 
-Then open http://localhost:4317. `LEDGER_SOURCE` picks the plugin and the arg
-sets the port; both shown here are the defaults, so plain `npm run serve` is the
-same thing.
+Then open http://localhost:4317. Pass a port with `npm run serve -- 8080`. Pick
+a different plugin by setting `LEDGER_SOURCE` (default `local-file`), using your
+shell's env-var syntax:
+
+```bash
+LEDGER_SOURCE=github npm run serve          # bash / zsh (Linux, macOS)
+$env:LEDGER_SOURCE="github"; npm run serve  # PowerShell (Windows)
+set LEDGER_SOURCE=github && npm run serve    # cmd.exe (Windows)
+```
 
 To keep it running in the background (starts on boot, survives logout):
 
