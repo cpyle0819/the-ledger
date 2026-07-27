@@ -16,7 +16,7 @@ import './components/ledger-compose.js';
 
 import { state } from './core/state.js';
 import { api, loadProjects } from './core/api.js';
-import { loadTree, render, wireDrawer, wireCompose } from './core/board.js';
+import { loadTree, render, wireDrawer, wireCompose, reconcile } from './core/board.js';
 import { buildTitle } from './ui/title-seal.js';
 import { $, need } from './ui/dom.js';
 import type { LedgerDrawer } from './components/ledger-drawer.js';
@@ -61,6 +61,24 @@ function syncLensSeg(): void {
   });
 }
 
+// Poll for changes made outside The Ledger, incrementally (see board.reconcile).
+// Reconcile when the tab regains focus or becomes visible — the "I came back to
+// it" case — and on a modest timer while the tab is visible. The timer is stopped
+// while hidden so a backgrounded tab makes no requests. Overlap and no-op polls
+// are guarded inside reconcile, so the extra call when focus + visibility fire
+// together is harmless.
+const RECONCILE_MS = 30000;
+function wireReconcile(): void {
+  let timer = 0;
+  const start = (): void => { if (!timer) timer = window.setInterval(() => { if (document.visibilityState === 'visible') reconcile(); }, RECONCILE_MS); };
+  const stop = (): void => { if (timer) { clearInterval(timer); timer = 0; } };
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') { reconcile(); start(); } else stop();
+  });
+  window.addEventListener('focus', () => reconcile());
+  if (document.visibilityState === 'visible') start();
+}
+
 function wire(): void {
   // Closed items are hidden by default (status 'Open'); the toggle reveals them.
   need<HTMLInputElement>('#show-closed').onchange = (e) => { state.status = (e.target as HTMLInputElement).checked ? 'ALL' : 'Open'; loadTree(); };
@@ -81,6 +99,7 @@ function wire(): void {
   need('#refresh').onclick = () => loadTree();
   wireDrawer();
   wireCompose();
+  wireReconcile();
 
   // Single-key view shortcuts. The drawer owns its own Escape and internal keys;
   // these stay dormant while it's open (and never hijack modifier combos or keys

@@ -23,15 +23,24 @@ export async function api<T = unknown>(path: string, opts?: RequestInit): Promis
 
 interface ChildrenResponse { nodes: CachedNode[] }
 
+// Fetch a parent's children (or the roots when parentId is null) with the current
+// filters, WITHOUT touching the cache. The caller decides how to merge — used by
+// the reconcile poll, which merges fresh fields into the cached node instances
+// rather than replacing them (so open/expanded/loaded state survives).
+export async function fetchNodesRaw(parentId: string | null): Promise<CachedNode[]> {
+  const q = new URLSearchParams({ status: state.status });
+  if (state.assignee) q.set('assignee', state.assignee);
+  if (state.project) q.set('project', state.project);
+  if (parentId) q.set('parent', parentId);
+  const { nodes } = await api<ChildrenResponse>(`/api/children?${q}`);
+  return nodes;
+}
+
 // Fetch a node's children (or the roots when node is null) and cache them on the
 // node. Children are cheap list nodes; the full item is fetched when a drawer
 // opens. A node keeps `children` + `loaded` so a re-open doesn't refetch.
 export async function fetchChildren(node: CachedNode | null): Promise<CachedNode[]> {
-  const q = new URLSearchParams({ status: state.status });
-  if (state.assignee) q.set('assignee', state.assignee);
-  if (state.project) q.set('project', state.project);
-  if (node) q.set('parent', node.id);
-  const { nodes } = await api<ChildrenResponse>(`/api/children?${q}`);
+  const nodes = await fetchNodesRaw(node ? node.id : null);
   indexNodes(nodes);
   if (node) { node.children = nodes; node.loaded = true; }
   return nodes;

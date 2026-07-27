@@ -143,10 +143,16 @@ export function refreshTaskColumn(h: ViewHandlers): void {
   const cols = $('.columns'); if (!cols) return;
   cols.children[2]?.replaceWith(buildTaskCol(false, h));
 }
-// Rebuild all three columns in place (used by patchNode after an edit).
+// Rebuild all three columns in place (used by patchNode after an edit and by the
+// reconcile poll). Each column's scroll position is preserved across the swap so a
+// background refresh doesn't jump a scrolled column back to the top.
 export function refreshAllColumns(h: ViewHandlers): void {
   const cols = $('.columns'); if (!cols) return;
-  cols.children[0]?.replaceWith(buildEpicCol(false, h));
-  cols.children[1]?.replaceWith(buildStoryCol(false, h));
-  cols.children[2]?.replaceWith(buildTaskCol(false, h));
+  const bodyOf = (n?: Element | null) => (n as HTMLElement)?.shadowRoot?.querySelector('.col-body') as HTMLElement | undefined;
+  const tops: number[] = [0, 1, 2].map((i) => bodyOf(cols.children[i])?.scrollTop ?? 0);
+  const next: LedgerColumn[] = [buildEpicCol(false, h), buildStoryCol(false, h), buildTaskCol(false, h)];
+  cols.children[0]?.replaceWith(next[0]!);
+  cols.children[1]?.replaceWith(next[1]!);
+  cols.children[2]?.replaceWith(next[2]!);
+  next.forEach((c, i) => { const b = bodyOf(c); if (b) b.scrollTop = tops[i]!; });
 }
