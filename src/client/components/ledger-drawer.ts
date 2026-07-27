@@ -38,6 +38,12 @@ export type ToastFn = (msg: string, isErr?: boolean) => void;
 
 const STATUSES = ['Open', 'Resolved', 'Closed'];
 
+/** Sum the estimate points across a list of nodes (missing/zero estimates count
+ *  as 0). Used for the Planning group effort figures and the risk rollup. */
+function sumEffort(nodes: LedgerNode[]): number {
+  return nodes.reduce((s, n) => s + (Number((n as { estimate?: number | null }).estimate) || 0), 0);
+}
+
 const sheet = new CSSStyleSheet();
 sheet.replaceSync(`
   :host { position: fixed; inset: 0; z-index: 500; pointer-events: none; }
@@ -98,6 +104,39 @@ sheet.replaceSync(`
   .ta-name { font-family: var(--gara, serif); font-size: 15px; color: var(--ink, #33291a); }
   .ta-alias { font-family: var(--mono, monospace); font-size: 12px; color: var(--ink-red, #8f2f22); }
   .ta-title { grid-column: 1 / -1; font-family: var(--fell, serif); font-style: italic; font-size: 12.5px; color: var(--ink-faint, #6f5c3e); }
+
+  /* The risk line under the title: a budget meter contrasting the item's own
+     estimate (the baseline) against the summed effort of its direct children.
+     Balanced stays calm and low-contrast so it recedes; an over/under imbalance
+     lights a warning tone AND carries an arrow + literal numbers, so the risk
+     reads without relying on color alone (see the hierarchy research). */
+  .d-risk { display: flex; align-items: center; gap: 12px; margin: 0 0 14px; font-family: var(--fell, serif); font-size: 14px; }
+  .d-risk .rmeter {
+    position: relative; flex: 0 0 132px; height: 9px; border-radius: 5px; overflow: hidden;
+    background: rgba(91,74,48,.18); box-shadow: inset 0 0 0 1px rgba(91,74,48,.25);
+  }
+  /* The fill is the children's share of the budget: capped at 100% width, with an
+     overflow wedge riding the right edge when children exceed the estimate. */
+  .d-risk .rfill { position: absolute; inset: 0 auto 0 0; height: 100%; border-radius: 5px 0 0 5px; transition: width .25s ease, background .2s ease; }
+  .d-risk .rover { position: absolute; inset: 0 0 0 auto; width: 12px; background: repeating-linear-gradient(135deg, var(--risk-over, #a8321f) 0 4px, rgba(168,50,31,.55) 4px 8px); }
+  .d-risk .rlabel { display: inline-flex; align-items: baseline; gap: 6px; }
+  .d-risk .rarrow { font-size: 13px; font-style: normal; }
+  .d-risk .rnums { font-style: italic; color: var(--ink-soft, #5b4a30); }
+  /* Balanced: calm brass fill, quiet ink label. Over: hot red. Under: cooler
+     amber (ambiguous — may just mean more work is planned than was booked). */
+  .d-risk.balanced .rfill { background: var(--brass-lo, #7a5f30); }
+  .d-risk.balanced .rlabel { color: var(--seal-story, #3f5e4e); }
+  .d-risk.over .rfill { background: var(--risk-over, #a8321f); }
+  .d-risk.over .rlabel { color: var(--risk-over, #a8321f); }
+  .d-risk.under .rfill { background: var(--risk-under, #b8842a); }
+  .d-risk.under .rlabel { color: var(--risk-under, #b8842a); }
+  /* No estimate to budget against, or a leaf: no meter, just a muted note. */
+  .d-risk.none { color: var(--ink-faint, #6f5c3e); font-style: italic; }
+
+  /* Planning section (was "Contents"): each group header carries the child count
+     and their summed effort. Same dot separator the group labels already use. */
+  .cgroup-effort { margin-left: 14px; font-family: var(--fell, serif); font-style: italic; font-size: 15px; color: var(--ink-soft, #5b4a30); }
+  .cgroup-effort::before { content: "· "; color: var(--ink-faint, #6f5c3e); }
 
   .d-contains { margin-bottom: 22px; padding: 14px 16px; border: 1px solid var(--parch-edge, #c4ac7c); border-radius: 2px; background: rgba(255,250,235,.4); }
   .d-contains h4 { margin: 0 0 10px; font-family: var(--fell-sc, serif); font-size: 13px; letter-spacing: .08em; color: var(--ink-red, #8f2f22); font-weight: 400; }
@@ -182,6 +221,7 @@ export class LedgerDrawer extends HTMLElement {
           <button class="ghost-btn" id="d-close" aria-keyshortcuts="Escape" title="Close (Esc)"><span aria-hidden="true">✕ </span>close</button>
         </div>
         <h2 class="d-title" id="d-title"></h2>
+        <div class="d-risk" id="d-risk" hidden></div>
         <div class="d-rule" aria-hidden="true"></div>
         <div class="d-grid">
           <div class="d-field" id="d-status-field"><label for="d-status-edit">status</label><select id="d-status-edit"></select></div>
@@ -455,6 +495,56 @@ export class LedgerDrawer extends HTMLElement {
     field.hidden = false;
   }
 
+  // ---- planning risk (estimate vs. summed child effort) ----
+  // A budget meter + label under the title, contrasting the item's OWN estimate
+  // (the budget baseline) against the summed effort of its direct children. The
+  // three outcomes:
+  //   balanced (children == estimate) — calm, low-contrast; the item recedes.
+  //   over     (children  > estimate) — hot warning; more work booked than budgeted.
+  //   under    (children  < estimate) — cooler warning; ambiguous (may just mean
+  //                                     more work is planned than was estimated).
+  // Encoded redundantly (color + arrow + literal numbers) so it doesn't rely on
+  // color alone. Tasks are leaves and epics/stories with no own-estimate have no
+  // budget to measure against, so they show a muted note instead of a meter.
+  #renderRisk(item: LedgerNode & Partial<Item>, children: LedgerNode[]): void {
+    const box = this.#$('#d-risk');
+    const budget = Number(item.estimate) || 0;
+    const actual = sumEffort(children);
+
+    // No own-estimate to budget against: nothing to assess (don't cry risk on an
+    // un-estimated item — that's a data gap, not a plan deficit).
+    if (budget <= 0) {
+      box.className = 'd-risk none'; box.hidden = false; box.innerHTML = '';
+      box.textContent = children.length
+        ? `No estimate set — ${actual} pts across children can't be measured against a budget.`
+        : 'No estimate set.';
+      return;
+    }
+
+    const delta = actual - budget;
+    const state = delta === 0 ? 'balanced' : delta > 0 ? 'over' : 'under';
+    // Fill is the children's share of the budget, capped at 100%; the overflow
+    // wedge appears only when over. An under-fill leaves a visible right gap.
+    const fillPct = Math.min(100, Math.round((actual / budget) * 100));
+
+    box.className = `d-risk ${state}`; box.hidden = false; box.innerHTML = '';
+    const meter = el('div', 'rmeter'); meter.setAttribute('aria-hidden', 'true');
+    const fill = el('div', 'rfill'); fill.style.width = `${fillPct}%`; meter.append(fill);
+    if (state === 'over') meter.append(el('div', 'rover'));
+
+    const arrow = state === 'over' ? '▲' : state === 'under' ? '▼' : '✓';
+    const word = state === 'over' ? `over by ${delta}` : state === 'under' ? `under by ${-delta}` : 'balanced';
+    const label = el('span', 'rlabel');
+    label.append(el('span', 'rarrow', arrow), document.createTextNode(word),
+      el('span', 'rnums', `(${budget} budgeted → ${actual} in children)`));
+
+    // Screen-reader summary: the meter is decorative, so the label carries it all.
+    box.setAttribute('role', 'status');
+    box.setAttribute('aria-label',
+      `Planning risk: ${word}. Estimate ${budget} points, children total ${actual} points.`);
+    box.append(meter, label);
+  }
+
   // ---- contains (children summary) ----
   // Renders the item's children, grouped by tier, and — when the source can
   // create and the item can hold that tier — a per-section "Add <tier>" button
@@ -465,21 +555,26 @@ export class LedgerDrawer extends HTMLElement {
   // to show contents used to be existing children; now the add affordances count).
   async #renderContains(item: LedgerNode & Partial<Item>): Promise<void> {
     const box = this.#$('#d-contains');
+    const risk = this.#$('#d-risk');
     const canCreate = !!this.#caps.create;
-    // A task is a leaf: no children, nothing to add under it.
-    if (item.kind === 'task') { box.hidden = true; box.innerHTML = ''; return; }
+    // A task is a leaf: no children, nothing to add under it, no budget to assess.
+    if (item.kind === 'task') { box.hidden = true; box.innerHTML = ''; risk.hidden = true; return; }
     // Nothing to show and can't add? Then there's no section to render.
-    if (!item.childCount && !canCreate) { box.hidden = true; box.innerHTML = ''; return; }
+    if (!item.childCount && !canCreate) { box.hidden = true; box.innerHTML = ''; risk.hidden = true; return; }
 
     if (item.childCount && !(item as { loaded?: boolean }).loaded && this.fetchChildren) {
       box.hidden = false; box.innerHTML = '';
-      box.append(el('h4', null, 'Contents'), el('div', 'cgroup-label', 'loading…'));
+      box.append(el('h4', null, 'Planning'), el('div', 'cgroup-label', 'loading…'));
       try { await this.fetchChildren(item); } catch { /* leave loading */ }
       if (this.#item?.id !== item.id) return;
     }
     const children: LedgerNode[] = (item as { children?: LedgerNode[] }).children || [];
     const stories = children.filter((n) => n.kind === 'story');
     const direct = children.filter((n) => n.kind !== 'story');
+    // Direct children now known: the risk line contrasts this item's own estimate
+    // against the summed effort of ALL its direct children (stories + direct-on-
+    // epic tasks for an epic; tasks for a story).
+    this.#renderRisk(item, children);
     // Each group: a heading, an optional add-tier, and the child lines. Groups are
     // always shown for the addable tiers so the affordance is reachable when empty.
     const groups: { label: string; list: LedgerNode[]; addType: 'STORY' | 'TASK' }[] =
@@ -491,11 +586,16 @@ export class LedgerDrawer extends HTMLElement {
         : [{ label: 'Tasks', list: children, addType: 'TASK' }];
 
     box.hidden = false; box.innerHTML = '';
-    box.append(el('h4', null, 'Contents'));
+    box.append(el('h4', null, 'Planning'));
     for (const { label, list, addType } of groups) {
       const g = el('div', 'cgroup');
       const head = el('div', 'cgroup-head');
-      head.append(el('div', 'cgroup-label', list.length ? `${label} · ${list.length}` : label));
+      const labelText = list.length ? `${label} · ${list.length}` : label;
+      const headLeft = el('div', 'cgroup-label', labelText);
+      // Alongside the count, the summed effort of the group so the decomposed
+      // work is visible next to how much of it there is ("Stories · 3  ·  Effort · 28 pts").
+      if (list.length) headLeft.append(el('span', 'cgroup-effort', `Effort · ${sumEffort(list)} pts`));
+      head.append(headLeft);
       if (canCreate) {
         const add = el('button', 'cgroup-add', `+ Add ${addType.toLowerCase()}`);
         add.type = 'button';

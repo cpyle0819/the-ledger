@@ -33,6 +33,10 @@
   --seal-bug:    #8f2f22;   /* correction red — BUG              */
   --wax:         #7c2b22;   /* sealing wax                       */
 
+  /* planning-risk tones (estimate vs. summed child effort) */
+  --risk-over:   #a8321f;   /* over budget — hot correction red  */
+  --risk-under:  #b8842a;   /* under budget — cooler burnt amber */
+
   --fell: 'IM Fell English', Georgia, serif;
   --fell-sc: 'IM Fell English SC', Georgia, serif;
   --gara: 'EB Garamond', Georgia, serif;
