@@ -14,7 +14,7 @@
 export type Kind = 'epic' | 'story' | 'task';
 
 /** The item's lifecycle state: binary. Every source maps its own native states
- *  (tracker's Resolved, a GitHub close reason, …) onto exactly one of these two on
+ *  (a tracker's Resolved, a GitHub close reason, …) onto exactly one of these two on
  *  read; the board never sees anything else. Richer per-source step detail rides
  *  on `workflowAction`, not here. */
 export type Status = 'Open' | 'Closed';

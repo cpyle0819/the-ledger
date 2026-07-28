@@ -49,7 +49,7 @@ function sumEffort(nodes: LedgerNode[]): number {
 }
 
 // Status is binary at the contract: a source has already folded its native
-// terminal states (tracker's Resolved, a GitHub close reason, …) into 'Closed'
+// terminal states (a tracker's Resolved, a GitHub close reason, …) into 'Closed'
 // on read, so Planning counts closed exactly as the board's status filter does.
 const isClosed = (n: LedgerNode): boolean => n.status === 'Closed';
 

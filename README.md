@@ -72,7 +72,7 @@ private plugin); copy the committed `ledger.config.example.json` to start:
 - a **package name** — a dependency declared in `package.json` and installed into
   `node_modules` (how the bundled sources and any published plugin load); or
 - a **repo-relative path** (anything with a `/` or leading `.`, e.g.
-  `./plugins/tracker`) — for a plugin not yet declared as a dependency.
+  `./plugins/my-plugin`) — for a plugin not yet declared as a dependency.
 
 With no `ledger.config.json`, the bundled `the-ledger-local-file` source loads.
 
@@ -97,7 +97,7 @@ Two plugins ship in the box, each a `file:` dependency in `package.json`:
 3. Set `source` to the package name (or path) in `ledger.config.json`, plus
    whatever env vars the plugin reads for its own config.
 
-A plugin whose backend is private can be version-controlled outside this repo —
-for example as a package built in a separate repo — and consumed as a
-`file:` dependency pointing at its checkout. The bundled `plugins/tracker` (the
-tracker; gitignored here) is set up this way; see its README for the build.
+A plugin whose backend is private can be version-controlled outside this repo and
+consumed as a `file:` dependency pointing at its checkout, or by pointing `source`
+at its path. This keeps a plugin that wraps an internal or credentialed system out
+of the public repo (see the `.gitignore` rule that excludes unlisted `plugins/*`).

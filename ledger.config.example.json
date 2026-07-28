@@ -1,5 +1,5 @@
 {
   "//": "Copy to ledger.config.json (gitignored, machine-local) to pick the active source.",
-  "//source": "A declared package.json dependency by name (the-ledger-local-file, the-ledger-github), or a repo-relative path to a plugin not yet declared as a dependency (e.g. ./plugins/tracker).",
+  "//source": "A declared package.json dependency by name (the-ledger-local-file, the-ledger-github), or a repo-relative path to a plugin not yet declared as a dependency (e.g. ./plugins/my-plugin).",
   "source": "the-ledger-local-file"
 }

@@ -99,8 +99,9 @@ Components live in `src/client/components/`, one self-registering module each:
 - `src/shared/contract.ts` — the typed shapes (LedgerNode, Item, Capabilities,
   Filters, …) that both halves reference. Type-only imports erase at runtime.
 - `plugins/<name>/` — one source each, a plain-JS npm package (`package.json` +
-  `index.js`). `local-file` is the bundled reference source; `github` also ships;
-  `tracker` (tracker, internal) is gitignored and set up as a separate package.
+  `index.js`). `local-file` is the bundled reference source; `github` also ships.
+  A plugin that wraps a private/internal backend is gitignored here and
+  version-controlled separately (declared as a dependency or pointed at by path).
 - The hierarchy loads **lazily** via `getChildren(parentId, filters)` — null
   parent = roots (epics). A source declares **capabilities**; the UI hides actions
   a source can't perform.

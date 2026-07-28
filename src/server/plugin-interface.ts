@@ -10,7 +10,7 @@
 // the extension boundary.
 //
 // A plugin is an npm dependency: each source (the bundled local-file/github, or
-// an external one like the internal tracker package) is declared in the-ledger's
+// an external one wrapping a private backend) is declared in the-ledger's
 // package.json and installed into node_modules, so the loader resolves it by
 // package name through Node's own module resolution. Which one is active is read
 // from `ledger.config.json` at the repo root — see loadActiveSource.
@@ -126,9 +126,9 @@ function activeSourceName(): string {
 // slash. A path resolves against the repo root (so a relative config value is
 // stable regardless of cwd); a bare name resolves as an npm dependency through
 // Node's own node_modules resolution. The path form is the bridge for a plugin
-// that isn't yet a committable dependency (e.g. the internal tracker source, which
-// lives in a gitignored folder here until it's a separately version-controlled package); flip the
-// config value to the package name once a dependency can be declared.
+// that isn't yet a committable dependency (e.g. a private-backend source that
+// lives in a gitignored folder here until it's version-controlled elsewhere);
+// flip the config value to the package name once a dependency can be declared.
 function resolveSource(source: string): string {
   const isPath = source.startsWith('.') || source.includes('/') || source.includes('\\');
   return isPath ? path.resolve(REPO_ROOT, source) : source;
