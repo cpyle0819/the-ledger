@@ -83,12 +83,47 @@ export async function callPlugin(
   return withTimeout((fn as (...a: unknown[]) => unknown).apply(plugin, args), timeout, `${plugin.name}.${String(method)}`);
 }
 
-// Load the single active source. The plugin lives at plugins/<name>/index.js and
-// exports a factory. One active source only — no directory scan or manifest yet.
+// The directories searched for a named plugin, in order. LEDGER_PLUGIN_PATH adds
+// out-of-repo locations (path.delimiter-separated, like PATH) so a plugin can be
+// version-controlled elsewhere — e.g. built from a package in a separate repo
+// — without living inside this repo's plugins/ folder. The built-in plugins/ dir
+// is always the last resort, so the bundled sources resolve with no config and an
+// external dir can shadow a built-in of the same name.
+function pluginSearchDirs(): string[] {
+  const extra = (process.env.LEDGER_PLUGIN_PATH || '')
+    .split(path.delimiter)
+    .map((d) => d.trim())
+    .filter(Boolean);
+  return [...extra, path.join(REPO_ROOT, 'plugins')];
+}
+
+// Resolve a named plugin to a module path across the search dirs. `require.resolve`
+// honors Node's own resolution (a dir's index.js or package.json main), so a plugin
+// may be a loose <dir>/<name>/index.js or a built package exporting a main.
+// Throws with the dirs tried when nothing resolves, so a typo'd name or an unbuilt
+// workspace fails loudly instead of silently falling back to the default source.
+function resolvePlugin(name: string): string {
+  const dirs = pluginSearchDirs();
+  for (const dir of dirs) {
+    try {
+      return require.resolve(path.join(dir, name));
+    } catch {
+      // not in this dir — try the next
+    }
+  }
+  throw Object.assign(
+    new Error(`Source '${name}' not found in any plugin dir: ${dirs.join(', ')}`),
+    { status: 500 },
+  );
+}
+
+// Load the single active source. LEDGER_SOURCE names the plugin; the loader finds
+// it across the plugin search dirs (see pluginSearchDirs). The module exports a
+// factory or a ready plugin object. One active source only — no directory scan or
+// manifest yet. Plugins stay plain .js at the extension boundary.
 export function loadActiveSource(hostConfig: Record<string, unknown> = {}): ActiveSource {
   const name = process.env.LEDGER_SOURCE || 'local-file';
-  // Plugins are plain .js at the repo root, not compiled into dist/.
-  const factory = require(path.join(REPO_ROOT, 'plugins', name)) as
+  const factory = require(resolvePlugin(name)) as
     | ((cfg: Record<string, unknown>) => SourcePlugin)
     | SourcePlugin;
   const plugin = typeof factory === 'function' ? factory(hostConfig) : factory;

@@ -61,6 +61,22 @@ file — rendered onto the board through the common contract in
 plain JavaScript, and holds its own credentials; the app talks only to the local
 host, which calls plugin methods. `LEDGER_SOURCE` picks the one active plugin.
 
+By default the host looks for the named plugin under the bundled `plugins/`
+folder. Set **`LEDGER_PLUGIN_PATH`** to also search directories outside the repo
+(colon-separated on Linux/macOS, `;` on Windows — the OS path delimiter); each is
+tried in order before the built-in `plugins/` fallback, so an external dir can
+shadow a bundled plugin of the same name. This lets a plugin be version-controlled
+elsewhere — e.g. built from a package in a separate repo — instead of living in
+this repo:
+
+```bash
+LEDGER_PLUGIN_PATH=/path/to/workspace/src/TheLedgertracker \
+  LEDGER_SOURCE=tracker npm run serve
+```
+
+The named plugin resolves via Node's own module resolution, so a search-dir entry
+may be a loose `<dir>/<name>/index.js` or a built package that exports a `main`.
+
 Two ship in the box:
 
 - **`local-file`** (default) — items from a JSON file, `sample.json` unless
