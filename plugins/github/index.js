@@ -291,6 +291,7 @@ module.exports = function createGithubPlugin() {
       projects: false,
       attachments: false,
       points: false,   // GitHub issues have no point estimates
+      taskDates: false, // no start/completion date model on GitHub issues
     },
 
     // parentId null => roots (projects with a visible task, orphan milestones,

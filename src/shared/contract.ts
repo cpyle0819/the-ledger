@@ -97,6 +97,13 @@ export interface Item extends LedgerNode {
   description: string;
   descriptionContentType: string;
   estimate: number | null;
+  /** ISO date a task was started. Editable in the drawer (task-only, gated by the
+   *  taskDates capability). Null when unset. */
+  startDate: string | null;
+  /** ISO date a task was completed. Written by the SOURCE when the task moves to a
+   *  closed status — never user-editable; cleared if the task reopens. Null while
+   *  open. Task-only, gated by the taskDates capability. */
+  completionDate: string | null;
   comments: Comment[];
   createDate: string | null;
   lastUpdatedDate: string | null;
@@ -111,7 +118,7 @@ export interface User {
 
 /** The fields a source may allow editing. The board gates each field's control
  *  on membership in Capabilities.editFields. */
-export type EditableField = 'status' | 'description' | 'assignee' | 'estimate' | 'workflowAction';
+export type EditableField = 'status' | 'description' | 'assignee' | 'estimate' | 'workflowAction' | 'startDate';
 
 /** The fields a create request may carry. A source declares which it accepts in
  *  Capabilities.createFields (parallel to editFields); the compose UI shows a
@@ -163,6 +170,12 @@ export interface Capabilities {
    *  nagged to fill in a field it doesn't have. Distinct from editFields carrying
    *  'estimate', which is write permission, not whether the concept exists. */
   points: boolean;
+  /** Whether the source's tasks carry start/completion dates. When absent, the
+   *  drawer shows neither the editable start-date field nor the read-only
+   *  completion-date line. Start date is editable (gated additionally by
+   *  editFields carrying 'startDate'); completion date is written by the source
+   *  when a task closes and is never user-editable. Task-tier only. */
+  taskDates: boolean;
 }
 
 /** The plugin contract every source implements. A source module exports a

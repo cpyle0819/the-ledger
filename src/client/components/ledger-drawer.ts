@@ -107,6 +107,10 @@ sheet.replaceSync(`
     border-radius: 2px; padding: 8px 10px; font-family: var(--gara, serif); font-size: 15px; outline: none;
   }
   .d-field select:focus, .d-field input:focus, .d-typeahead input:focus { border-color: var(--brass-lo, #7a5f30); background: #fffaeb; }
+  /* A read-only field value (the completion date, written by the source on close,
+     never edited here): the field-box metrics without an input's affordances. */
+  .d-readonly { box-sizing: border-box; padding: 8px 10px; font-family: var(--gara, serif); font-size: 15px; color: var(--ink, #33291a); }
+  .d-readonly.empty { color: var(--ink-faint, #6f5c3e); font-style: italic; }
 
   .d-typeahead { position: relative; }
   .typeahead-list { position: absolute; z-index: 5; left: 0; right: 0; top: calc(100% + 2px); margin: 0; padding: 4px; list-style: none;
@@ -255,6 +259,8 @@ export class LedgerDrawer extends HTMLElement {
             </div>
           </div>
           <div class="d-field" id="d-estimate-field"><label for="d-estimate-edit">estimate (points)<span class="est-warn" id="d-estimate-warn" title="No estimate set" aria-label="No estimate set" hidden>⚠</span></label><input type="number" id="d-estimate-edit" min="0" step="1" spellcheck="false" placeholder="—" /></div>
+          <div class="d-field" id="d-startdate-field" hidden><label for="d-startdate-edit">start date</label><input type="date" id="d-startdate-edit" spellcheck="false" /></div>
+          <div class="d-field" id="d-completion-field" hidden><label id="d-completion-label">completed</label><div class="d-readonly" id="d-completion-text" aria-labelledby="d-completion-label"></div></div>
         </div>
         <div class="d-contains" id="d-contains" hidden></div>
         <div class="d-desc-head">
@@ -286,6 +292,13 @@ export class LedgerDrawer extends HTMLElement {
       const current = this.#item?.estimate;
       const same = (value === '' && (current == null || current === 0)) || Number(value) === current;
       if (!same) this.#edit('estimate', value, 'Estimate');
+    });
+    // Start date: a native date picker; commit on change (the <input type="date">
+    // fires change on selection/clear). Its value is YYYY-MM-DD, or '' when cleared.
+    this.#$<HTMLInputElement>('#d-startdate-edit').addEventListener('change', (e) => {
+      const value = (e.target as HTMLInputElement).value; // '' or YYYY-MM-DD
+      const current = this.#dateInputValue(this.#item?.startDate);
+      if (value !== current) this.#edit('startDate', value, 'Start date');
     });
 
     // Description: click/Enter the rendered view to edit; blur saves; cancel discards.
@@ -409,6 +422,8 @@ export class LedgerDrawer extends HTMLElement {
     // Flag the open item's own missing estimate beside the label (icon only) — only
     // when the source has point estimates at all.
     this.#$('#d-estimate-warn').hidden = hasEstimate || !caps.points;
+
+    this.#paintDates(item);
     const sel = this.#$<HTMLSelectElement>('#d-status-edit'); sel.innerHTML = '';
     const opts = STATUSES.includes(item.status) ? STATUSES : [item.status, ...STATUSES];
     [...new Set(opts)].forEach((s) => { const o = el('option', null, s); o.value = s; if (s === item.status) o.selected = true; sel.append(o); });
@@ -427,6 +442,47 @@ export class LedgerDrawer extends HTMLElement {
     thread.comments = item.comments || [];
   }
 
+  // Task dates (task-tier only, gated by taskDates): an editable start date and a
+  // read-only completion date the source stamps on close. Both fields hide for
+  // epics/stories and for sources with no date model. Split out so an edit that
+  // changes a date (a start-date save, or a status change that stamps completion)
+  // can repaint just these without a full re-render.
+  #paintDates(item: LedgerNode & Partial<Item>): void {
+    const caps = this.#caps;
+    const canEdit = (f: EditableField) => (caps.editFields || []).includes(f);
+    const showDates = !!caps.taskDates && item.kind === 'task';
+    // Start date is additionally gated on write permission; without it, hide the
+    // field rather than show an input that can't save.
+    this.#$('#d-startdate-field').hidden = !(showDates && canEdit('startDate'));
+    this.#$<HTMLInputElement>('#d-startdate-edit').value = this.#dateInputValue(item.startDate);
+    // Completion is meaningful only once the task is done: show the line when a
+    // completion date exists OR the task is closed. An open task hides it entirely
+    // (the concept doesn't apply yet — no empty-state noise). A closed task with no
+    // stamped date (closed before this feature, or by a source that doesn't record
+    // one) reads "completed (date not recorded)" rather than the false "not yet".
+    const closed = CLOSED_STATES.has(item.status);
+    this.#$('#d-completion-field').hidden = !(showDates && (item.completionDate || closed));
+    const compText = this.#$('#d-completion-text');
+    if (item.completionDate) { compText.className = 'd-readonly'; compText.textContent = this.#formatDate(item.completionDate); }
+    else { compText.className = 'd-readonly empty'; compText.textContent = 'date not recorded'; }
+  }
+
+  // An ISO timestamp (or date) narrowed to the YYYY-MM-DD an <input type="date">
+  // expects; '' for a null/absent/unparseable value.
+  #dateInputValue(iso: string | null | undefined): string {
+    if (!iso) return '';
+    const m = /^(\d{4}-\d{2}-\d{2})/.exec(iso);
+    return m ? m[1]! : '';
+  }
+  // A human-readable date for the read-only completion line ("Jul 28, 2026").
+  // Formatted in UTC: the stored value is an instant (often pinned to UTC
+  // midnight), and we show only its date — converting to local time would render
+  // the previous day for any user west of UTC.
+  #formatDate(iso: string): string {
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' });
+  }
+
   // ---- edits ----
   async #edit(field: EditableField, value: unknown, label: string): Promise<Item | undefined> {
     const node = this.#item; if (!node || !this.api) return;
@@ -440,6 +496,10 @@ export class LedgerDrawer extends HTMLElement {
         this.#$<HTMLInputElement>('#d-estimate-edit').value = hasEstimate ? String(item.estimate) : '';
         this.#$('#d-estimate-warn').hidden = hasEstimate;
       }
+      // A status change can stamp/clear the source-written completion date, and a
+      // start-date save re-normalizes the input — repaint the date fields from the
+      // authoritative item the source returned.
+      if (field === 'status' || field === 'startDate') this.#paintDates(node);
       this.sfx?.quill();
       this.#setSaveState('saved', `${label.toLowerCase()} saved`);
       this.#emitChanged();

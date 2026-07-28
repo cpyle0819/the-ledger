@@ -50,6 +50,7 @@ export function resolveCapabilities(plugin: SourcePlugin): Capabilities {
     attachments: !!c.attachments,
     epicCounts: !!c.epicCounts && has('countEpicTasks'),
     points: !!c.points,
+    taskDates: !!c.taskDates,
   };
 }
 

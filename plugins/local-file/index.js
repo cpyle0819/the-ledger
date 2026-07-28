@@ -109,6 +109,8 @@ function shapeItem(item, items) {
     description: item.description || '',
     descriptionContentType: 'text/markdown',
     estimate: item.estimate ?? null,
+    startDate: item.startDate || null,
+    completionDate: item.completionDate || null,
     comments: (item.comments || []).map((c) => ({
       id: c.id,
       message: c.message || '',
@@ -133,7 +135,7 @@ module.exports = function createLocalFilePlugin() {
     capabilities: {
       hierarchy: true,
       readItem: true,
-      editFields: ['status', 'description', 'assignee', 'estimate'],
+      editFields: ['status', 'description', 'assignee', 'estimate', 'startDate'],
       create: true,
       createFields: ['type', 'title', 'parent', 'project', 'assignee', 'description', 'estimate'],
       comment: true,
@@ -143,6 +145,7 @@ module.exports = function createLocalFilePlugin() {
       projects: true,
       attachments: false,
       points: true,
+      taskDates: true,
     },
 
     // The projects (declared in the file) the board can scope to. null project =
@@ -183,13 +186,31 @@ module.exports = function createLocalFilePlugin() {
     },
 
     editField(id, field, value) {
-      if (!['status', 'description', 'assignee', 'estimate'].includes(field)) {
+      if (!['status', 'description', 'assignee', 'estimate', 'startDate'].includes(field)) {
         throw Object.assign(new Error(`Field '${field}' is not editable`), { status: 400 });
       }
       const { items } = load();
       const item = items.find((it) => it.id === id);
       if (!item) throw Object.assign(new Error('Item not found'), { status: 404 });
-      item[field] = field === 'estimate' ? (Number(value) || null) : value;
+      if (field === 'estimate') item.estimate = Number(value) || null;
+      // Start date: task-tier only (dates are a task concept), an empty value clears
+      // it; anything else is stored as-is (the client sends an ISO date string from
+      // the <input type="date">). Reject the write on a higher tier rather than
+      // silently accruing a field no surface shows.
+      else if (field === 'startDate') {
+        if (kindOf(item.type) !== 'task') throw Object.assign(new Error('Start date applies to tasks only'), { status: 400 });
+        item.startDate = value ? String(value) : null;
+      }
+      else item[field] = value;
+      // Completion date is a side effect of status, never edited directly: stamp it
+      // when a TASK first crosses into a closed state, clear it if it reopens. Only
+      // tasks carry dates (the taskDates capability is task-tier), so higher tiers
+      // don't accrue a completion date from their own status changes.
+      if (field === 'status' && kindOf(item.type) === 'task') {
+        const closed = CLOSED_STATES.has(item.status || 'Open');
+        if (closed && !item.completionDate) item.completionDate = new Date().toISOString();
+        else if (!closed) item.completionDate = null;
+      }
       item.lastUpdatedDate = new Date().toISOString();
       save(items);
       return shapeItem(item, items);
