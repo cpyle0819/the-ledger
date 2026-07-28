@@ -260,6 +260,7 @@ export class LedgerDrawer extends HTMLElement {
           <div class="d-field" id="d-estimate-field"><label for="d-estimate-edit">estimate (points)<span class="est-warn" id="d-estimate-warn" title="No estimate set" aria-label="No estimate set" hidden>⚠</span></label><input type="number" id="d-estimate-edit" min="0" step="1" spellcheck="false" placeholder="—" /></div>
           <div class="d-field" id="d-startdate-field" hidden><label for="d-startdate-edit">start date</label><input type="date" id="d-startdate-edit" spellcheck="false" /></div>
           <div class="d-field" id="d-completion-field" hidden><label id="d-completion-label">completed</label><div class="d-readonly" id="d-completion-text" aria-labelledby="d-completion-label"></div></div>
+          <div class="d-field" id="d-duration-field" hidden><label id="d-duration-label">duration</label><div class="d-readonly" id="d-duration-text" aria-labelledby="d-duration-label"></div></div>
         </div>
         <div class="d-contains" id="d-contains" hidden></div>
         <div class="d-desc-head">
@@ -464,6 +465,38 @@ export class LedgerDrawer extends HTMLElement {
     const compText = this.#$('#d-completion-text');
     if (item.completionDate) { compText.className = 'd-readonly'; compText.textContent = this.#formatDate(item.completionDate); }
     else { compText.className = 'd-readonly empty'; compText.textContent = 'date not recorded'; }
+
+    // Duration: how long a finished task took, start → completion. Meaningful only
+    // once both dates exist (a closed task with a recorded start), so it hides for
+    // an open task, a closed task started but not date-stamped, or one closed
+    // without a start. A negative span (completion before start — clock skew or a
+    // hand-edited start) is suppressed rather than shown as a misleading "0 days".
+    const days = this.#durationDays(item.startDate, item.completionDate);
+    const durField = this.#$('#d-duration-field');
+    durField.hidden = !(showDates && days != null);
+    if (days != null) this.#$('#d-duration-text').textContent = this.#formatDuration(days);
+  }
+
+  // Whole days between two ISO date-ish values, start → end, or null when either is
+  // absent/unparseable or end precedes start. Both stored values are date-granular
+  // (often pinned to UTC midnight), so this counts calendar days in UTC — matching
+  // how the start/completion dates themselves are displayed.
+  #durationDays(start: string | null | undefined, end: string | null | undefined): number | null {
+    if (!start || !end) return null;
+    const s = Date.parse(this.#dateInputValue(start));
+    const e = Date.parse(this.#dateInputValue(end));
+    if (Number.isNaN(s) || Number.isNaN(e) || e < s) return null;
+    return Math.round((e - s) / 86_400_000);
+  }
+
+  // A whole-day count as a human phrase: "same day", "1 day", "6 days", "3 weeks
+  // (21 days)" once a week or more so a large span reads at a glance without losing
+  // the exact figure.
+  #formatDuration(days: number): string {
+    if (days === 0) return 'same day';
+    if (days < 7) return days === 1 ? '1 day' : `${days} days`;
+    const weeks = Math.round(days / 7);
+    return `${weeks === 1 ? '1 week' : `${weeks} weeks`} (${days} days)`;
   }
 
   // An ISO timestamp (or date) narrowed to the YYYY-MM-DD an <input type="date">
