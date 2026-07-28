@@ -103,14 +103,11 @@ function whoAmISync() {
 
 // ---- status mapping -----------------------------------------------------
 
-const CLOSED_STATES = new Set(['Resolved', 'Closed']);
-
-// A GitHub issue's OPEN/CLOSED + close reason -> the board's tri-state. A closed
-// issue reads Resolved (completed / default) or Closed (explicitly not planned),
-// so the board's status filter and pill match GitHub's own distinction.
-function issueStatus(state, reason) {
-  if (String(state).toUpperCase() === 'OPEN') return 'Open';
-  return String(reason).toUpperCase() === 'NOT_PLANNED' ? 'Closed' : 'Resolved';
+// A GitHub issue's OPEN/CLOSED state -> the contract's binary status. The close
+// reason (completed vs not_planned) is not surfaced: the contract status is
+// binary, so any closed issue reads 'Closed' regardless of why it closed.
+function issueStatus(state) {
+  return String(state).toUpperCase() === 'OPEN' ? 'Open' : 'Closed';
 }
 // Milestones/projects carry only open/closed; map straight across.
 function openClosed(stateOrClosed) {
@@ -120,7 +117,7 @@ function openClosed(stateOrClosed) {
 
 function passesStatus(status, filter) {
   if (filter === 'ALL') return true;
-  const closed = CLOSED_STATES.has(status);
+  const closed = status === 'Closed';
   return filter === 'Closed' ? closed : !closed;
 }
 
@@ -177,7 +174,7 @@ async function buildForest() {
   const issues = repo.issues.nodes.map((n) => ({
     number: n.number,
     title: n.title,
-    status: issueStatus(n.state, n.stateReason),
+    status: issueStatus(n.state),
     milestone: n.milestone?.number ?? null,
     assignees: n.assignees.nodes.map((a) => a.login),
     labels: n.labels.nodes.map((l) => l.name),
@@ -352,8 +349,11 @@ module.exports = function createGithubPlugin() {
       const { tier, number } = parseId(id);
       if (tier === 'I') {
         if (field === 'status') {
+          // Binary status in: 'Open' reopens, 'Closed' closes. GitHub wants a
+          // close reason; 'completed' is the natural "done" that maps back to
+          // 'Closed' on the next read (the not_planned distinction isn't modeled).
           if (value === 'Open') await rest('PATCH', `issues/${number}`, { state: 'open' });
-          else await rest('PATCH', `issues/${number}`, { state: 'closed', state_reason: value === 'Closed' ? 'not_planned' : 'completed' });
+          else await rest('PATCH', `issues/${number}`, { state: 'closed', state_reason: 'completed' });
         } else if (field === 'assignee') {
           await rest('PATCH', `issues/${number}`, { assignees: value ? [String(value)] : [] });
         } else if (field === 'description') {
@@ -439,7 +439,7 @@ async function readIssue(number) {
   const labels = n.labels.nodes.map((l) => l.name);
   return {
     id: `I:${n.number}`, shortId: `${n.number}`, kind: 'task', type: issueType(labels),
-    title: n.title, status: issueStatus(n.state, n.stateReason),
+    title: n.title, status: issueStatus(n.state),
     assignee: n.assignees.nodes[0]?.login || null, project: null, context: false, childCount: 0,
     url: ISSUE_URL(n.number),
     description: n.body || '', descriptionContentType: 'text/markdown', estimate: null,

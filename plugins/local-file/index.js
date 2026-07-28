@@ -94,7 +94,9 @@ function shapeNode(item, items, context = false) {
     kind: kindOf(item.type),
     type: String(item.type || 'TASK').toUpperCase(),
     title: item.title || '(untitled)',
-    status: item.status || 'Open',
+    // Contract status is binary. Fold this source's stored value (which may be a
+    // legacy 'Resolved' from before the binary model) to Open/Closed on read.
+    status: CLOSED_STATES.has(item.status) ? 'Closed' : 'Open',
     assignee: item.assignee || null,
     project: item.project || null,
     context,

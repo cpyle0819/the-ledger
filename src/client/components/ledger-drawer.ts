@@ -40,7 +40,7 @@ export interface Sfx { pageTurn(): void; quill(): void }
 /** Optional toast surface. */
 export type ToastFn = (msg: string, isErr?: boolean) => void;
 
-const STATUSES = ['Open', 'Resolved', 'Closed'];
+const STATUSES = ['Open', 'Closed'];
 
 /** Sum the estimate points across a list of nodes (missing/zero estimates count
  *  as 0). Used for the Planning group effort figures and the risk rollup. */
@@ -48,11 +48,10 @@ function sumEffort(nodes: LedgerNode[]): number {
   return nodes.reduce((s, n) => s + (Number((n as { estimate?: number | null }).estimate) || 0), 0);
 }
 
-// A done item's status reads 'Resolved' OR 'Closed' (tracker folds both into a
-// single terminal state); mirror the plugin's own definition so Planning counts
-// the same items as closed that the board's status filter does.
-const CLOSED_STATES = new Set(['Resolved', 'Closed']);
-const isClosed = (n: LedgerNode): boolean => CLOSED_STATES.has(n.status);
+// Status is binary at the contract: a source has already folded its native
+// terminal states (tracker's Resolved, a GitHub close reason, …) into 'Closed'
+// on read, so Planning counts closed exactly as the board's status filter does.
+const isClosed = (n: LedgerNode): boolean => n.status === 'Closed';
 
 const sheet = new CSSStyleSheet();
 sheet.replaceSync(`
@@ -460,7 +459,7 @@ export class LedgerDrawer extends HTMLElement {
     // (the concept doesn't apply yet — no empty-state noise). A closed task with no
     // stamped date (closed before this feature, or by a source that doesn't record
     // one) reads "completed (date not recorded)" rather than the false "not yet".
-    const closed = CLOSED_STATES.has(item.status);
+    const closed = item.status === 'Closed';
     this.#$('#d-completion-field').hidden = !(showDates && (item.completionDate || closed));
     const compText = this.#$('#d-completion-text');
     if (item.completionDate) { compText.className = 'd-readonly'; compText.textContent = this.#formatDate(item.completionDate); }

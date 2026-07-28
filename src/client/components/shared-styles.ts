@@ -38,7 +38,7 @@ export const chromeSheet = sheet(`
   .pill { font-family: var(--fell, serif); font-style: italic; font-size: 14px; color: var(--ink-soft, #5b4a30); display: inline-flex; align-items: center; gap: 5px; }
   .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-faint, #6f5c3e); }
   .st-Open .dot { background: var(--seal-epic, #8a5a2b); }
-  .st-Closed .dot, .st-Resolved .dot { background: var(--seal-story, #3f5e4e); }
+  .st-Closed .dot { background: var(--seal-story, #3f5e4e); }
   .who { font-family: var(--gara, serif); font-style: italic; font-size: 13px; color: var(--ink-soft, #5b4a30); }
   .who b { color: var(--ink, #33291a); font-weight: 600; font-style: normal; }
   /* Context node: assigned to someone other than the filtered assignee, present
