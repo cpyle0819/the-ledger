@@ -98,6 +98,18 @@ sheet.replaceSync(`
   .ghost-btn:hover { color: #fff; border-color: var(--brass, #b08d4f); background: linear-gradient(180deg, var(--leather-2, #33230f), var(--leather, #2a1c10)); }
 
   .d-title { font-family: var(--fell, serif); font-weight: 400; font-size: 30px; line-height: 1.2; margin: 18px 0 12px; color: var(--ink, #33291a); }
+  /* When the title is editable, the heading reads as an affordance: a dotted
+     underline on hover/focus that echoes the description edit target. */
+  .d-title.editable { cursor: text; border-radius: 2px; }
+  .d-title.editable:hover, .d-title.editable:focus-visible { text-decoration: underline dotted var(--brass-lo, #7a5f30); text-underline-offset: 5px; }
+  /* The in-place title input mirrors the heading's type so the swap is seamless;
+     just enough box to read as an editable field. */
+  .d-title-edit {
+    box-sizing: border-box; width: 100%; margin: 18px 0 12px; padding: 2px 6px;
+    font-family: var(--fell, serif); font-weight: 400; font-size: 30px; line-height: 1.2; color: var(--ink, #33291a);
+    background: rgba(255,250,235,.7); border: 1px solid var(--parch-edge, #c4ac7c); border-radius: 2px; outline: none;
+  }
+  .d-title-edit:focus { border-color: var(--brass-lo, #7a5f30); background: #fffaeb; }
   .d-rule { height: 2px; background: linear-gradient(90deg, var(--brass-lo, #7a5f30), transparent); margin-bottom: 20px; }
   .d-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 22px; margin-bottom: 20px; }
   .d-field label { display: block; font-family: var(--fell, serif); font-style: italic; font-size: 15px; color: var(--ink-soft, #5b4a30); margin-bottom: 5px; }
@@ -235,6 +247,8 @@ export class LedgerDrawer extends HTMLElement {
   #item: (LedgerNode & Partial<Item>) | null = null;
   #descMode: 'read' | 'edit' = 'read';
   #descCancelled = false;
+  #titleMode: 'read' | 'edit' = 'read';
+  #titleCancelled = false;
   #lastFocus: HTMLElement | null = null;
   #stepCache = new Map<string, string[]>();
   #ta: TypeaheadState = { items: [], active: -1, seq: 0, debounce: null };
@@ -258,6 +272,7 @@ export class LedgerDrawer extends HTMLElement {
           <button class="ghost-btn" id="d-close" aria-keyshortcuts="Escape" title="Close (Esc)"><span aria-hidden="true">✕ </span>close</button>
         </div>
         <h2 class="d-title" id="d-title"></h2>
+        <input type="text" class="d-title-edit" id="d-title-edit" spellcheck="false" aria-label="Title" hidden />
         <div class="d-risk" id="d-risk" hidden></div>
         <div class="d-rule" aria-hidden="true"></div>
         <div class="d-grid">
@@ -311,6 +326,16 @@ export class LedgerDrawer extends HTMLElement {
       const value = (e.target as HTMLInputElement).value; // '' or YYYY-MM-DD
       const current = this.#dateInputValue(this.#item?.startDate);
       if (value !== current) this.#edit('startDate', value, 'Start date');
+    });
+
+    // Title: click/Enter the heading to edit in place; blur or Enter saves,
+    // Escape cancels — the same read↔edit swap as the description, in one field.
+    asButton(this.#$('#d-title'), () => this.#enterTitleEdit());
+    const titleInput = this.#$<HTMLInputElement>('#d-title-edit');
+    titleInput.addEventListener('blur', () => this.#saveTitleOnBlur());
+    titleInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); titleInput.blur(); }
+      else if (e.key === 'Escape') { e.stopPropagation(); this.#cancelTitleEdit(); }
     });
 
     // Description: click/Enter the rendered view to edit; blur saves; cancel discards.
@@ -422,9 +447,17 @@ export class LedgerDrawer extends HTMLElement {
       short.removeAttribute('href'); short.classList.add('no-link'); copyBtn.hidden = true;
       prefix.textContent = '';
     }
-    this.#$('#d-title').textContent = item.title;
-
     const canEdit = (f: EditableField) => (caps.editFields || []).includes(f);
+    // Title starts in read mode on every open; the heading only reads as an
+    // affordance (role=button, hover underline) when the source allows the edit.
+    this.#setTitleMode('read');
+    const title = this.#$('#d-title');
+    title.textContent = item.title;
+    const titleEditable = canEdit('title');
+    title.classList.toggle('editable', titleEditable);
+    if (titleEditable) { title.setAttribute('role', 'button'); title.tabIndex = 0; }
+    else { title.removeAttribute('role'); title.removeAttribute('tabindex'); }
+
     this.#$('#d-status-field').hidden = !canEdit('status');
     this.#$('#d-assignee-field').hidden = !canEdit('assignee');
     this.#$('#d-estimate-field').hidden = !canEdit('estimate');
@@ -601,6 +634,37 @@ export class LedgerDrawer extends HTMLElement {
     const item = await this.#edit('description', value, 'Description').catch(() => null);
     if (item) this.#renderMarkdown(item.description || '');
     this.#setDescMode('read');
+  }
+
+  // ---- title edit mode ----
+  // Same read↔edit swap as the description, one field: the heading hides, the
+  // input takes its place carrying the current title. Save on blur/Enter, cancel
+  // on Escape (which restores the heading unchanged).
+  #setTitleMode(mode: 'read' | 'edit'): void {
+    this.#titleMode = mode;
+    const editing = mode === 'edit';
+    this.#$('#d-title').hidden = editing;
+    const input = this.#$<HTMLInputElement>('#d-title-edit');
+    input.hidden = !editing;
+    if (editing) { input.focus(); input.select(); }
+  }
+  #enterTitleEdit(): void {
+    if (this.#titleMode === 'edit' || !(this.#caps.editFields || []).includes('title')) return;
+    this.#titleCancelled = false;
+    this.#$<HTMLInputElement>('#d-title-edit').value = this.#item?.title || '';
+    this.#setTitleMode('edit');
+  }
+  #cancelTitleEdit(): void { this.#titleCancelled = true; this.#setTitleMode('read'); }
+  async #saveTitleOnBlur(): Promise<void> {
+    if (this.#titleMode !== 'edit') return;
+    if (this.#titleCancelled) { this.#titleCancelled = false; return; }
+    const value = this.#$<HTMLInputElement>('#d-title-edit').value.trim();
+    // A blank or unchanged title is a no-op: fall back to read mode showing the
+    // existing heading rather than pushing an empty edit the source would reject.
+    if (!value || value === (this.#item?.title || '')) { this.#setTitleMode('read'); return; }
+    const item = await this.#edit('title', value, 'Title').catch(() => null);
+    if (item) this.#$('#d-title').textContent = item.title;
+    this.#setTitleMode('read');
   }
 
   #setSaveState(kind: '' | 'saved', label?: string): void {

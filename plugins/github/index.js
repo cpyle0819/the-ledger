@@ -280,7 +280,7 @@ module.exports = function createGithubPlugin() {
     capabilities: {
       hierarchy: true,
       readItem: true,
-      editFields: ['status', 'assignee', 'description'],
+      editFields: ['title', 'status', 'assignee', 'description'],
       comment: true,
       editOwnComments: true,
       searchAssignees: true,
@@ -347,8 +347,17 @@ module.exports = function createGithubPlugin() {
     // change. Returns the re-read item.
     async editField(id, field, value) {
       const { tier, number } = parseId(id);
+      // Title is required and non-blank across every tier: reject a blank edit
+      // rather than PATCHing an empty title (which reads back as '(untitled)').
+      const titleValue = () => {
+        const t = String(value ?? '').trim();
+        if (!t) throw Object.assign(new Error('title is required'), { status: 400 });
+        return t;
+      };
       if (tier === 'I') {
-        if (field === 'status') {
+        if (field === 'title') {
+          await rest('PATCH', `issues/${number}`, { title: titleValue() });
+        } else if (field === 'status') {
           // Binary status in: 'Open' reopens, 'Closed' closes. GitHub wants a
           // close reason; 'completed' is the natural "done" that maps back to
           // 'Closed' on the next read (the not_planned distinction isn't modeled).
@@ -364,10 +373,29 @@ module.exports = function createGithubPlugin() {
         invalidate();
         return readIssue(number);
       }
-      if (tier === 'M' && field === 'status') {
-        await rest('PATCH', `milestones/${number}`, { state: value === 'Open' ? 'open' : 'closed' });
+      if (tier === 'M') {
+        if (field === 'title') await rest('PATCH', `milestones/${number}`, { title: titleValue() });
+        else if (field === 'status') await rest('PATCH', `milestones/${number}`, { state: value === 'Open' ? 'open' : 'closed' });
+        else throw Object.assign(new Error(`Field '${field}' is not editable on a milestone`), { status: 400 });
         invalidate();
         return readMilestone(number);
+      }
+      // ProjectsV2 (epics) live only in GraphQL: title is set via updateProjectV2,
+      // which needs the project's global node id (not its number), fetched first.
+      if (tier === 'P' && field === 'title') {
+        const title = titleValue();
+        const found = await graphql(
+          `query($owner:String!,$number:Int!){ user(login:$owner){ projectV2(number:$number){ id } } }`,
+          { owner: OWNER, number },
+        );
+        const projectId = found.data.user?.projectV2?.id;
+        if (!projectId) throw Object.assign(new Error('Project not found'), { status: 404 });
+        await graphql(
+          `mutation($id:ID!,$title:String!){ updateProjectV2(input:{projectId:$id,title:$title}){ projectV2{ id } } }`,
+          { id: projectId, title },
+        );
+        invalidate();
+        return readProject(number);
       }
       throw Object.assign(new Error(`Field '${field}' is not editable on this item`), { status: 400 });
     },

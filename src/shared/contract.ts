@@ -137,7 +137,7 @@ export interface User {
 
 /** The fields a source may allow editing. The board gates each field's control
  *  on membership in Capabilities.editFields. */
-export type EditableField = 'status' | 'description' | 'assignee' | 'estimate' | 'workflowAction' | 'startDate';
+export type EditableField = 'title' | 'status' | 'description' | 'assignee' | 'estimate' | 'workflowAction' | 'startDate';
 
 /** The fields a create request may carry. A source declares which it accepts in
  *  Capabilities.createFields (parallel to editFields); the compose UI shows a

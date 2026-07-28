@@ -137,7 +137,7 @@ module.exports = function createLocalFilePlugin() {
     capabilities: {
       hierarchy: true,
       readItem: true,
-      editFields: ['status', 'description', 'assignee', 'estimate', 'startDate'],
+      editFields: ['title', 'status', 'description', 'assignee', 'estimate', 'startDate'],
       create: true,
       createFields: ['type', 'title', 'parent', 'project', 'assignee', 'description', 'estimate'],
       comment: true,
@@ -188,13 +188,20 @@ module.exports = function createLocalFilePlugin() {
     },
 
     editField(id, field, value) {
-      if (!['status', 'description', 'assignee', 'estimate', 'startDate'].includes(field)) {
+      if (!['title', 'status', 'description', 'assignee', 'estimate', 'startDate'].includes(field)) {
         throw Object.assign(new Error(`Field '${field}' is not editable`), { status: 400 });
       }
       const { items } = load();
       const item = items.find((it) => it.id === id);
       if (!item) throw Object.assign(new Error('Item not found'), { status: 404 });
       if (field === 'estimate') item.estimate = Number(value) || null;
+      // Title is required and non-blank: reject an empty edit rather than storing a
+      // titleless item (readItem falls back to '(untitled)', which would mask the loss).
+      else if (field === 'title') {
+        const title = String(value ?? '').trim();
+        if (!title) throw Object.assign(new Error('title is required'), { status: 400 });
+        item.title = title;
+      }
       // Start date: task-tier only (dates are a task concept), an empty value clears
       // it; anything else is stored as-is (the client sends an ISO date string from
       // the <input type="date">). Reject the write on a higher tier rather than
