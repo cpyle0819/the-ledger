@@ -127,6 +127,10 @@ sheet.replaceSync(`
      lights a warning tone AND carries an arrow + literal numbers, so the risk
      reads without relying on color alone (see the hierarchy research). */
   .d-risk { display: flex; align-items: center; gap: 12px; margin: 0 0 14px; font-family: var(--fell, serif); font-size: 14px; }
+  /* [hidden] must win over the display:flex above (and any state class) — an
+     explicit display value otherwise overrides the UA hidden rule, leaving a
+     hidden-but-visible meter carrying a prior item's stale state. */
+  .d-risk[hidden] { display: none; }
   .d-risk .rmeter {
     position: relative; flex: 0 0 132px; height: 9px; border-radius: 5px; overflow: hidden;
     background: rgba(91,74,48,.18); box-shadow: inset 0 0 0 1px rgba(91,74,48,.25);
@@ -628,10 +632,20 @@ export class LedgerDrawer extends HTMLElement {
   // Encoded redundantly (color + arrow + literal numbers) so it doesn't rely on
   // color alone. Tasks are leaves and epics/stories with no own-estimate have no
   // budget to measure against, so they show a muted note instead of a meter.
+  // Fully reset the risk box: hidden AND stripped of any prior item's state
+  // class + content. The drawer is a reused element, so hiding alone is not
+  // enough — a leftover `over`/`under` class with stale numbers would still show
+  // (the .d-risk display rule outranks the [hidden] attribute; see the CSS). Any
+  // path that means "no meter here" must clear, not just hide.
+  #hideRisk(): void {
+    const box = this.#$('#d-risk');
+    box.hidden = true; box.className = 'd-risk'; box.innerHTML = '';
+  }
+
   #renderRisk(item: LedgerNode & Partial<Item>, children: LedgerNode[]): void {
     const box = this.#$('#d-risk');
     // A source with no point estimates has no budget to measure against — no meter.
-    if (!this.#caps.points) { box.hidden = true; box.innerHTML = ''; return; }
+    if (!this.#caps.points) { this.#hideRisk(); return; }
     const budget = Number(item.estimate) || 0;
     const actual = sumEffort(children);
 
@@ -679,12 +693,11 @@ export class LedgerDrawer extends HTMLElement {
   // to show contents used to be existing children; now the add affordances count).
   async #renderContains(item: LedgerNode & Partial<Item>): Promise<void> {
     const box = this.#$('#d-contains');
-    const risk = this.#$('#d-risk');
     const canCreate = !!this.#caps.create;
     // A task is a leaf: no children, nothing to add under it, no budget to assess.
-    if (item.kind === 'task') { box.hidden = true; box.innerHTML = ''; risk.hidden = true; return; }
+    if (item.kind === 'task') { box.hidden = true; box.innerHTML = ''; this.#hideRisk(); return; }
     // Nothing to show and can't add? Then there's no section to render.
-    if (!item.childCount && !canCreate) { box.hidden = true; box.innerHTML = ''; risk.hidden = true; return; }
+    if (!item.childCount && !canCreate) { box.hidden = true; box.innerHTML = ''; this.#hideRisk(); return; }
 
     // Planning measures capacity against the full decomposition, so it loads the
     // children at ALL statuses (closed included) rather than the board's filtered
