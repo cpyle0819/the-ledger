@@ -24,7 +24,7 @@ import { chromeSheet, idTag, noEstimateIcon } from './shared-styles.js';
 import { renderInto } from './markdown.js';
 import './ledger-comment-thread.js';
 import type { LedgerCommentThread } from './ledger-comment-thread.js';
-import type { Item, LedgerNode, User, EditableField, Capabilities } from '../../shared/contract';
+import type { Item, LedgerNode, User, EditableField, Capabilities, EpicVelocity } from '../../shared/contract';
 
 /** The fetch wrapper the board injects (see app's api()). */
 export type ApiFn = <T = unknown>(path: string, opts?: RequestInit) => Promise<T>;
@@ -35,6 +35,9 @@ export type FetchChildrenFn = (node: LedgerNode) => Promise<LedgerNode[]>;
  *  rollup — capacity is measured against the full decomposition, not the board's
  *  filtered view. Injected so the drawer stays transport-agnostic. */
 export type PlanningChildrenFn = (node: LedgerNode) => Promise<LedgerNode[]>;
+/** Fetches an epic's points-per-day delivery rate over its whole task tree.
+ *  Injected so the drawer stays transport-agnostic; null when unsupported. */
+export type EpicVelocityFn = (epicId: string) => Promise<EpicVelocity>;
 /** Optional foley cues. */
 export interface Sfx { pageTurn(): void; quill(): void }
 /** Optional toast surface. */
@@ -173,6 +176,10 @@ sheet.replaceSync(`
   .cclosed-caret { display: inline-block; width: 1em; color: var(--ink-faint, #6f5c3e); font-size: 12px; }
   .cclosed-list { padding-left: 16px; }
   .cgroup { margin-top: 8px; }
+  /* Delivery-rate line: a calm italic footnote under the Planning groups. A top
+     rule sets it apart as a summary of the tree above, not another group. */
+  .cvelocity { margin-top: 12px; padding-top: 10px; border-top: 1px dotted rgba(91,74,48,.35);
+    font-family: var(--fell, serif); font-style: italic; font-size: 14px; color: var(--ink-soft, #5b4a30); }
   .cgroup-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 10px 0 4px; }
   .cgroup-label { font-family: var(--fell, serif); font-style: italic; font-size: 15px; color: var(--ink-soft, #5b4a30); }
   /* The per-section add button is revealed on hover/focus of its group, so the
@@ -221,6 +228,7 @@ export class LedgerDrawer extends HTMLElement {
   api: ApiFn | null = null;
   fetchChildren: FetchChildrenFn | null = null;
   planningChildren: PlanningChildrenFn | null = null;
+  epicVelocity: EpicVelocityFn | null = null;
   sfx: Sfx | null = null;
   toast: ToastFn | null = null;
   #caps: Partial<Capabilities> = {};
@@ -762,6 +770,31 @@ export class LedgerDrawer extends HTMLElement {
       }
       box.append(g);
     }
+
+    // Delivery-rate line: points completed per calendar day across the epic's task
+    // tree. Epic-only, gated on the capability + point estimates. Fetched lazily so
+    // it never blocks the Planning render; a slot is appended now and filled when
+    // the rollup resolves, guarded against the drawer moving to another item.
+    if (item.kind === 'epic' && this.epicVelocity && this.#caps.epicVelocity && this.#caps.points) {
+      const vel = el('div', 'cvelocity', 'Delivery rate · calculating…');
+      box.append(vel);
+      const forId = item.id;
+      this.epicVelocity(item.id)
+        .then((v) => { if (this.#item?.id === forId) vel.textContent = this.#velocityText(v); })
+        .catch(() => { if (this.#item?.id === forId) vel.remove(); });
+    }
+  }
+
+  // The delivery-rate line's text. A rate needs points AND a non-zero calendar span
+  // across tasks that have a computable duration; short of that, say why rather than
+  // print a misleading "0". `tasksCounted` is surfaced as an n= caveat because a
+  // rate from one or two tasks is noise, not a trend.
+  #velocityText(v: EpicVelocity): string {
+    if (!v.tasksCounted) return 'Delivery rate · no tasks with recorded start + completion dates yet.';
+    const n = `across ${v.tasksCounted} ${v.tasksCounted === 1 ? 'task' : 'tasks'}`;
+    if (v.pointsPerDay == null) return `Delivery rate · ${v.points} pts completed same-day (${n}); no per-day rate.`;
+    const rate = v.pointsPerDay >= 10 ? Math.round(v.pointsPerDay) : v.pointsPerDay.toFixed(1);
+    return `Delivery rate · ≈ ${rate} pts/day (${v.points} pts over ${v.days} ${v.days === 1 ? 'day' : 'days'}, ${n}).`;
   }
 
   // One child line in the Planning list. `deemph` dims it (used for closed items

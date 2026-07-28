@@ -139,6 +139,15 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, { counts });
     }
 
+    // Points-per-day delivery rate for one epic, over its whole task tree. A
+    // historical rollup over completed work, so it takes no filters (spanning all
+    // statuses). Called lazily when an epic drawer opens; never blocks first paint.
+    if (source.capabilities.epicVelocity && p === '/api/velocity' && req.method === 'GET') {
+      const epicId = q.get('epic') || '';
+      if (!epicId) throw Object.assign(new Error('epic is required'), { status: 400 });
+      return sendJSON(res, 200, { velocity: await call('epicVelocity', epicId) });
+    }
+
     if (source.capabilities.projects && p === '/api/projects' && req.method === 'GET') {
       return sendJSON(res, 200, { projects: await call('listProjects') });
     }

@@ -47,6 +47,23 @@ export interface EpicCounts {
   tasks: number;
 }
 
+/** A rough delivery-rate rollup for an epic: story points completed per calendar
+ *  day across the epic's whole task tree. `points` sums the estimates of every
+ *  task (direct or under a story) that has a computable duration (both a start and
+ *  a completion date). `days` is the CALENDAR SPAN — earliest start to latest
+ *  completion across those same tasks — not the sum of per-task durations, so
+ *  parallel work counts once. `pointsPerDay` is points/days (null when days is 0,
+ *  e.g. every qualifying task finished the day it started). `tasksCounted` is how
+ *  many tasks contributed, so the UI can caveat a figure drawn from few samples.
+ *  Unlike EpicCounts this is a HISTORICAL metric over completed work, so it spans
+ *  all statuses and ignores the board's status filter. */
+export interface EpicVelocity {
+  points: number;
+  days: number;
+  pointsPerDay: number | null;
+  tasksCounted: number;
+}
+
 /** A cheap list node — what getChildren returns. Rich enough to render a card
  *  without a per-item fetch; the full Item is fetched lazily when a drawer opens. */
 export interface LedgerNode {
@@ -166,6 +183,11 @@ export interface Capabilities {
    *  (backed by countEpicTasks). When absent, the card falls back to the raw
    *  "N within" child count. */
   epicCounts: boolean;
+  /** Whether the source can compute an epic's points-per-day delivery rate
+   *  (backed by epicVelocity). Requires task start/completion dates and point
+   *  estimates to be meaningful; when absent, the epic drawer shows no velocity
+   *  line. */
+  epicVelocity: boolean;
   /** Whether the source's items carry point estimates at all. When absent, the UI
    *  shows no estimate figures, no planning risk meter, and no missing-estimate
    *  warnings — a source with no concept of points (e.g. GitHub issues) isn't
@@ -215,6 +237,13 @@ export interface SourcePlugin {
    *  epicCounts capability; the board calls it after the roots render, so a slow
    *  or unavailable rollup never blocks the first paint. */
   countEpicTasks?(epicIds: string[], filters: Filters): MaybePromise<Record<string, EpicCounts>>;
+
+  /** Compute the epic's points-per-day delivery rate across its whole task tree.
+   *  A HISTORICAL rollup over completed work: it spans all statuses (a status
+   *  filter would exclude the very closed tasks it measures), so it takes no
+   *  Filters. Gated by the epicVelocity capability; the drawer calls it lazily
+   *  when an epic opens, so a slow rollup never blocks the drawer's first paint. */
+  epicVelocity?(epicId: string): MaybePromise<EpicVelocity>;
 }
 
 /** A plugin method may answer synchronously or with a Promise; the host awaits

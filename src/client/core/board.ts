@@ -20,7 +20,7 @@ import { emptyMsg } from '../views/render-helpers.js';
 import type { ViewHandlers, AddRequest } from '../views/types.js';
 import type { LedgerDrawer } from '../components/ledger-drawer.js';
 import type { LedgerCompose, ComposeAncestor } from '../components/ledger-compose.js';
-import type { Item } from '../../shared/contract';
+import type { Item, EpicVelocity } from '../../shared/contract';
 
 const drawer = (): LedgerDrawer => need<LedgerDrawer>('#drawer');
 const compose = (): LedgerCompose => need<LedgerCompose>('#compose');
@@ -360,6 +360,12 @@ export function wireDrawer(): void {
   d.planningChildren = (node) => (state.status === 'ALL'
     ? ensureChildren(node as CachedNode)
     : fetchChildrenAllStatus(node.id));
+  // Points-per-day delivery rate for an epic, computed by the source over its whole
+  // task tree. Always wired (caps load AFTER wireDrawer runs, so gating here would
+  // bake in a stale null); the drawer gates the actual call on its own
+  // epicVelocity capability. Historical over completed work, so it takes no filters.
+  d.epicVelocity = (epicId) =>
+    api<{ velocity: EpicVelocity }>(`/api/velocity?epic=${encodeURIComponent(epicId)}`).then((r) => r.velocity);
   d.addEventListener('item-changed', (e) => { if (e.detail?.item) patchNode(e.detail.item); });
   // The drawer closed. Forget the open item and take it out of the URL. A drawer
   // the user opened pushed a history entry, so a user-driven close pops it (Back's
