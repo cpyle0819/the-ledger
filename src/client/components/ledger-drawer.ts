@@ -81,6 +81,21 @@ sheet.replaceSync(`
      padding-bottom and trailing margins at a flex-column scroll end). */
   .scroll-tail { height: 48px; }
 
+  /* Return-up control: shown only when the trail has a parent to go back to (an
+     in-drawer hop into a child). A quiet italic link above the head, echoing the
+     source-link treatment; the parent title it returns to rides along, truncated. */
+  .d-back {
+    align-self: flex-start; display: inline-flex; align-items: baseline; gap: 6px; max-width: 100%;
+    margin: -6px 0 6px; padding: 2px 2px; border: 0; background: none; cursor: pointer;
+    font-family: var(--fell, serif); font-style: italic; font-size: 15px; color: var(--ink-red, #8f2f22);
+  }
+  .d-back:hover { color: var(--wax, #7c2b22); }
+  /* An explicit display overrides the UA [hidden] rule, so hide must be explicit
+     (same trap as the risk box) — else a back with an empty trail still shows. */
+  .d-back[hidden] { display: none; }
+  .d-back-arrow { font-style: normal; }
+  #d-back-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-bottom: 1px dotted currentColor; }
+
   .head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
   .dh-left { display: flex; align-items: center; gap: 12px; }
   .d-short { font-family: var(--fell, serif); font-style: italic; font-size: 16px; color: var(--ink-red, #8f2f22); text-decoration: none; border-bottom: 1px dotted var(--ink-red, #8f2f22); }
@@ -250,6 +265,12 @@ export class LedgerDrawer extends HTMLElement {
   #titleMode: 'read' | 'edit' = 'read';
   #titleCancelled = false;
   #lastFocus: HTMLElement | null = null;
+  // The trail of items navigated into from within the drawer (clicking a child in
+  // Planning). Each in-drawer hop pushes the item left behind; the back control
+  // pops it. Cleared on a fresh external open (from the board/deep-link), so back
+  // only ever returns along the path actually clicked through — never across
+  // separate openings. Holds the node known at push time (enough to reopen).
+  #trail: (LedgerNode & Partial<Item>)[] = [];
   #stepCache = new Map<string, string[]>();
   #ta: TypeaheadState = { items: [], active: -1, seq: 0, debounce: null };
   #saveTimer = 0;
@@ -262,6 +283,7 @@ export class LedgerDrawer extends HTMLElement {
     this.shadowRoot!.innerHTML = `
       <div class="scrim" part="scrim"></div>
       <div class="panel" role="dialog" aria-modal="true" tabindex="-1" part="panel">
+        <button type="button" class="d-back" id="d-back" hidden><span class="d-back-arrow" aria-hidden="true">←</span> <span id="d-back-text"></span></button>
         <div class="head">
           <div class="dh-left">
             <span class="chip" id="d-type">TASK</span>
@@ -310,6 +332,7 @@ export class LedgerDrawer extends HTMLElement {
   #wire(): void {
     this.#$('.scrim').addEventListener('click', () => this.close());
     this.#$('#d-close').addEventListener('click', () => this.close());
+    this.#$('#d-back').addEventListener('click', () => this.#back());
     this.#$('#d-copy-link').addEventListener('click', () => { if (this.#item?.url) copyLink(this.#item.url, this.#$('#d-copy-link')); });
 
     this.#$<HTMLSelectElement>('#d-status-edit').addEventListener('change', (e) => this.#edit('status', (e.target as HTMLSelectElement).value, 'Status'));
@@ -364,7 +387,39 @@ export class LedgerDrawer extends HTMLElement {
   }
 
   // ---- open / close ----
+  // External entry point (board click, deep-link restore): opens fresh and clears
+  // the back trail — back never crosses separate openings.
   async open(node: LedgerNode | null): Promise<void> {
+    this.#trail = [];
+    return this.#show(node);
+  }
+
+  // In-drawer hop into a child: remember the current item so back can return to
+  // it, then open the child. Only reached from Planning child lines.
+  async #navigate(node: LedgerNode): Promise<void> {
+    if (this.#item) this.#trail.push(this.#item);
+    return this.#show(node);
+  }
+
+  // Pop the trail and reopen the item left behind, without pushing it back on.
+  async #back(): Promise<void> {
+    const prev = this.#trail.pop();
+    if (prev) return this.#show(prev);
+  }
+
+  // Show/hide the return-up control from the trail's top: the item a back would
+  // return to, named so the destination is legible ("← back to <title>").
+  #paintBack(): void {
+    const btn = this.#$('#d-back');
+    const parent = this.#trail[this.#trail.length - 1];
+    btn.hidden = !parent;
+    if (parent) {
+      this.#$('#d-back-text').textContent = `back to ${parent.title}`;
+      btn.setAttribute('aria-label', `Back to ${parent.type} ${parent.shortId}: ${parent.title}`);
+    }
+  }
+
+  async #show(node: LedgerNode | null): Promise<void> {
     if (!node) return;
     this.sfx?.pageTurn();
     this.#item = node;
@@ -391,6 +446,7 @@ export class LedgerDrawer extends HTMLElement {
     if (!this.hasAttribute('open')) return;
     this.removeAttribute('open');
     this.#item = null;
+    this.#trail = [];
     if (this.#trap) { document.removeEventListener('keydown', this.#trap, true); this.#trap = null; }
     if (this.#lastFocus && this.#lastFocus.isConnected) this.#lastFocus.focus();
     this.#lastFocus = null;
@@ -433,6 +489,7 @@ export class LedgerDrawer extends HTMLElement {
   // ---- paint ----
   #paint(item: LedgerNode & Partial<Item>): void {
     const caps = this.#caps;
+    this.#paintBack();
     const type = this.#$('#d-type'); type.textContent = item.type; type.className = `chip t-${item.type}`;
     // The source supplies the ticket link; without one, show the id as plain text
     // (no href, no copy button) — the app builds no source URL itself.
@@ -873,7 +930,7 @@ export class LedgerDrawer extends HTMLElement {
       const pts = Number((child as { estimate?: number | null }).estimate) || 0;
       line.append(pts > 0 ? el('span', 'pill', `${pts} pts`) : noEstimateIcon());
     }
-    asButton(line, () => this.open(child), `${child.type} ${child.shortId}: ${child.title}. Open details.`);
+    asButton(line, () => this.#navigate(child), `${child.type} ${child.shortId}: ${child.title}. Open details.`);
     return line;
   }
 
