@@ -7,8 +7,15 @@
 // The shapes (SourcePlugin, Capabilities, LedgerNode, …) live in the shared
 // contract; this module is the runtime that loads a plugin, resolves its real
 // capabilities, and guards every host->plugin call. Plugins stay plain .js at
-// the extension boundary — they are loaded by require() from the repo root.
+// the extension boundary.
+//
+// A plugin is an npm dependency: each source (the bundled local-file/github, or
+// an external one like the internal tracker package) is declared in the-ledger's
+// package.json and installed into node_modules, so the loader resolves it by
+// package name through Node's own module resolution. Which one is active is read
+// from `ledger.config.json` at the repo root — see loadActiveSource.
 
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { Capabilities, SourcePlugin } from '../shared/contract';
 
@@ -16,9 +23,16 @@ const CONTRACT_VERSION = 1;
 
 // The repo root, resolved from this compiled module's location. At runtime this
 // file is dist/server/plugin-interface.js, so the root is two levels up. Static
-// assets (public/) and plugins (plugins/<name>) are resolved against it, since
-// __dirname no longer sits at the repo root once compiled.
+// assets (public/) and the config file are resolved against it, since __dirname
+// no longer sits at the repo root once compiled.
 const REPO_ROOT = path.join(__dirname, '..', '..');
+
+// The sibling config file naming the active source. Follows the modern Node
+// `<tool>.config.json` convention (node.config.json, vite.config.*, …), not the
+// older `.*rc` family. Machine-local and gitignored: the committed
+// `ledger.config.example.json` documents the shape.
+const CONFIG_FILE = path.join(REPO_ROOT, 'ledger.config.json');
+const DEFAULT_SOURCE = 'the-ledger-local-file';
 
 /** A loaded, ready-to-serve source: its name, the plugin, and the capabilities
  *  the host will actually act on. */
@@ -83,49 +97,58 @@ export async function callPlugin(
   return withTimeout((fn as (...a: unknown[]) => unknown).apply(plugin, args), timeout, `${plugin.name}.${String(method)}`);
 }
 
-// The directories searched for a named plugin, in order. LEDGER_PLUGIN_PATH adds
-// out-of-repo locations (path.delimiter-separated, like PATH) so a plugin can be
-// version-controlled elsewhere — e.g. built from a package in a separate repo
-// — without living inside this repo's plugins/ folder. The built-in plugins/ dir
-// is always the last resort, so the bundled sources resolve with no config and an
-// external dir can shadow a built-in of the same name.
-function pluginSearchDirs(): string[] {
-  const extra = (process.env.LEDGER_PLUGIN_PATH || '')
-    .split(path.delimiter)
-    .map((d) => d.trim())
-    .filter(Boolean);
-  return [...extra, path.join(REPO_ROOT, 'plugins')];
-}
-
-// Resolve a named plugin to a module path across the search dirs. `require.resolve`
-// honors Node's own resolution (a dir's index.js or package.json main), so a plugin
-// may be a loose <dir>/<name>/index.js or a built package exporting a main.
-// Throws with the dirs tried when nothing resolves, so a typo'd name or an unbuilt
-// workspace fails loudly instead of silently falling back to the default source.
-function resolvePlugin(name: string): string {
-  const dirs = pluginSearchDirs();
-  for (const dir of dirs) {
-    try {
-      return require.resolve(path.join(dir, name));
-    } catch {
-      // not in this dir — try the next
-    }
+// The active source's package name, from ledger.config.json's `source` field.
+// Absent file or absent/blank field falls back to the bundled local-file source,
+// so a fresh clone runs with no config. A malformed file is a hard error, not a
+// silent fallback — a typo in the one file that picks the backend should fail
+// loudly rather than quietly serving the wrong (or default) source.
+function activeSourceName(): string {
+  let raw: string;
+  try {
+    raw = fs.readFileSync(CONFIG_FILE, 'utf8');
+  } catch {
+    return DEFAULT_SOURCE; // no config file — bundled default
   }
-  throw Object.assign(
-    new Error(`Source '${name}' not found in any plugin dir: ${dirs.join(', ')}`),
-    { status: 500 },
-  );
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (e) {
+    throw Object.assign(
+      new Error(`Malformed ${path.basename(CONFIG_FILE)}: ${(e as Error).message}`),
+      { status: 500 },
+    );
+  }
+  const source = (parsed as { source?: unknown })?.source;
+  return typeof source === 'string' && source.trim() ? source.trim() : DEFAULT_SOURCE;
 }
 
-// Load the single active source. LEDGER_SOURCE names the plugin; the loader finds
-// it across the plugin search dirs (see pluginSearchDirs). The module exports a
-// factory or a ready plugin object. One active source only — no directory scan or
-// manifest yet. Plugins stay plain .js at the extension boundary.
+// A source is a package name unless it looks like a path — a leading '.' or any
+// slash. A path resolves against the repo root (so a relative config value is
+// stable regardless of cwd); a bare name resolves as an npm dependency through
+// Node's own node_modules resolution. The path form is the bridge for a plugin
+// that isn't yet a committable dependency (e.g. the internal tracker source, which
+// lives in a gitignored folder here until it's a separately version-controlled package); flip the
+// config value to the package name once a dependency can be declared.
+function resolveSource(source: string): string {
+  const isPath = source.startsWith('.') || source.includes('/') || source.includes('\\');
+  return isPath ? path.resolve(REPO_ROOT, source) : source;
+}
+
+// Load the single active source. Its name/path comes from ledger.config.json;
+// require() resolves it either from node_modules (a declared dependency) or from
+// a repo-relative path. The module exports a factory or a ready plugin object. A
+// source that can't be loaded fails loudly with the offending value.
 export function loadActiveSource(hostConfig: Record<string, unknown> = {}): ActiveSource {
-  const name = process.env.LEDGER_SOURCE || 'local-file';
-  const factory = require(resolvePlugin(name)) as
-    | ((cfg: Record<string, unknown>) => SourcePlugin)
-    | SourcePlugin;
+  const name = activeSourceName();
+  let factory: ((cfg: Record<string, unknown>) => SourcePlugin) | SourcePlugin;
+  try {
+    factory = require(resolveSource(name)) as ((cfg: Record<string, unknown>) => SourcePlugin) | SourcePlugin;
+  } catch (e) {
+    throw Object.assign(
+      new Error(`Source '${name}' could not be loaded (a declared package.json dependency, or a repo-relative path to a plugin?): ${(e as Error).message}`),
+      { status: 500 },
+    );
+  }
   const plugin = typeof factory === 'function' ? factory(hostConfig) : factory;
   if (plugin.apiVersion > CONTRACT_VERSION) {
     console.warn(`[ledger] source '${plugin.name}' targets contract v${plugin.apiVersion}; host is v${CONTRACT_VERSION} — newer features ignored.`);

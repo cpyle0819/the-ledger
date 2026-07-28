@@ -12,6 +12,10 @@ dist/
 build.log
 .DS_Store
 
+# The active-source selection is machine-local (it may point at a private plugin);
+# the committed ledger.config.example.json documents the shape.
+/ledger.config.json
+
 # Never track anything credential-adjacent — nothing secret should ever live in
 # the repo, but guard against an accidental local copy landing here.
 *cookie*

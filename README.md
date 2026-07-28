@@ -34,14 +34,9 @@ sample data on port 4317, so this alone gives you a working board on any OS:
 npm install && npm run serve -- 4317
 ```
 
-Then open http://localhost:4317. Pick a different plugin by setting
-`LEDGER_SOURCE` (default `local-file`), using your shell's env-var syntax:
-
-```bash
-LEDGER_SOURCE=github npm run serve          # bash / zsh (Linux, macOS)
-$env:LEDGER_SOURCE="github"; npm run serve  # PowerShell (Windows)
-set LEDGER_SOURCE=github && npm run serve    # cmd.exe (Windows)
-```
+Then open http://localhost:4317. Pick a different plugin by creating a
+`ledger.config.json` (see [Plugins](#plugins)); with no config file the bundled
+`local-file` source serves sample data.
 
 To keep it running in the background (starts on boot, survives logout):
 
@@ -57,39 +52,52 @@ detects it and declines to start a second instance.
 
 Each **plugin** is one backing source — an issue tracker, a code host, a local
 file — rendered onto the board through the common contract in
-`src/shared/contract.ts`. A plugin lives at `plugins/<name>/index.js`, stays
-plain JavaScript, and holds its own credentials; the app talks only to the local
-host, which calls plugin methods. `LEDGER_SOURCE` picks the one active plugin.
+`src/shared/contract.ts`. A plugin is a plain-JavaScript **npm package** that
+holds its own credentials; the app talks only to the local host, which calls
+plugin methods.
 
-By default the host looks for the named plugin under the bundled `plugins/`
-folder. Set **`LEDGER_PLUGIN_PATH`** to also search directories outside the repo
-(colon-separated on Linux/macOS, `;` on Windows — the OS path delimiter); each is
-tried in order before the built-in `plugins/` fallback, so an external dir can
-shadow a bundled plugin of the same name. This lets a plugin be version-controlled
-elsewhere — e.g. built from a package in a separate repo — instead of living in
-this repo:
+### Selecting the active source
 
-```bash
-LEDGER_PLUGIN_PATH=/path/to/workspace/src/TheLedgertracker \
-  LEDGER_SOURCE=tracker npm run serve
+Plugins are npm **dependencies**, and `ledger.config.json` at the repo root names
+the one active source. The file is machine-local (gitignored — it may point at a
+private plugin); copy the committed `ledger.config.example.json` to start:
+
+```jsonc
+// ledger.config.json
+{ "source": "the-ledger-github" }
 ```
 
-The named plugin resolves via Node's own module resolution, so a search-dir entry
-may be a loose `<dir>/<name>/index.js` or a built package that exports a `main`.
+`source` is resolved two ways:
 
-Two ship in the box:
+- a **package name** — a dependency declared in `package.json` and installed into
+  `node_modules` (how the bundled sources and any published plugin load); or
+- a **repo-relative path** (anything with a `/` or leading `.`, e.g.
+  `./plugins/tracker`) — for a plugin not yet declared as a dependency.
 
-- **`local-file`** (default) — items from a JSON file, `sample.json` unless
-  `LEDGER_FILE` overrides it. The reference implementation.
-- **`github`** — a GitHub repo as the board (Project → Milestone → Issue),
-  authenticating through the `gh` CLI. Set `GITHUB_REPO=owner/name`; see its own
-  README for details.
+With no `ledger.config.json`, the bundled `the-ledger-local-file` source loads.
 
-To add your own plugin to this install:
+Two plugins ship in the box, each a `file:` dependency in `package.json`:
 
-1. Create `plugins/<name>/index.js` exporting a factory that returns an object
-   implementing the `src/shared/contract.ts` interface (list the hierarchy, read
-   an item, edit fields, comment). Declare the capabilities the source supports —
-   the UI hides actions a plugin doesn't offer.
-2. Start the app with `LEDGER_SOURCE=<name>` (plus whatever env vars your plugin
-   reads for its own config). Copy `plugins/local-file/` as a starting point.
+- **`the-ledger-local-file`** (default) — items from a JSON file, `sample.json`
+  unless `LEDGER_FILE` overrides it. The reference implementation.
+- **`the-ledger-github`** — a GitHub repo as the board (Project → Milestone →
+  Issue), authenticating through the `gh` CLI. Set `GITHUB_REPO=owner/name`; see
+  its own README for details.
+
+### Adding your own plugin
+
+1. Create a package (a folder with `package.json` + an `index.js` `main`) that
+   exports a factory returning an object implementing the `src/shared/contract.ts`
+   interface (list the hierarchy, read an item, edit fields, comment). Declare the
+   capabilities the source supports — the UI hides actions a plugin doesn't offer.
+   Copy `plugins/local-file/` as a starting point.
+2. Make it resolvable: add it to `package.json` `dependencies` (a `file:` path, a
+   git URL, or a published name) and `npm install`, **or** point `source` at its
+   repo-relative path directly.
+3. Set `source` to the package name (or path) in `ledger.config.json`, plus
+   whatever env vars the plugin reads for its own config.
+
+A plugin whose backend is private can be version-controlled outside this repo —
+for example as a package built in a separate repo — and consumed as a
+`file:` dependency pointing at its checkout. The bundled `plugins/tracker` (the
+tracker; gitignored here) is set up this way; see its README for the build.

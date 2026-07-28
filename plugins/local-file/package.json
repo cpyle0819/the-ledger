@@ -1,0 +1,13 @@
+{
+  "name": "the-ledger-local-file",
+  "version": "1.0.0",
+  "description": "The Ledger source plugin: items from a local JSON file. The bundled reference source.",
+  "type": "commonjs",
+  "main": "index.js",
+  "files": [
+    "index.js",
+    "sample.json"
+  ],
+  "private": true,
+  "license": "MIT"
+}

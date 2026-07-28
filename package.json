@@ -14,7 +14,9 @@
     "prepare": "tsc -b"
   },
   "dependencies": {
-    "smoke-drift": "github:cpyle0819/smoke-drift"
+    "smoke-drift": "github:cpyle0819/smoke-drift",
+    "the-ledger-github": "file:plugins/github",
+    "the-ledger-local-file": "file:plugins/local-file"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",

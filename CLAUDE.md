@@ -93,11 +93,14 @@ Components live in `src/client/components/`, one self-registering module each:
   exposes `/api/source`, `/api/children`, `/api/item/:id`, `…/edit`,
   `…/comment`, `/api/assignees`, `/api/steps`.
 - `src/server/plugin-interface.ts` — resolves capabilities, guards every host→plugin
-  call, and loads the active source from `plugins/<name>/index.js`.
+  call, and loads the active source. Each plugin is an npm package; the active one
+  is named in `ledger.config.json` (`source`), resolved as a package name or a
+  repo-relative path. Absent config → the bundled `the-ledger-local-file`.
 - `src/shared/contract.ts` — the typed shapes (LedgerNode, Item, Capabilities,
   Filters, …) that both halves reference. Type-only imports erase at runtime.
-- `plugins/<name>/` — one source each, plain JS. `local-file` is the bundled
-  reference source. Select with `LEDGER_SOURCE` (default `local-file`).
+- `plugins/<name>/` — one source each, a plain-JS npm package (`package.json` +
+  `index.js`). `local-file` is the bundled reference source; `github` also ships;
+  `tracker` (tracker, internal) is gitignored and set up as a separate package.
 - The hierarchy loads **lazily** via `getChildren(parentId, filters)` — null
   parent = roots (epics). A source declares **capabilities**; the UI hides actions
   a source can't perform.

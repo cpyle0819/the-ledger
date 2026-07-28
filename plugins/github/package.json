@@ -1,0 +1,12 @@
+{
+  "name": "the-ledger-github",
+  "version": "1.0.0",
+  "description": "The Ledger source plugin: a GitHub repo as the board (Project → Milestone → Issue), authenticated through the gh CLI.",
+  "type": "commonjs",
+  "main": "index.js",
+  "files": [
+    "index.js"
+  ],
+  "private": true,
+  "license": "MIT"
+}
