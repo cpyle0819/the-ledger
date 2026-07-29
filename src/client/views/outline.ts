@@ -10,7 +10,7 @@ import { emptyMsg, whoChip } from './render-helpers.js';
 import type { ViewHandlers } from './types.js';
 
 // A small wax "CLOSED" tag for a closed outline row — the row's analogue of the
-// card's struck-across stamp. Styled in styles.css (.ol-closed-tag).
+// card's corner stamp. Styled in styles.css (.ol-closed-tag).
 function closedTag(): HTMLElement {
   const tag = el('span', 'ol-closed-tag', 'Closed');
   tag.setAttribute('aria-hidden', 'true');

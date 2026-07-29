@@ -455,12 +455,9 @@ ledger-card.deemph:hover {
 .ol-task-row.direct { padding-left: 44px; }
 .ol-task-row .card-title { font-family: var(--gara); font-size: 15px; flex: 1; }
 
-/* Closed row (shown only when "show closed items" is on): mute the row so open
-   work stays dominant, and mark it with a small wax "CLOSED" tag — the outline
-   analogue of the card's struck-across stamp. The whole row eases back rather than
-   just the title, so a scan reads "done" without reading the tag. */
-.ol-closed { opacity: .62; }
-.ol-closed .card-title { color: var(--ink-soft); }
+/* Closed row (shown only when "show closed items" is on): marked with a small wax
+   "CLOSED" tag — the outline analogue of the card's corner stamp. The tag alone
+   carries the closed signal; the row is not dimmed. */
 .ol-closed-tag {
   font-family: var(--fell); font-weight: 700; text-transform: uppercase;
   font-size: 10px; letter-spacing: .12em; line-height: 1;
