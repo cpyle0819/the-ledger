@@ -271,6 +271,11 @@ export class LedgerDrawer extends HTMLElement {
   // only ever returns along the path actually clicked through — never across
   // separate openings. Holds the node known at push time (enough to reopen).
   #trail: (LedgerNode & Partial<Item>)[] = [];
+  // Which closed-children groups are expanded, keyed `<parentId>:<tier>`. The
+  // Planning section rebuilds from scratch on every (re)paint, so without this a
+  // group you expanded collapses when you navigate into a closed child and back.
+  // Reset alongside the trail (external open, close) to stay bounded.
+  #openClosed = new Set<string>();
   #stepCache = new Map<string, string[]>();
   #ta: TypeaheadState = { items: [], active: -1, seq: 0, debounce: null };
   #saveTimer = 0;
@@ -391,6 +396,7 @@ export class LedgerDrawer extends HTMLElement {
   // the back trail — back never crosses separate openings.
   async open(node: LedgerNode | null): Promise<void> {
     this.#trail = [];
+    this.#openClosed.clear();
     return this.#show(node);
   }
 
@@ -447,6 +453,7 @@ export class LedgerDrawer extends HTMLElement {
     this.removeAttribute('open');
     this.#item = null;
     this.#trail = [];
+    this.#openClosed.clear();
     if (this.#trap) { document.removeEventListener('keydown', this.#trap, true); this.#trap = null; }
     if (this.#lastFocus && this.#lastFocus.isConnected) this.#lastFocus.focus();
     this.#lastFocus = null;
@@ -885,7 +892,7 @@ export class LedgerDrawer extends HTMLElement {
         open.forEach((child) => g.append(this.#childLine(child)));
         // Closed children collapse into one dimmed, expandable line so a long done
         // list doesn't bury the open work; the summed closed effort rides the label.
-        if (closed.length) g.append(this.#closedGroup(closed, addType));
+        if (closed.length) g.append(this.#closedGroup(closed, addType, `${item.id}:${addType}`));
       } else {
         g.append(el('div', 'cline', `No ${addType.toLowerCase()}s yet.`));
       }
@@ -937,21 +944,26 @@ export class LedgerDrawer extends HTMLElement {
   // The collapsed closed-children line: "+ N closed stories (X pts)", expanding on
   // click to reveal the individual (dimmed) lines. Closed work counts toward the
   // rollup but is folded away so it doesn't crowd the open decomposition.
-  #closedGroup(closed: LedgerNode[], addType: 'STORY' | 'TASK'): HTMLElement {
+  // `key` (parentId:tier) persists the expanded/collapsed state across re-paints,
+  // so navigating into a closed child and back doesn't re-collapse the group the
+  // child was found in.
+  #closedGroup(closed: LedgerNode[], addType: 'STORY' | 'TASK', key: string): HTMLElement {
     const wrap = el('div', 'cclosed');
     const noun = addType.toLowerCase();
     const countNoun = `${closed.length} closed ${closed.length === 1 ? noun : `${noun}s`}`;
     const summary = el('div', 'cline cclosed-toggle');
-    const caret = el('span', 'cclosed-caret', '▸');
+    const expanded = this.#openClosed.has(key);
+    const caret = el('span', 'cclosed-caret', expanded ? '▾' : '▸');
     summary.append(caret, el('span', 'ct', `+ ${countNoun}`), el('span', 'pill', `${sumEffort(closed)} pts`));
-    const list = el('div', 'cclosed-list'); list.hidden = true;
+    const list = el('div', 'cclosed-list'); list.hidden = !expanded;
     closed.forEach((child) => list.append(this.#childLine(child, true)));
     asButton(summary, () => {
       const nowHidden = !list.hidden; list.hidden = nowHidden;
       caret.textContent = nowHidden ? '▸' : '▾';
       summary.setAttribute('aria-expanded', String(!nowHidden));
+      if (nowHidden) this.#openClosed.delete(key); else this.#openClosed.add(key);
     }, `${countNoun}, ${sumEffort(closed)} points. Expand to view.`);
-    summary.setAttribute('aria-expanded', 'false');
+    summary.setAttribute('aria-expanded', String(expanded));
     wrap.append(summary, list);
     return wrap;
   }
