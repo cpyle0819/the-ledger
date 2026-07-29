@@ -312,7 +312,7 @@ export class LedgerDrawer extends HTMLElement {
             </div>
           </div>
           <div class="d-field" id="d-estimate-field"><label for="d-estimate-edit">estimate (points)<span class="est-warn" id="d-estimate-warn" title="No estimate set" aria-label="No estimate set" hidden>⚠</span></label><input type="number" id="d-estimate-edit" min="0" step="1" spellcheck="false" placeholder="—" /></div>
-          <div class="d-field" id="d-startdate-field" hidden><label for="d-startdate-edit">start date</label><input type="date" id="d-startdate-edit" spellcheck="false" /></div>
+          <div class="d-field" id="d-startdate-field" hidden><label for="d-startdate-edit">start date<span class="est-warn" id="d-startdate-warn" title="No start date set" aria-label="No start date set" hidden>⚠</span></label><input type="date" id="d-startdate-edit" spellcheck="false" /></div>
           <div class="d-field" id="d-completion-field" hidden><label id="d-completion-label">completed</label><div class="d-readonly" id="d-completion-text" aria-labelledby="d-completion-label"></div></div>
           <div class="d-field" id="d-duration-field" hidden><label id="d-duration-label">duration</label><div class="d-readonly" id="d-duration-text" aria-labelledby="d-duration-label"></div></div>
         </div>
@@ -564,6 +564,10 @@ export class LedgerDrawer extends HTMLElement {
     // field rather than show an input that can't save.
     this.#$('#d-startdate-field').hidden = !(showDates && canEdit('startDate'));
     this.#$<HTMLInputElement>('#d-startdate-edit').value = this.#dateInputValue(item.startDate);
+    // Flag a closed task with no start date beside the label (icon only) — a
+    // finished task with no recorded start can't yield a duration or feed velocity.
+    // Only meaningful once closed; an open task without a start date is normal.
+    this.#$('#d-startdate-warn').hidden = !(item.status === 'Closed' && !item.startDate);
     // Completion is meaningful only once the task is done: show the line when a
     // completion date exists OR the task is closed. An open task hides it entirely
     // (the concept doesn't apply yet — no empty-state noise). A closed task with no

@@ -80,25 +80,37 @@ export const chromeSheet = sheet(`
   :focus-visible { outline: 2px solid var(--wax, #7c2b22); outline-offset: 2px; border-radius: 2px; }
 `);
 
-// The "no estimate" flag chip, built once so every surface (card, outline row,
-// Planning line) renders it identically. aria-label carries the full meaning; the
-// ⚠ glyph is decorative (added via ::before).
-export function noEstimateChip(): HTMLSpanElement {
-  const chip = el('span', 'no-est', 'no estimate');
-  chip.setAttribute('aria-label', 'No estimate set');
-  chip.title = 'No estimate set';
+// A missing-data flag chip, built once so every surface (card, outline row,
+// Planning line) renders it identically. The visible text is just the field name
+// ("estimate", "start date"); the leading ⚠ glyph (added via ::before) carries the
+// "no", and aria-label/title spell out the full meaning. `field` is the short
+// label, `meaning` the full sentence for AT and the tooltip.
+function missingChip(field: string, meaning: string): HTMLSpanElement {
+  const chip = el('span', 'no-est', field);
+  chip.setAttribute('aria-label', meaning);
+  chip.title = meaning;
   return chip;
 }
 
-// The icon-only missing-estimate flag: the ⚠ glyph alone with a tooltip, for the
+// The icon-only missing-data flag: the ⚠ glyph alone with a tooltip, for the
 // Planning list where a full chip would crowd the line.
-export function noEstimateIcon(): HTMLSpanElement {
+function missingIcon(meaning: string): HTMLSpanElement {
   const icon = el('span', 'no-est-icon', '⚠');
   icon.setAttribute('role', 'img');
-  icon.setAttribute('aria-label', 'No estimate set');
-  icon.title = 'No estimate set';
+  icon.setAttribute('aria-label', meaning);
+  icon.title = meaning;
   return icon;
 }
+
+// Missing-estimate flags (any tier, when the source has point estimates).
+export function noEstimateChip(): HTMLSpanElement { return missingChip('estimate', 'No estimate set'); }
+export function noEstimateIcon(): HTMLSpanElement { return missingIcon('No estimate set'); }
+
+// Missing-start-date flags (closed tasks, when the source has task dates). A
+// closed task with no recorded start date can't contribute a duration or velocity
+// figure — the flag nudges the gap the way the missing-estimate flag does.
+export function noStartDateChip(): HTMLSpanElement { return missingChip('start date', 'No start date set'); }
+export function noStartDateIcon(): HTMLSpanElement { return missingIcon('No start date set'); }
 
 // Build the "№ <shortId>" unit used on cards, rows, and the drawer, with a
 // copy-link button when the item carries a `url` (the source supplies the link;

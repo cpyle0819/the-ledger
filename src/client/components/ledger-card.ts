@@ -14,7 +14,7 @@
 // each card carries its own, which also makes the element reusable anywhere.
 
 import { el, asButton, plural } from './util.js';
-import { chromeSheet, idTag, noEstimateChip } from './shared-styles.js';
+import { chromeSheet, idTag, noEstimateChip, noStartDateChip } from './shared-styles.js';
 import type { LedgerNode } from '../../shared/contract';
 
 const cardSheet = new CSSStyleSheet();
@@ -168,11 +168,17 @@ export class LedgerCard extends HTMLElement {
     const body = el('div', 'body');
     const top = el('div', 'card-top');
     const hasPoints = this.hasAttribute('points');
+    const hasTaskDates = this.hasAttribute('taskdates');
     top.append(el('span', `chip t-${item.type}`, item.type));
     // Flag an item with no estimate (any tier), right beside the type chip. A
     // missing estimate is a data gap worth filling regardless of status. Only when
     // the source has point estimates at all — a source without them isn't nagged.
     if (hasPoints && !(item.estimate != null && item.estimate > 0)) top.append(noEstimateChip());
+    // Flag a closed task with no start date: a finished task with no recorded start
+    // can't yield a duration or feed epic velocity. Task-tier + closed only (an open
+    // task hasn't necessarily started; higher tiers carry no dates), and only when
+    // the source has a task-date model — mirrors the missing-estimate gate.
+    if (hasTaskDates && item.kind === 'task' && item.status === 'Closed' && !item.startDate) top.append(noStartDateChip());
     top.append(idTag(item.shortId, item.url));
     const title = el('p', 'card-title', item.title); title.setAttribute('part', 'title');
 

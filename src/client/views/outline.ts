@@ -5,7 +5,7 @@
 
 import { state, storiesOf, directTasksOf, type CachedNode } from '../core/state.js';
 import { el, asButton } from '../components/util.js';
-import { idTag, noEstimateChip } from '../components/shared-styles.js';
+import { idTag, noEstimateChip, noStartDateChip } from '../components/shared-styles.js';
 import { emptyMsg, whoChip } from './render-helpers.js';
 import type { ViewHandlers } from './types.js';
 
@@ -98,6 +98,9 @@ function taskRow(t: CachedNode, direct: boolean, h: ViewHandlers): HTMLElement {
   const status = el('span', `pill st-${t.status}`); const dot = el('span', 'dot'); dot.setAttribute('aria-hidden', 'true'); status.append(dot);
   r.append(el('span', `chip t-${t.type}`, t.type), idTag(t.shortId, t.url), el('span', 'card-title', t.title), status);
   if (state.caps.points && !(t.estimate != null && t.estimate > 0)) r.append(noEstimateChip());
+  // Flag a closed task with no start date (see the card treatment): can't yield a
+  // duration or feed velocity. Only when the source has a task-date model.
+  if (state.caps.taskDates && t.status === 'Closed' && !t.startDate) r.append(noStartDateChip());
   if (t.assignee) r.append(whoChip(t));
   asButton(r, () => h.openDrawer(t),
     `${t.type} ${t.shortId}: ${t.title}. Status ${t.status}. Open details.`);

@@ -96,6 +96,11 @@ export interface LedgerNode {
   /** Estimate in points, when a source carries it on the list node (shown as a
    *  card pill). The full Item always has it; a node may too. */
   estimate?: number | null;
+  /** ISO start date, when a source carries it on the list node (task-tier, gated
+   *  by taskDates). Present so the board can flag a closed task with no start date
+   *  without a per-item fetch — mirrors `estimate` living on the node for the
+   *  missing-estimate flag. The full Item always has it; a node may too. */
+  startDate?: string | null;
 }
 
 /** One comment on an item. */

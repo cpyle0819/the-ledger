@@ -102,6 +102,9 @@ function shapeNode(item, items, context = false) {
     context,
     childCount: items.filter((c) => c.parent === item.id).length,
     estimate: item.estimate ?? null,
+    // On the list node so the board can flag a closed task with no start date
+    // without a per-item fetch (mirrors estimate). Task-tier concept; null elsewhere.
+    startDate: item.startDate || null,
   };
 }
 

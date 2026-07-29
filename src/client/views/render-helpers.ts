@@ -45,6 +45,10 @@ export function card(item: CachedNode, { drill = false, animate = false, onActiv
   // flags a missing estimate. Off => no points UI at all (a source without the
   // concept isn't nagged). Set via attribute so the card stays board-state-free.
   if (state.caps.points) c.setAttribute('points', '');
+  // Mark that the source has task dates, so the card flags a closed task with no
+  // start date. Off => no start-date flag (a source without the concept isn't
+  // nagged). Set via attribute so the card stays board-state-free.
+  if (state.caps.taskDates) c.setAttribute('taskdates', '');
   c.item = item;
   if (onActivate) c.addEventListener('card-activate', () => onActivate(item));
   if (onOpen) c.addEventListener('card-open', () => onOpen(item));
