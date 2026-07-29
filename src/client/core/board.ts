@@ -158,11 +158,12 @@ export async function loadMoreRoots(): Promise<void> {
     setRootLanes(page.nodes);
     // New epics may have appeared; keep counts current for them.
     warmEpicCounts(state.epics.map((e) => e.id));
-    // Repaint the roots. In columns the epic column swap is a lighter touch than a
-    // full render (preserves downstream selection); the outline rebuilds. Either
-    // way refresh the load-more bar so its "showing N of M" and its
-    // presence/absence (the cursor may have just gone null) track the new state.
-    if (state.lens === 'columns') refreshEpicColumn(handlers);
+    // Repaint the roots. A new page can add epics AND orphan stories/tasks, which
+    // land in the story/task columns — so refresh all three (each keeps its scroll
+    // position across the swap), not just the epic column. The outline rebuilds
+    // wholesale. Either way refresh the load-more bar so its "showing N of M" and
+    // its presence/absence (the cursor may have just gone null) track the new state.
+    if (state.lens === 'columns') refreshAllColumns(handlers);
     else render();
     renderLoadMore(need('#stage'));
   } catch (err) {

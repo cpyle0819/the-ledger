@@ -237,7 +237,15 @@ smoke-drift { z-index: 0; }
 .switch input:checked ~ .switch-text { color: var(--parch-hi); }
 
 /* ---- Stage ----------------------------------------------------------- */
-.stage { flex: 1; overflow: hidden; position: relative; z-index: 1; }
+/* A flex column so a lens fills the height and the paged-roots "load more" bar
+   (a stage child, present only when the source paginates) takes its own strip at
+   the bottom instead of being pushed past the clipped edge. With no bar the single
+   lens child just fills the stage, as before. */
+.stage { flex: 1; overflow: hidden; position: relative; z-index: 1; display: flex; flex-direction: column; }
+/* height:auto (not the 100% below) so the flex-basis governs — with a sibling bar
+   the lens gets the remaining height, not the whole stage. */
+.stage > .columns, .stage > .outline { flex: 1 1 auto; min-height: 0; height: auto; }
+.stage > ledger-load-more { flex: 0 0 auto; }
 .loading {
   position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
   gap: 13px; color: var(--brass); font-family: var(--fell); font-style: italic; font-size: 19px;
