@@ -110,6 +110,27 @@ cardSheet.replaceSync(`
   .drill-hint { position: absolute; right: 12px; top: 14px; color: var(--seal, var(--ink-faint, #6f5c3e)); font-size: 15px; opacity: .55; transition: .15s; }
   .card:hover .drill-hint, :host([selected]) .drill-hint { opacity: 1; transform: translateX(2px); }
 
+  /* Closed item: strike a rotated wax "CLOSED" stamp across the card, and let the
+     parchment recede slightly so the open work stays dominant. The stamp is a
+     hand-inked seal — semi-transparent oxblood ink, a double rule, run through the
+     deckle displacement so its edges fringe like a real rubber stamp rather than a
+     crisp CSS box. pointer-events:none so it never intercepts the card click. */
+  .card.closed .paper { filter: url(#ledger-deckle) saturate(.72) brightness(.98); }
+  .card.closed .body { opacity: .72; }
+  .closed-stamp {
+    position: absolute; z-index: 3; top: 50%; left: 50%;
+    transform: translate(-50%, -50%) rotate(-13deg);
+    pointer-events: none; user-select: none;
+    font-family: var(--fell, serif); font-weight: 700; text-transform: uppercase;
+    font-size: 30px; letter-spacing: .18em; line-height: 1;
+    color: rgba(140,43,34,.72);
+    padding: 6px 20px; border: 3px double rgba(140,43,34,.62); border-radius: 5px;
+    text-shadow: 0 1px 0 rgba(255,255,255,.18);
+    filter: url(#ledger-deckle);
+  }
+  /* A selected closed card: the stamp would fight the gild, so ease it back. */
+  :host([selected]) .closed-stamp { color: rgba(140,43,34,.6); border-color: rgba(140,43,34,.5); }
+
   @media (prefers-reduced-motion: reduce) {
     :host([animate]) .card { animation: none; }
   }
@@ -156,6 +177,13 @@ export class LedgerCard extends HTMLElement {
     const drill = this.hasAttribute('drill');
     const card = el('div', 'card');
     card.classList.add(`t-${item.type}`);
+    // A closed item (only ever on the board when "show closed items" is on) gets a
+    // rotated wax "CLOSED" stamp struck across it, so it reads as done at a glance
+    // against its open neighbors — the status pill's tiny dot is too weak a signal,
+    // and a source that shows workflowAction in place of status may not say "Closed"
+    // at all.
+    const closed = item.status === 'Closed';
+    if (closed) card.classList.add('closed');
     // The parchment leaf, behind the content, so the deckle filter warps only
     // the paper edges (see the .paper rule). aria-hidden: purely decorative.
     const paper = el('div', 'paper'); paper.setAttribute('aria-hidden', 'true');
@@ -240,6 +268,9 @@ export class LedgerCard extends HTMLElement {
     // Seats the fringed gild on the paper when selected (styled in cardSheet).
     const gildSeat = el('div', 'gild-seat'); gildSeat.setAttribute('aria-hidden', 'true');
     card.append(paper, gildSeat, body);
+    // The wax "CLOSED" stamp, struck over the content (styled in cardSheet).
+    // Decorative — the status is already in the card's aria-label.
+    if (closed) { const stamp = el('div', 'closed-stamp', 'Closed'); stamp.setAttribute('aria-hidden', 'true'); card.append(stamp); }
 
     root.innerHTML = DECKLE_SVG;
     root.append(card);

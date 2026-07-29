@@ -9,6 +9,14 @@ import { idTag, noEstimateChip, noStartDateChip } from '../components/shared-sty
 import { emptyMsg, whoChip } from './render-helpers.js';
 import type { ViewHandlers } from './types.js';
 
+// A small wax "CLOSED" tag for a closed outline row — the row's analogue of the
+// card's struck-across stamp. Styled in styles.css (.ol-closed-tag).
+function closedTag(): HTMLElement {
+  const tag = el('span', 'ol-closed-tag', 'Closed');
+  tag.setAttribute('aria-hidden', 'true');
+  return tag;
+}
+
 export function renderOutline(stage: HTMLElement, h: ViewHandlers): void {
   const wrap = el('div', 'outline');
   const { orphanStories, orphanTasks } = state;
@@ -63,9 +71,14 @@ function outlineNode(node: CachedNode, tier: 'epic' | 'story' | 'direct', h: Vie
 
 function regRow(item: CachedNode, caretGlyph: string, onToggle: () => void, expandable: boolean, h: ViewHandlers): HTMLElement {
   const row = el('div', 'ol-row');
+  if (item.status === 'Closed') row.classList.add('ol-closed');
   const caret = el('span', 'ol-caret', caretGlyph); caret.setAttribute('aria-hidden', 'true');
   const title = el('span', 'card-title', item.title);
   row.append(caret, el('span', `chip t-${item.type}`, item.type), idTag(item.shortId, item.url), title);
+  // A closed epic/story (on the board only when "show closed items" is on) gets a
+  // small wax "CLOSED" tag, mirroring the card's stamp — the thin row has no room
+  // for a struck-across stamp.
+  if (item.status === 'Closed') row.append(closedTag());
   // Flag an epic/story with no estimate, when the source has point estimates.
   if (state.caps.points && !(item.estimate != null && item.estimate > 0)) row.append(noEstimateChip());
   // A context epic/story shows its (elsewhere-)assignee so the pulled-in row is
@@ -95,8 +108,11 @@ function regRow(item: CachedNode, caretGlyph: string, onToggle: () => void, expa
 
 function taskRow(t: CachedNode, direct: boolean, h: ViewHandlers): HTMLElement {
   const r = el('div', `ol-task-row${direct ? ' direct' : ''}`);
+  if (t.status === 'Closed') r.classList.add('ol-closed');
   const status = el('span', `pill st-${t.status}`); const dot = el('span', 'dot'); dot.setAttribute('aria-hidden', 'true'); status.append(dot);
   r.append(el('span', `chip t-${t.type}`, t.type), idTag(t.shortId, t.url), el('span', 'card-title', t.title), status);
+  // A closed task gets the same small wax "CLOSED" tag as closed epic/story rows.
+  if (t.status === 'Closed') r.append(closedTag());
   if (state.caps.points && !(t.estimate != null && t.estimate > 0)) r.append(noEstimateChip());
   // Flag a closed task with no start date (see the card treatment): can't yield a
   // duration or feed velocity. Only when the source has a task-date model.
