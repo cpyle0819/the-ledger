@@ -303,6 +303,8 @@ export class LedgerDrawer extends HTMLElement {
         <div class="d-risk" id="d-risk" hidden></div>
         <div class="d-rule" aria-hidden="true"></div>
         <div class="d-grid">
+          <div class="d-field" id="d-created-field" hidden><label id="d-created-label">created</label><div class="d-readonly" id="d-created-text" aria-labelledby="d-created-label"></div></div>
+          <div class="d-field" id="d-completion-field" hidden><label id="d-completion-label">completed</label><div class="d-readonly" id="d-completion-text" aria-labelledby="d-completion-label"></div></div>
           <div class="d-field" id="d-status-field"><label for="d-status-edit">status</label><select id="d-status-edit"></select></div>
           <div class="d-field" id="d-step-field" hidden><label for="d-step-edit">workflow step</label><select id="d-step-edit"></select></div>
           <div class="d-field" id="d-assignee-field"><label for="d-assignee-edit">assignee</label>
@@ -313,9 +315,7 @@ export class LedgerDrawer extends HTMLElement {
           </div>
           <div class="d-field" id="d-estimate-field"><label for="d-estimate-edit">estimate (points)<span class="est-warn" id="d-estimate-warn" title="No estimate set" aria-label="No estimate set" hidden>⚠</span></label><input type="number" id="d-estimate-edit" min="0" step="1" spellcheck="false" placeholder="—" /></div>
           <div class="d-field" id="d-startdate-field" hidden><label for="d-startdate-edit">start date<span class="est-warn" id="d-startdate-warn" title="No start date set" aria-label="No start date set" hidden>⚠</span></label><input type="date" id="d-startdate-edit" spellcheck="false" /></div>
-          <div class="d-field" id="d-completion-field" hidden><label id="d-completion-label">completed</label><div class="d-readonly" id="d-completion-text" aria-labelledby="d-completion-label"></div></div>
           <div class="d-field" id="d-duration-field" hidden><label id="d-duration-label">duration</label><div class="d-readonly" id="d-duration-text" aria-labelledby="d-duration-label"></div></div>
-          <div class="d-field" id="d-created-field" hidden><label id="d-created-label">created</label><div class="d-readonly" id="d-created-text" aria-labelledby="d-created-label"></div></div>
         </div>
         <div class="d-contains" id="d-contains" hidden></div>
         <div class="d-desc-head">
