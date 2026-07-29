@@ -14,6 +14,7 @@ import './components/ledger-column.js';
 import './components/ledger-drawer.js';
 import './components/ledger-compose.js';
 import './components/ledger-load-more.js';
+import './components/ledger-about.js';
 
 import { state } from './core/state.js';
 import { api, loadProjects } from './core/api.js';
@@ -22,6 +23,7 @@ import { buildTitle } from './ui/title-seal.js';
 import { $, need } from './ui/dom.js';
 import type { LedgerDrawer } from './components/ledger-drawer.js';
 import type { LedgerCompose } from './components/ledger-compose.js';
+import type { LedgerAbout } from './components/ledger-about.js';
 import type { Capabilities, Project } from '../shared/contract';
 
 // ---- controls ----
@@ -126,6 +128,7 @@ function wire(): void {
   need<HTMLSelectElement>('#project-select').onchange = (e) => { state.project = (e.target as HTMLSelectElement).value || null; reloadForFilterChange(); };
 
   need('#refresh').onclick = () => loadTree();
+  need('#about-btn').onclick = () => need<LedgerAbout>('#about').open();
   wireDrawer();
   wireCompose();
   wireReconcile();

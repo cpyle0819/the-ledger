@@ -20,7 +20,7 @@
 // full item is fetched and the drawer repaints.
 
 import { el, asButton, copyLink, plural } from './util.js';
-import { chromeSheet, idTag, noEstimateIcon } from './shared-styles.js';
+import { chromeSheet, idTag, noEstimateIcon, pointsPill, CONFIDENCE } from './shared-styles.js';
 import { renderInto } from './markdown.js';
 import './ledger-comment-thread.js';
 import type { LedgerCommentThread } from './ledger-comment-thread.js';
@@ -136,6 +136,11 @@ sheet.replaceSync(`
   /* A missing-estimate warning glyph beside the estimate label (the drawer's own
      item — just the icon, per the flag's window treatment). */
   .est-warn { margin-left: 7px; font-style: normal; font-size: 13px; color: var(--risk-under, #b8842a); }
+  /* Confidence note under the estimate input: what this tier's estimate is for
+     (a rough guess vs. a committed, velocity-feeding figure). A quiet italic
+     footnote so it informs without competing with the field. */
+  .d-conf-note { margin: 6px 0 0; font-family: var(--fell, serif); font-style: italic; font-size: 13px; line-height: 1.4; color: var(--ink-faint, #6f5c3e); }
+  .d-conf-note:empty { display: none; }
   .d-field select, .d-field input, .d-typeahead input {
     box-sizing: border-box; width: 100%; background: rgba(255,250,235,.7); color: var(--ink, #33291a); border: 1px solid var(--parch-edge, #c4ac7c);
     border-radius: 2px; padding: 8px 10px; font-family: var(--gara, serif); font-size: 15px; outline: none;
@@ -318,7 +323,7 @@ export class LedgerDrawer extends HTMLElement {
               <ul class="typeahead-list" id="d-assignee-list" role="listbox" hidden></ul>
             </div>
           </div>
-          <div class="d-field" id="d-estimate-field"><label for="d-estimate-edit">estimate (points)<span class="est-warn" id="d-estimate-warn" title="No estimate set" aria-label="No estimate set" hidden>⚠</span></label><input type="number" id="d-estimate-edit" min="0" step="1" spellcheck="false" placeholder="—" /></div>
+          <div class="d-field" id="d-estimate-field"><label for="d-estimate-edit">estimate (points)<span class="est-warn" id="d-estimate-warn" title="No estimate set" aria-label="No estimate set" hidden>⚠</span></label><input type="number" id="d-estimate-edit" min="0" step="1" spellcheck="false" placeholder="—" /><p class="d-conf-note" id="d-conf-note"></p></div>
           <div class="d-field" id="d-startdate-field" hidden><label for="d-startdate-edit">start date<span class="est-warn" id="d-startdate-warn" title="No start date set" aria-label="No start date set" hidden>⚠</span></label><input type="date" id="d-startdate-edit" spellcheck="false" /></div>
         </div>
         <div class="d-contains" id="d-contains" hidden></div>
@@ -537,6 +542,10 @@ export class LedgerDrawer extends HTMLElement {
     // the source has point estimates at all, and never for an abandoned item: work
     // dropped unfinished isn't nagged to fill in a figure it will never need.
     this.#$('#d-estimate-warn').hidden = hasEstimate || !caps.points || isAbandoned(item.status);
+    // What this tier's estimate is for: an epic's is a rough guess (a sanity check
+    // against its stories, never fed to velocity), a task's the committed figure
+    // velocity is computed from. Only when the source has point estimates.
+    this.#$('#d-conf-note').textContent = caps.points ? CONFIDENCE[item.kind].meaning : '';
 
     this.#paintDates(item);
     // Creation date: read-only, every tier, when the source records one. Hidden
@@ -965,7 +974,7 @@ export class LedgerDrawer extends HTMLElement {
     // Nothing at all when the source has no point estimates.
     if (this.#caps.points) {
       const pts = Number((child as { estimate?: number | null }).estimate) || 0;
-      line.append(pts > 0 ? el('span', 'pill', `${pts} pts`) : noEstimateIcon());
+      line.append(pts > 0 ? pointsPill(child.kind, pts) : noEstimateIcon());
     }
     asButton(line, () => this.#navigate(child), `${child.type} ${child.shortId}: ${child.title}. Open details.`);
     return line;

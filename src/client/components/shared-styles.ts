@@ -13,6 +13,7 @@
 // no-build choice.
 
 import { el, copyLink } from './util.js';
+import type { Kind } from '../../shared/contract';
 
 const sheet = (css: string): CSSStyleSheet => { const s = new CSSStyleSheet(); s.replaceSync(css); return s; };
 
@@ -35,19 +36,33 @@ export const chromeSheet = sheet(`
   .t-BUG     { --seal: var(--seal-bug, #8f2f22); }
   .t-SUBTASK { --seal: var(--ink-faint, #6f5c3e); }
 
+  /* Every metadata pill shares one voice: fell / italic / 14px / ink-soft, a
+     uniform field so the row reads as a set. Each carries ONE leading mark (a
+     shape cue, the only per-item distinction) — the status dot, the estimate's
+     operator glyph, the assignee nib, the count fleuron. Marks render as text,
+     not emoji (the \\FE0E in .who/.count-badge forces monochrome). */
   .pill { font-family: var(--fell, serif); font-style: italic; font-size: 14px; color: var(--ink-soft, #5b4a30); display: inline-flex; align-items: center; gap: 5px; }
   .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-faint, #6f5c3e); }
   .st-Open .dot { background: var(--seal-epic, #8a5a2b); }
   .st-Closed .dot { background: var(--seal-story, #3f5e4e); }
-  .who { font-family: var(--gara, serif); font-style: italic; font-size: 13px; color: var(--ink-soft, #5b4a30); }
-  .who b { color: var(--ink, #33291a); font-weight: 600; font-style: normal; }
+  /* The estimate's leading mark: the confidence operator (≈ / ~ / =), upright and
+     slightly muted so it reads as a sign, not a letter. */
+  .pmark { font-style: normal; color: var(--ink-faint, #6f5c3e); }
+  /* Assignee: same voice as the pills, with a nib mark for "owner". The name stays
+     italic (the row is uniformly italic) but bold — weight, not slant, is its
+     one accent as a proper noun. */
+  .who { font-family: var(--fell, serif); font-style: italic; font-size: 14px; color: var(--ink-soft, #5b4a30); }
+  .who::before { content: "\\270E\\FE0E"; margin-right: 5px; font-style: normal; color: var(--ink-faint, #6f5c3e); }
+  .who b { color: var(--ink, #33291a); font-weight: 600; }
   /* Context node: assigned to someone other than the filtered assignee, present
-     only to hold a matching descendant. A dotted outline + muted ink and a small
+     only to hold a matching descendant. A dotted outline + muted ink and a distinct
      leading glyph set it apart from a normal assignee without shouting. */
   .who.context { color: var(--ink-faint, #6f5c3e); border: 1px dotted var(--parch-edge, #c4ac7c); border-radius: 2px; padding: 0 6px; cursor: help; }
-  .who.context::before { content: "↳ "; opacity: .7; }
+  .who.context::before { content: "\\21B3\\FE0E"; opacity: .7; }
   .who.context b { color: var(--ink-soft, #5b4a30); font-weight: 500; }
+  /* Count badge: kept accented (red) with a fleuron mark for "contains". */
   .count-badge { color: var(--ink-red, #8f2f22); }
+  .count-badge::before { content: "\\2767\\FE0E"; margin-right: 5px; opacity: .8; }
   /* Missing-estimate flag: a data gap (no points set), distinct from the planning
      risk tones — a muted amber chip with a warning glyph, sitting where the points
      would be (or beside the type chip on a card). Neutral-but-noticeable so it
@@ -105,6 +120,39 @@ function missingIcon(meaning: string): HTMLSpanElement {
 // Missing-estimate flags (any tier, when the source has point estimates).
 export function noEstimateChip(): HTMLSpanElement { return missingChip('estimate', 'No estimate set'); }
 export function noEstimateIcon(): HTMLSpanElement { return missingIcon('No estimate set'); }
+
+// The estimate-confidence a tier's points carry. An epic's estimate is a rough
+// order-of-magnitude guess (very low confidence); a story's a working estimate
+// (medium); a task's the committed figure (high) — and tasks are the only tier
+// whose estimates feed velocity. The coarser two exist for capacity planning and
+// for checking a high-level guess against the sum of its low-level estimates.
+export // The glyph is the pill's leading mark AND its confidence cue, one channel: the
+// relational-operator ladder ≈ → ~ → = reads "roughly → approximately → exactly",
+// so a task's committed figure gets the firm "=" where the coarse tiers get the
+// approximation waves.
+const CONFIDENCE: Record<Kind, { label: string; glyph: string; meaning: string }> = {
+  epic:  { label: 'Rough',     glyph: '≈', meaning: 'Rough estimate — an order-of-magnitude guess. Not used for velocity; a sanity check against the summed story estimates.' },
+  story: { label: 'Estimate',  glyph: '~', meaning: 'Working estimate — a mid-confidence figure for capacity planning. Not used for velocity.' },
+  task:  { label: 'Committed', glyph: '=', meaning: 'Committed estimate — the firm figure. Only task estimates are used to compute velocity.' },
+};
+
+// The points pill. One builder so the card, outline, and drawer render the estimate
+// identically, as a peer of the other metadata (same font/size/style — no internal
+// variance). Estimate confidence rides ONE channel: an approximation glyph before
+// the number — "≈" for an epic's rough guess, "~" for a story's working estimate,
+// nothing for a task's committed figure (the only tier fed to velocity). A tooltip
+// carries the full meaning; the drawer's estimate field spells it out in prose.
+// `pts` is the raw count (caller has checked it's > 0 and the source has points).
+export function pointsPill(kind: Kind, pts: number): HTMLSpanElement {
+  const c = CONFIDENCE[kind];
+  const unit = pts === 1 ? 'pt' : 'pts';
+  const pill = el('span', 'pill');
+  const mark = el('span', 'pmark', c.glyph); mark.setAttribute('aria-hidden', 'true');
+  pill.append(mark, document.createTextNode(`${pts} ${unit}`));
+  pill.title = c.meaning;
+  pill.setAttribute('aria-label', `${c.label} estimate: ${pts} ${unit}. ${c.meaning}`);
+  return pill;
+}
 
 // Missing-start-date flags (closed tasks, when the source has task dates). A
 // closed task with no recorded start date can't contribute a duration or velocity

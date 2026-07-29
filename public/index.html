@@ -39,6 +39,7 @@
       <button class="ghost-btn" id="refresh" aria-keyshortcuts="r" title="Refresh (r)">
         <span aria-hidden="true">↻ </span>refresh
       </button>
+      <button class="ghost-btn icon-btn" id="about-btn" title="About" aria-label="About the Ledger">?</button>
     </div>
   </header>
 
@@ -92,6 +93,11 @@
        posts to the create route, and emits item-created for the board to place
        the new item in the tree without a reload. -->
   <ledger-compose id="compose"></ledger-compose>
+
+  <!-- About modal — a short explainer of the Ledger's opinions (three tiers,
+       measured velocity). Fixed prose, no injected services; opened from the
+       masthead "?" button. -->
+  <ledger-about id="about"></ledger-about>
 
   <div class="toast" id="toast" role="status" aria-live="assertive"></div>
 

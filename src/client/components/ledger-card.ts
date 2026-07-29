@@ -14,7 +14,7 @@
 // each card carries its own, which also makes the element reusable anywhere.
 
 import { el, asButton, plural } from './util.js';
-import { chromeSheet, idTag, noEstimateChip, noStartDateChip } from './shared-styles.js';
+import { chromeSheet, idTag, noEstimateChip, noStartDateChip, pointsPill } from './shared-styles.js';
 import { isClosed, isAbandoned, STATUS_LABEL } from '../../shared/status.js';
 import type { LedgerNode } from '../../shared/contract';
 
@@ -244,7 +244,7 @@ export class LedgerCard extends HTMLElement {
       }
       meta.append(who);
     }
-    if (hasPoints && item.estimate != null && item.estimate > 0) meta.append(el('span', 'pill', `${item.estimate} pts`));
+    if (hasPoints && item.estimate != null && item.estimate > 0) meta.append(pointsPill(item.kind, item.estimate));
     // Rollup badges. An epic with resolved counts shows "N stories" + "N tasks"
     // (see EpicCounts — tasks is direct + under-story, stories is immediate),
     // filtered like the board. The counts arrive after first paint, so the epic
