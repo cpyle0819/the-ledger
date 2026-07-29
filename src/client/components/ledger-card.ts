@@ -110,26 +110,33 @@ cardSheet.replaceSync(`
   .drill-hint { position: absolute; right: 12px; top: 14px; color: var(--seal, var(--ink-faint, #6f5c3e)); font-size: 15px; opacity: .55; transition: .15s; }
   .card:hover .drill-hint, :host([selected]) .drill-hint { opacity: 1; transform: translateX(2px); }
 
-  /* Closed item: strike a rotated wax "CLOSED" stamp across the card, and let the
-     parchment recede slightly so the open work stays dominant. The stamp is a
-     hand-inked seal — semi-transparent oxblood ink, a double rule, run through the
-     deckle displacement so its edges fringe like a real rubber stamp rather than a
-     crisp CSS box. pointer-events:none so it never intercepts the card click. */
+  /* Closed item: a small rotated wax "CLOSED" stamp in the bottom-right corner, and
+     the parchment recedes slightly so open work stays dominant. Cornered rather
+     than struck across the middle so it reads as done without obscuring the title
+     (the id tag holds the top-right; the meta row's right end is free).
+     The stamp is a hand-inked seal — semi-transparent oxblood ink, a double rule,
+     run through the deckle displacement so its edges fringe like a real rubber
+     stamp rather than a crisp CSS box. pointer-events:none so it never intercepts
+     the card click. */
   .card.closed .paper { filter: url(#ledger-deckle) saturate(.72) brightness(.98); }
   .card.closed .body { opacity: .72; }
   .closed-stamp {
-    position: absolute; z-index: 3; top: 50%; left: 50%;
-    transform: translate(-50%, -50%) rotate(-13deg);
+    position: absolute; z-index: 3; bottom: 12px; right: 10px;
+    transform: rotate(-9deg);
     pointer-events: none; user-select: none;
     font-family: var(--fell, serif); font-weight: 700; text-transform: uppercase;
-    font-size: 30px; letter-spacing: .18em; line-height: 1;
-    color: rgba(140,43,34,.72);
-    padding: 6px 20px; border: 3px double rgba(140,43,34,.62); border-radius: 5px;
+    font-size: 13px; letter-spacing: .13em; line-height: 1;
+    color: rgba(140,43,34,.7);
+    padding: 3px 9px; border: 2px double rgba(140,43,34,.58); border-radius: 3px;
     text-shadow: 0 1px 0 rgba(255,255,255,.18);
     filter: url(#ledger-deckle);
+    transition: opacity .15s;
   }
+  /* The hover "view details" affordance shares this corner; fade the stamp out on
+     hover so the button is unobstructed (the card is clearly closed by then). */
+  .card:hover .closed-stamp { opacity: 0; }
   /* A selected closed card: the stamp would fight the gild, so ease it back. */
-  :host([selected]) .closed-stamp { color: rgba(140,43,34,.6); border-color: rgba(140,43,34,.5); }
+  :host([selected]) .closed-stamp { color: rgba(140,43,34,.58); border-color: rgba(140,43,34,.46); }
 
   @media (prefers-reduced-motion: reduce) {
     :host([animate]) .card { animation: none; }
