@@ -115,14 +115,28 @@ const server = http.createServer(async (req, res) => {
     // Lazy hierarchy: no `parent` => roots (epics); otherwise that node's children.
     // `project` (a source grouping id) scopes the roots when the source supports
     // projects; it's one more filter dimension alongside assignee and status.
+    //
+    // Roots may paginate: when the source declares pagedRoots (and this is a roots
+    // request — no `parent`), serve one page via getRoots, echoing the cursor +
+    // progress counts so the client can offer "load more". A `cursor` param
+    // continues a prior page. Drilling a parent, and any non-paged source, still go
+    // through getChildren and return the full `nodes` array with no page envelope.
     if (p === '/api/children' && req.method === 'GET') {
       const filters: Filters = {
         assignee: q.get('assignee') || source.plugin.me,
         status: (q.get('status') as Filters['status']) || 'Open',
       };
       if (source.capabilities.projects && q.get('project')) filters.project = q.get('project');
-      const nodes = await call('getChildren', q.get('parent') || null, filters);
-      return sendJSON(res, 200, { parent: q.get('parent') || null, assignee: filters.assignee, nodes });
+      const parent = q.get('parent') || null;
+      if (!parent && source.capabilities.pagedRoots) {
+        const page = await call('getRoots', q.get('cursor') || null, filters) as import('../shared/contract').NodePage;
+        return sendJSON(res, 200, {
+          parent: null, assignee: filters.assignee,
+          nodes: page.nodes, cursor: page.cursor, total: page.total, loaded: page.loaded,
+        });
+      }
+      const nodes = await call('getChildren', parent, filters);
+      return sendJSON(res, 200, { parent, assignee: filters.assignee, nodes });
     }
 
     // Story/task rollup for a set of epics, under the current filters. Called

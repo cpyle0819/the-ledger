@@ -67,6 +67,7 @@ export function resolveCapabilities(plugin: SourcePlugin): Capabilities {
     points: !!c.points,
     taskDates: !!c.taskDates,
     incompleteClose: !!c.incompleteClose,
+    pagedRoots: !!c.pagedRoots && has('getRoots'),
   };
 }
 

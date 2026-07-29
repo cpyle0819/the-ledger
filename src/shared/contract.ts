@@ -73,6 +73,33 @@ export interface EpicVelocity {
   tasksCounted: number;
 }
 
+/** A page of root nodes with an optional continuation cursor — the contract's
+ *  lazy-loading primitive. A source whose root set can be large (a broad, unscoped
+ *  browse across everyone's work) returns roots one page at a time instead of in
+ *  one call: `nodes` is the CUMULATIVE set of roots loaded so far (the board
+ *  re-derives its lanes from it wholesale — loading more is purely additive, a
+ *  partial page's roots are still correct for what they contain), `cursor` is an
+ *  opaque token passed back to fetch the next page (null once the last page has
+ *  been reached), and `total`/`loaded` are the match total and how many have been
+ *  loaded so the UI can show progress ("showing N of M") and a "load more" control.
+ *
+ *  A source that needn't paginate simply doesn't implement getRoots (and leaves
+ *  the pagedRoots capability off); the board then loads every root in one
+ *  getChildren(null) call, exactly as before. Pagination is a ROOTS-level concern
+ *  (browse breadth) — a drilled parent's children are bounded and always loaded
+ *  whole via getChildren. */
+export interface NodePage {
+  nodes: LedgerNode[];
+  /** Opaque continuation token; pass back to getRoots to fetch the next page.
+   *  Null when the last page has been reached (no "load more"). */
+  cursor: string | null;
+  /** Total matches across all pages, when the source knows it (for "of M"); null
+   *  when the source can't cheaply count. */
+  total: number | null;
+  /** How many matches have been loaded so far (the "N" in "showing N of M"). */
+  loaded: number;
+}
+
 /** A cheap list node — what getChildren returns. Rich enough to render a card
  *  without a per-item fetch; the full Item is fetched lazily when a drawer opens. */
 export interface LedgerNode {
@@ -223,6 +250,12 @@ export interface Capabilities {
    *  completion. Gated so a source with no such concept (e.g. a tracker whose
    *  terminal states are indistinguishable) simply folds every close to 'Closed'. */
   incompleteClose: boolean;
+  /** Whether the source loads ROOTS in pages (backed by getRoots), for a browse
+   *  whose match set can be large — the board shows a "load more" control and a
+   *  "showing N of M" count instead of blocking on the whole set. When absent, the
+   *  board loads every root in one getChildren(null) call, as it always has. This
+   *  gates only how roots arrive; drilling a parent's children is unaffected. */
+  pagedRoots: boolean;
 }
 
 /** The plugin contract every source implements. A source module exports a
@@ -240,8 +273,20 @@ export interface SourcePlugin {
   capabilities: Partial<Capabilities> & { editFields?: EditableField[] };
 
   /** parentId null => roots (matching epics + matching orphan stories/tasks);
-   *  otherwise that node's visible children. */
+   *  otherwise that node's visible children. When the source implements getRoots,
+   *  the board uses it for the roots (parentId null) and getChildren only for
+   *  drilling a specific parent — but getChildren must still handle a null parent
+   *  (it's the non-paged path and the contract's floor). */
   getChildren(parentId: string | null, filters: Filters): MaybePromise<LedgerNode[]>;
+
+  /** Load one page of roots, for a source that paginates a large browse (gated by
+   *  the pagedRoots capability). `cursor` null starts a fresh page-1 load; a cursor
+   *  returned by a prior page continues from there. Returns the CUMULATIVE roots
+   *  loaded through this page plus the next cursor and progress counts (see
+   *  NodePage) — cumulative so the board re-derives its lanes wholesale and loading
+   *  more never re-parents what's shown. A source without it falls back to
+   *  getChildren(null), which loads every root at once. */
+  getRoots?(cursor: string | null, filters: Filters): MaybePromise<NodePage>;
   readItem(id: string): MaybePromise<Item>;
   editField(id: string, field: EditableField, value: unknown): MaybePromise<Item>;
   addComment(id: string, message: string): MaybePromise<Item>;

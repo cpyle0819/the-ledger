@@ -9,7 +9,7 @@
 // "everything blinks" bug.
 
 import { state, byId, indexNodes, clearNodes, parentOf, type CachedNode } from './state.js';
-import { api, fetchChildren, fetchNodesRaw, ensureChildren, fetchChildrenAllStatus, fetchEpicCounts, type ApiError } from './api.js';
+import { api, fetchChildren, fetchNodesRaw, fetchRootsPage, ensureChildren, fetchChildrenAllStatus, fetchEpicCounts, type ApiError } from './api.js';
 import { parseHash, writeHash, type UrlState } from './url.js';
 import { sfx } from './sound.js';
 import { $, need } from '../ui/dom.js';
@@ -69,11 +69,21 @@ export async function loadTree(): Promise<void> {
   showLoading(true);
   try {
     clearNodes();
-    const roots = await fetchChildren(null);
-    if (gen !== loadGen) return;                  // a newer load superseded this one
-    state.epics = roots.filter((n) => n.kind === 'epic');
-    state.orphanStories = roots.filter((n) => n.kind === 'story');
-    state.orphanTasks = roots.filter((n) => n.kind === 'task');
+    // A pagedRoots source loads roots a page at a time (cursor null = first page),
+    // so a broad browse doesn't block on the whole match set; the "load more"
+    // control fetches the rest. A non-paged source loads every root in one call.
+    let roots: CachedNode[];
+    if (state.caps.pagedRoots) {
+      const page = await fetchRootsPage(null);
+      if (gen !== loadGen) return;                // a newer load superseded this one
+      roots = page.nodes;
+      state.rootsCursor = page.cursor; state.rootsLoaded = page.loaded; state.rootsTotal = page.total;
+    } else {
+      roots = await fetchChildren(null);
+      if (gen !== loadGen) return;                // a newer load superseded this one
+      state.rootsCursor = null; state.rootsLoaded = roots.length; state.rootsTotal = roots.length;
+    }
+    setRootLanes(roots);
     if (!byId(state.selEpic)) { state.selEpic = state.epics[0]?.id || null; state.selStory = null; }
     // The tree just settled the selection (the linked epic, or the first epic as
     // the default). Reflect it so even an unlinked load carries its selection in
@@ -101,6 +111,7 @@ export async function loadTree(): Promise<void> {
     if (e.status === 422) {
       state.epics = []; state.orphanStories = []; state.orphanTasks = [];
       state.selEpic = null; state.selStory = null;
+      state.rootsCursor = null; state.rootsLoaded = 0; state.rootsTotal = null;
       const stage = need('#stage');
       stage.querySelectorAll('.columns, .outline').forEach((n) => n.remove());
       const wrap = document.createElement('div'); wrap.className = 'columns';
@@ -112,6 +123,52 @@ export async function loadTree(): Promise<void> {
   } finally {
     if (gen === loadGen) loadInFlight = false;
     showLoading(false);
+  }
+}
+
+// Split a root node set into the three lanes (epics head the board; orphan
+// stories/tasks render below). Shared by the first load and each "load more" page —
+// a paged source returns the CUMULATIVE roots each page, so this replaces the lanes
+// wholesale rather than appending, and loading more is purely additive.
+function setRootLanes(roots: CachedNode[]): void {
+  state.epics = roots.filter((n) => n.kind === 'epic');
+  state.orphanStories = roots.filter((n) => n.kind === 'story');
+  state.orphanTasks = roots.filter((n) => n.kind === 'task');
+}
+
+// True when more roots remain to load (a pagedRoots source with a live cursor).
+export function hasMoreRoots(): boolean {
+  return !!state.caps.pagedRoots && state.rootsCursor != null;
+}
+
+// Load the next page of roots and fold it into the board. Additive: the page
+// carries the cumulative root set, so the lanes are rebuilt and the selection
+// preserved. Guarded against a concurrent full load (a filter change) superseding
+// it. Returns when the page has landed (or been superseded); errors surface as a
+// toast and leave the current roots intact so "load more" can be retried.
+let loadingMore = false;
+export async function loadMoreRoots(): Promise<void> {
+  if (loadingMore || !hasMoreRoots()) return;
+  const gen = loadGen;
+  loadingMore = true;
+  try {
+    const page = await fetchRootsPage(state.rootsCursor);
+    if (gen !== loadGen) return;                 // a full load superseded this
+    state.rootsCursor = page.cursor; state.rootsLoaded = page.loaded; state.rootsTotal = page.total;
+    setRootLanes(page.nodes);
+    // New epics may have appeared; keep counts current for them.
+    warmEpicCounts(state.epics.map((e) => e.id));
+    // Repaint the roots. In columns the epic column swap is a lighter touch than a
+    // full render (preserves downstream selection); the outline rebuilds. Either
+    // way refresh the load-more bar so its "showing N of M" and its
+    // presence/absence (the cursor may have just gone null) track the new state.
+    if (state.lens === 'columns') refreshEpicColumn(handlers);
+    else render();
+    renderLoadMore(need('#stage'));
+  } catch (err) {
+    toast((err as ApiError).message, true);
+  } finally {
+    loadingMore = false;
   }
 }
 
@@ -294,6 +351,33 @@ export function render({ animate = false }: { animate?: boolean } = {}): void {
   stage.dataset.lens = state.lens;
   if (state.lens === 'columns') renderColumns(stage, animate, handlers);
   else renderOutline(stage, handlers);
+  renderLoadMore(stage);
+}
+
+// Show or update the "load more" control at the foot of the stage when the source
+// paginates roots and more pages remain (hasMoreRoots); otherwise remove it. Kept
+// as a stage-level sibling of the lens so it's pinned below both lenses and
+// survives their teardown/rebuild. Its `load-more` event drives loadMoreRoots.
+function renderLoadMore(stage: HTMLElement): void {
+  let bar = stage.querySelector('ledger-load-more') as HTMLElement | null;
+  if (!hasMoreRoots()) { bar?.remove(); return; }
+  if (!bar) {
+    bar = document.createElement('ledger-load-more');
+    bar.addEventListener('load-more', () => {
+      bar!.setAttribute('loading', '');
+      // loadMoreRoots re-renders on success (repainting this bar with fresh counts,
+      // or removing it when the last page lands); on failure it toasts and the
+      // finally-clear below drops the spinner so the user can retry.
+      void loadMoreRoots().finally(() => stage.querySelector('ledger-load-more')?.removeAttribute('loading'));
+    });
+    stage.append(bar);
+  } else {
+    // Re-append so it stays the last child after a lens rebuild inserted its container.
+    stage.append(bar);
+  }
+  bar.setAttribute('loaded', String(state.rootsLoaded));
+  if (state.rootsTotal != null) bar.setAttribute('total', String(state.rootsTotal));
+  else bar.removeAttribute('total');
 }
 
 // ---- selection (partial updates — no upstream teardown, no re-animation) ----
@@ -553,15 +637,23 @@ export async function reconcile(): Promise<void> {
   try {
     let changed = false;
 
-    // Roots first (epics + orphan stories/tasks), split like loadTree does.
-    const roots = await fetchNodesRaw(null);
-    if (gen !== loadGen) return;                  // a load superseded this poll
-    const freshEpics = roots.filter((n) => n.kind === 'epic');
-    const freshOStories = roots.filter((n) => n.kind === 'story');
-    const freshOTasks = roots.filter((n) => n.kind === 'task');
-    const e = mergeLevel(state.epics, freshEpics); state.epics = e.list; changed ||= e.changed;
-    const os = mergeLevel(state.orphanStories, freshOStories); state.orphanStories = os.list; changed ||= os.changed;
-    const ot = mergeLevel(state.orphanTasks, freshOTasks); state.orphanTasks = ot.list; changed ||= ot.changed;
+    // Roots first (epics + orphan stories/tasks), split like loadTree does — but
+    // NOT for a pagedRoots source: a roots re-fetch there returns only the first
+    // page, which mergeLevel would read as "every later-page root was removed" and
+    // collapse a loaded-more browse back to page 1. The browse is a user-driven
+    // snapshot; leave its root set to load-more and reconcile only the open subtrees
+    // below (selected/expanded parents), which still surfaces out-of-Ledger edits to
+    // what's on screen.
+    if (!state.caps.pagedRoots) {
+      const roots = await fetchNodesRaw(null);
+      if (gen !== loadGen) return;                  // a load superseded this poll
+      const freshEpics = roots.filter((n) => n.kind === 'epic');
+      const freshOStories = roots.filter((n) => n.kind === 'story');
+      const freshOTasks = roots.filter((n) => n.kind === 'task');
+      const e = mergeLevel(state.epics, freshEpics); state.epics = e.list; changed ||= e.changed;
+      const os = mergeLevel(state.orphanStories, freshOStories); state.orphanStories = os.list; changed ||= os.changed;
+      const ot = mergeLevel(state.orphanTasks, freshOTasks); state.orphanTasks = ot.list; changed ||= ot.changed;
+    }
 
     // Then every loaded parent that's currently shown: the selected epic/story
     // (columns) and every expanded node (outline). Re-fetching these keeps the

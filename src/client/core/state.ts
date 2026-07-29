@@ -30,6 +30,12 @@ export interface BoardState {
   selEpic: string | null;
   selStory: string | null;
   expanded: Set<string>;      // outline: ids whose children are shown
+  // Roots pagination (only for a source with the pagedRoots capability). `cursor`
+  // is the opaque token for the NEXT page (null = no more, or a non-paged source);
+  // `loaded`/`total` drive the "showing N of M" control. See loadTree/loadMoreRoots.
+  rootsCursor: string | null;
+  rootsLoaded: number;
+  rootsTotal: number | null;
 }
 
 export const state: BoardState = {
@@ -45,6 +51,9 @@ export const state: BoardState = {
   selEpic: null,
   selStory: null,
   expanded: new Set(),
+  rootsCursor: null,
+  rootsLoaded: 0,
+  rootsTotal: null,
 };
 
 // Every node the client has fetched, by id.

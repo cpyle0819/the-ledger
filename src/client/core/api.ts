@@ -22,6 +22,9 @@ export async function api<T = unknown>(path: string, opts?: RequestInit): Promis
 }
 
 interface ChildrenResponse { nodes: CachedNode[] }
+/** A page of roots from a pagedRoots source: the cumulative nodes plus the paging
+ *  cursor (null = last page) and progress counts. See fetchRootsPage. */
+export interface RootsPage { nodes: CachedNode[]; cursor: string | null; total: number | null; loaded: number }
 
 // Fetch a parent's children (or the roots when parentId is null) with the current
 // filters, WITHOUT touching the cache. The caller decides how to merge — used by
@@ -44,6 +47,22 @@ export async function fetchChildren(node: CachedNode | null): Promise<CachedNode
   indexNodes(nodes);
   if (node) { node.children = nodes; node.loaded = true; }
   return nodes;
+}
+
+// Fetch one page of roots from a pagedRoots source. `cursor` null starts a fresh
+// page-1 load; a cursor from a prior page continues it. The response's `nodes` is
+// the CUMULATIVE set of roots loaded so far (the board re-derives its lanes from it
+// wholesale), so the caller replaces its root set rather than appending. Returns
+// the cursor + progress counts for the "load more" control. Filters mirror
+// fetchNodesRaw's; no `parent` (roots only).
+export async function fetchRootsPage(cursor: string | null): Promise<RootsPage> {
+  const q = new URLSearchParams({ status: state.status });
+  if (state.assignee) q.set('assignee', state.assignee);
+  if (state.project) q.set('project', state.project);
+  if (cursor) q.set('cursor', cursor);
+  const page = await api<RootsPage>(`/api/children?${q}`);
+  indexNodes(page.nodes);
+  return page;
 }
 
 // Fetch a parent's children at ALL statuses, ignoring the board's status filter

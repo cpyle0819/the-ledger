@@ -13,6 +13,7 @@ import './components/ledger-card.js';
 import './components/ledger-column.js';
 import './components/ledger-drawer.js';
 import './components/ledger-compose.js';
+import './components/ledger-load-more.js';
 
 import { state } from './core/state.js';
 import { api, loadProjects } from './core/api.js';
