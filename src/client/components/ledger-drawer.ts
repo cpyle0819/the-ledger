@@ -315,6 +315,7 @@ export class LedgerDrawer extends HTMLElement {
           <div class="d-field" id="d-startdate-field" hidden><label for="d-startdate-edit">start date<span class="est-warn" id="d-startdate-warn" title="No start date set" aria-label="No start date set" hidden>⚠</span></label><input type="date" id="d-startdate-edit" spellcheck="false" /></div>
           <div class="d-field" id="d-completion-field" hidden><label id="d-completion-label">completed</label><div class="d-readonly" id="d-completion-text" aria-labelledby="d-completion-label"></div></div>
           <div class="d-field" id="d-duration-field" hidden><label id="d-duration-label">duration</label><div class="d-readonly" id="d-duration-text" aria-labelledby="d-duration-label"></div></div>
+          <div class="d-field" id="d-created-field" hidden><label id="d-created-label">created</label><div class="d-readonly" id="d-created-text" aria-labelledby="d-created-label"></div></div>
         </div>
         <div class="d-contains" id="d-contains" hidden></div>
         <div class="d-desc-head">
@@ -533,6 +534,13 @@ export class LedgerDrawer extends HTMLElement {
     this.#$('#d-estimate-warn').hidden = hasEstimate || !caps.points;
 
     this.#paintDates(item);
+    // Creation date: read-only, every tier, when the source records one. Hidden
+    // until the full item loads (the list node carries no createDate) and for a
+    // source that doesn't stamp one, rather than showing an empty line. Formatted
+    // like the completion date (UTC, date-granular).
+    const createField = this.#$('#d-created-field');
+    createField.hidden = !item.createDate;
+    if (item.createDate) this.#$('#d-created-text').textContent = this.#formatDate(item.createDate);
     const sel = this.#$<HTMLSelectElement>('#d-status-edit'); sel.innerHTML = '';
     const opts = STATUSES.includes(item.status) ? STATUSES : [item.status, ...STATUSES];
     [...new Set(opts)].forEach((s) => { const o = el('option', null, s); o.value = s; if (s === item.status) o.selected = true; sel.append(o); });
