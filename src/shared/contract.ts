@@ -13,11 +13,18 @@
 /** The three tiers of the hierarchy. `kind` is derived from `type` by the source. */
 export type Kind = 'epic' | 'story' | 'task';
 
-/** The item's lifecycle state: binary. Every source maps its own native states
- *  (a tracker's Resolved, a GitHub close reason, …) onto exactly one of these two on
- *  read; the board never sees anything else. Richer per-source step detail rides
- *  on `workflowAction`, not here. */
-export type Status = 'Open' | 'Closed';
+/** The item's lifecycle state. `Open` and `Closed` are the two states every
+ *  source supports: a source maps its own native states (a tracker's Resolved, a
+ *  GitHub close reason, …) onto one of them on read. `Abandoned` — displayed as
+ *  "Closed (not completed)" — is a THIRD, closed-but-unfinished state that only
+ *  sources declaring the `incompleteClose` capability ever produce; for every
+ *  other source the board never sees it. It is a terminal state (see isClosed): it
+ *  hides by default and wears the closed treatment like any close, but it is
+ *  excluded from velocity and never draws a missing-estimate/date warning (an
+ *  item abandoned unfinished is not nagged to fill in data it will never need).
+ *  Richer per-source step detail rides on `workflowAction`, not here. See the
+ *  status predicates in ./status. */
+export type Status = 'Open' | 'Closed' | 'Abandoned';
 
 /** The status filter the board sends down: open-only, closed-only, or all. */
 export type StatusFilter = 'Open' | 'Closed' | 'ALL';
@@ -47,16 +54,18 @@ export interface EpicCounts {
   tasks: number;
 }
 
-/** A rough delivery-rate rollup for an epic: story points completed per calendar
- *  day across the epic's whole task tree. `points` sums the estimates of every
- *  task (direct or under a story) that has a computable duration (both a start and
- *  a completion date). `days` is the CALENDAR SPAN — earliest start to latest
+/** A rough velocity rollup for an epic: story points completed per calendar day
+ *  across the epic's whole task tree. `points` sums the estimates of every task
+ *  (direct or under a story) that has a computable duration (both a start and a
+ *  completion date). `days` is the CALENDAR SPAN — earliest start to latest
  *  completion across those same tasks — not the sum of per-task durations, so
  *  parallel work counts once. `pointsPerDay` is points/days (null when days is 0,
  *  e.g. every qualifying task finished the day it started). `tasksCounted` is how
  *  many tasks contributed, so the UI can caveat a figure drawn from few samples.
  *  Unlike EpicCounts this is a HISTORICAL metric over completed work, so it spans
- *  all statuses and ignores the board's status filter. */
+ *  all statuses and ignores the board's status filter — but a source that can tell
+ *  an abandoned close from a completion (the incompleteClose capability) excludes
+ *  the abandoned tasks, since work dropped unfinished never "delivered" its points. */
 export interface EpicVelocity {
   points: number;
   days: number;
@@ -205,6 +214,15 @@ export interface Capabilities {
    *  editFields carrying 'startDate'); completion date is written by the source
    *  when a task closes and is never user-editable. Task-tier only. */
   taskDates: boolean;
+  /** Whether the source can distinguish a close that COMPLETED the work from one
+   *  that abandoned it unfinished (the 'Abandoned' status, shown as "Closed (not
+   *  completed)"). When present: the status select offers the not-completed
+   *  option, velocity excludes abandoned tasks, and an abandoned item draws no
+   *  missing-estimate/date warnings. When absent, no source ever produces
+   *  'Abandoned' and the board behaves exactly as before — every close is a
+   *  completion. Gated so a source with no such concept (e.g. a tracker whose
+   *  terminal states are indistinguishable) simply folds every close to 'Closed'. */
+  incompleteClose: boolean;
 }
 
 /** The plugin contract every source implements. A source module exports a

@@ -24,7 +24,8 @@ import { chromeSheet, idTag, noEstimateIcon } from './shared-styles.js';
 import { renderInto } from './markdown.js';
 import './ledger-comment-thread.js';
 import type { LedgerCommentThread } from './ledger-comment-thread.js';
-import type { Item, LedgerNode, User, EditableField, Capabilities, EpicVelocity } from '../../shared/contract';
+import type { Item, LedgerNode, User, EditableField, Capabilities, EpicVelocity, Status } from '../../shared/contract';
+import { STATUS_LABEL, isClosed as statusIsClosed, isAbandoned } from '../../shared/status.js';
 
 /** The fetch wrapper the board injects (see app's api()). */
 export type ApiFn = <T = unknown>(path: string, opts?: RequestInit) => Promise<T>;
@@ -35,7 +36,7 @@ export type FetchChildrenFn = (node: LedgerNode) => Promise<LedgerNode[]>;
  *  rollup — capacity is measured against the full decomposition, not the board's
  *  filtered view. Injected so the drawer stays transport-agnostic. */
 export type PlanningChildrenFn = (node: LedgerNode) => Promise<LedgerNode[]>;
-/** Fetches an epic's points-per-day delivery rate over its whole task tree.
+/** Fetches an epic's points-per-day velocity over its whole task tree.
  *  Injected so the drawer stays transport-agnostic; null when unsupported. */
 export type EpicVelocityFn = (epicId: string) => Promise<EpicVelocity>;
 /** Optional foley cues. */
@@ -43,7 +44,10 @@ export interface Sfx { pageTurn(): void; quill(): void }
 /** Optional toast surface. */
 export type ToastFn = (msg: string, isErr?: boolean) => void;
 
-const STATUSES = ['Open', 'Closed'];
+// The status options the select offers, in order. 'Abandoned' ("Closed (not
+// completed)") is included only when the source declares incompleteClose — see
+// #paint, which filters this list by capability.
+const STATUSES: Status[] = ['Open', 'Closed', 'Abandoned'];
 
 /** Sum the estimate points across a list of nodes (missing/zero estimates count
  *  as 0). Used for the Planning group effort figures and the risk rollup. */
@@ -51,10 +55,11 @@ function sumEffort(nodes: LedgerNode[]): number {
   return nodes.reduce((s, n) => s + (Number((n as { estimate?: number | null }).estimate) || 0), 0);
 }
 
-// Status is binary at the contract: a source has already folded its native
-// terminal states (a tracker's Resolved, a GitHub close reason, …) into 'Closed'
-// on read, so Planning counts closed exactly as the board's status filter does.
-const isClosed = (n: LedgerNode): boolean => n.status === 'Closed';
+// A closed item, in the terminal sense: completed OR abandoned. Both count as
+// "done" for the Planning open/closed split, exactly as the board's status filter
+// hides them by default. (A source without the incompleteClose capability never
+// produces 'Abandoned', so this reduces to the old `=== 'Closed'` for it.)
+const isClosed = (n: LedgerNode): boolean => statusIsClosed(n.status);
 
 const sheet = new CSSStyleSheet();
 sheet.replaceSync(`
@@ -203,7 +208,7 @@ sheet.replaceSync(`
   .cclosed-caret { display: inline-block; width: 1em; color: var(--ink-faint, #6f5c3e); font-size: 12px; }
   .cclosed-list { padding-left: 16px; }
   .cgroup { margin-top: 8px; }
-  /* Delivery-rate line: a calm italic footnote under the Planning groups. A top
+  /* Velocity line: a calm italic footnote under the Planning groups. A top
      rule sets it apart as a summary of the tree above, not another group. */
   .cvelocity { margin-top: 12px; padding-top: 10px; border-top: 1px dotted rgba(91,74,48,.35);
     font-family: var(--fell, serif); font-style: italic; font-size: 14px; color: var(--ink-soft, #5b4a30); }
@@ -528,9 +533,10 @@ export class LedgerDrawer extends HTMLElement {
 
     const hasEstimate = item.estimate != null && item.estimate > 0;
     this.#$<HTMLInputElement>('#d-estimate-edit').value = hasEstimate ? String(item.estimate) : '';
-    // Flag the open item's own missing estimate beside the label (icon only) — only
-    // when the source has point estimates at all.
-    this.#$('#d-estimate-warn').hidden = hasEstimate || !caps.points;
+    // Flag the item's own missing estimate beside the label (icon only) — only when
+    // the source has point estimates at all, and never for an abandoned item: work
+    // dropped unfinished isn't nagged to fill in a figure it will never need.
+    this.#$('#d-estimate-warn').hidden = hasEstimate || !caps.points || isAbandoned(item.status);
 
     this.#paintDates(item);
     // Creation date: read-only, every tier, when the source records one. Hidden
@@ -541,8 +547,17 @@ export class LedgerDrawer extends HTMLElement {
     createField.hidden = !item.createDate;
     if (item.createDate) this.#$('#d-created-text').textContent = this.#formatDate(item.createDate);
     const sel = this.#$<HTMLSelectElement>('#d-status-edit'); sel.innerHTML = '';
-    const opts = STATUSES.includes(item.status) ? STATUSES : [item.status, ...STATUSES];
-    [...new Set(opts)].forEach((s) => { const o = el('option', null, s); o.value = s; if (s === item.status) o.selected = true; sel.append(o); });
+    // Offer 'Abandoned' ("Closed (not completed)") only when the source can tell an
+    // abandoned close from a completion; otherwise the select is the old Open/Closed.
+    const offered = STATUSES.filter((s) => s !== 'Abandoned' || caps.incompleteClose);
+    // Always include the item's CURRENT status even if not normally offered, so a
+    // value the source already holds is never silently dropped from the control.
+    const opts = offered.includes(item.status) ? offered : [item.status, ...offered];
+    [...new Set(opts)].forEach((s) => {
+      const o = el('option', null, STATUS_LABEL[s] ?? s); o.value = s;
+      if (s === item.status) o.selected = true;
+      sel.append(o);
+    });
     this.#$<HTMLInputElement>('#d-assignee-edit').value = item.assignee || '';
     this.#closeAssigneeList();
 
@@ -571,17 +586,20 @@ export class LedgerDrawer extends HTMLElement {
     // field rather than show an input that can't save.
     this.#$('#d-startdate-field').hidden = !(showDates && canEdit('startDate'));
     this.#$<HTMLInputElement>('#d-startdate-edit').value = this.#dateInputValue(item.startDate);
-    // Flag a closed task with no start date beside the label (icon only) — a
+    // Flag a completed task with no start date beside the label (icon only) — a
     // finished task with no recorded start can't yield a duration or feed velocity.
-    // Only meaningful once closed; an open task without a start date is normal.
+    // Only for a genuine completion: an open task hasn't necessarily started, and an
+    // abandoned task never delivered, so neither is warned.
     this.#$('#d-startdate-warn').hidden = !(item.status === 'Closed' && !item.startDate);
-    // Completion is meaningful only once the task is done: show the line when a
-    // completion date exists OR the task is closed. An open task hides it entirely
-    // (the concept doesn't apply yet — no empty-state noise). A closed task with no
-    // stamped date (closed before this feature, or by a source that doesn't record
-    // one) reads "completed (date not recorded)" rather than the false "not yet".
-    const closed = item.status === 'Closed';
-    this.#$('#d-completion-field').hidden = !(showDates && (item.completionDate || closed));
+    // Completion is meaningful only once the task is COMPLETED: show the line when a
+    // completion date exists OR the task is closed-as-done. An open task hides it
+    // entirely (the concept doesn't apply yet — no empty-state noise); an abandoned
+    // task likewise hides it (it was never completed — `=== 'Closed'` is the
+    // completion, not the terminal, sense). A completed task with no stamped date
+    // (closed before this feature, or by a source that doesn't record one) reads
+    // "completed (date not recorded)" rather than the false "not yet".
+    const completed = item.status === 'Closed';
+    this.#$('#d-completion-field').hidden = !(showDates && (item.completionDate || completed));
     const compText = this.#$('#d-completion-text');
     // Duration rides the completion line as a parenthetical ("Apr 2, 2026 (2 weeks,
     // 13 days)"): how long a finished task took, start → completion. Shown only
@@ -911,12 +929,12 @@ export class LedgerDrawer extends HTMLElement {
       box.append(g);
     }
 
-    // Delivery-rate line: points completed per calendar day across the epic's task
+    // Velocity line: points completed per calendar day across the epic's task
     // tree. Epic-only, gated on the capability + point estimates. Fetched lazily so
     // it never blocks the Planning render; a slot is appended now and filled when
     // the rollup resolves, guarded against the drawer moving to another item.
     if (item.kind === 'epic' && this.epicVelocity && this.#caps.epicVelocity && this.#caps.points) {
-      const vel = el('div', 'cvelocity', 'Delivery rate · calculating…');
+      const vel = el('div', 'cvelocity', 'Velocity · calculating…');
       box.append(vel);
       const forId = item.id;
       this.epicVelocity(item.id)
@@ -925,16 +943,16 @@ export class LedgerDrawer extends HTMLElement {
     }
   }
 
-  // The delivery-rate line's text. A rate needs points AND a non-zero calendar span
+  // The velocity line's text. A rate needs points AND a non-zero calendar span
   // across tasks that have a computable duration; short of that, say why rather than
   // print a misleading "0". `tasksCounted` is surfaced as an n= caveat because a
   // rate from one or two tasks is noise, not a trend.
   #velocityText(v: EpicVelocity): string {
-    if (!v.tasksCounted) return 'Delivery rate · no tasks with recorded start + completion dates yet.';
+    if (!v.tasksCounted) return 'Velocity · no tasks with recorded start + completion dates yet.';
     const n = `across ${v.tasksCounted} ${v.tasksCounted === 1 ? 'task' : 'tasks'}`;
-    if (v.pointsPerDay == null) return `Delivery rate · ${v.points} pts completed same-day (${n}); no per-day rate.`;
+    if (v.pointsPerDay == null) return `Velocity · ${v.points} pts completed same-day (${n}); no per-day rate.`;
     const rate = v.pointsPerDay >= 10 ? Math.round(v.pointsPerDay) : v.pointsPerDay.toFixed(1);
-    return `Delivery rate · ≈ ${rate} pts/day (${v.points} pts over ${v.days} ${v.days === 1 ? 'day' : 'days'}, ${n}).`;
+    return `Velocity · ≈ ${rate} pts/day (${v.points} pts over ${v.days} ${v.days === 1 ? 'day' : 'days'}, ${n}).`;
   }
 
   // One child line in the Planning list. `deemph` dims it (used for closed items

@@ -360,7 +360,7 @@ export function wireDrawer(): void {
   d.planningChildren = (node) => (state.status === 'ALL'
     ? ensureChildren(node as CachedNode)
     : fetchChildrenAllStatus(node.id));
-  // Points-per-day delivery rate for an epic, computed by the source over its whole
+  // Points-per-day velocity for an epic, computed by the source over its whole
   // task tree. Always wired (caps load AFTER wireDrawer runs, so gating here would
   // bake in a stale null); the drawer gates the actual call on its own
   // epicVelocity capability. Historical over completed work, so it takes no filters.

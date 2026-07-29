@@ -66,6 +66,7 @@ export function resolveCapabilities(plugin: SourcePlugin): Capabilities {
     epicVelocity: !!c.epicVelocity && has('epicVelocity'),
     points: !!c.points,
     taskDates: !!c.taskDates,
+    incompleteClose: !!c.incompleteClose,
   };
 }
 

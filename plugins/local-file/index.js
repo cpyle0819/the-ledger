@@ -19,7 +19,14 @@ const crypto = require('crypto');
 const FILE = process.env.LEDGER_FILE || path.join(__dirname, 'sample.json');
 const ME = process.env.LEDGER_ME || 'me';
 
-const CLOSED_STATES = new Set(['Resolved', 'Closed']);
+// Terminal (closed) native states. 'Abandoned' is closed-but-not-completed — it's
+// closed for filtering/hiding, but distinct from a completing close (see statusOf).
+const CLOSED_STATES = new Set(['Resolved', 'Closed', 'Abandoned']);
+// Fold a stored native status to the contract's tri-valued status on read. A
+// legacy 'Resolved'/'Closed' is a completing close -> 'Closed'; 'Abandoned' is the
+// closed-not-completed state -> 'Abandoned'; everything else is 'Open'.
+const statusOf = (status) =>
+  status === 'Abandoned' ? 'Abandoned' : CLOSED_STATES.has(status) ? 'Closed' : 'Open';
 const kindOf = (type) => {
   const t = String(type || '').toUpperCase();
   return t === 'EPIC' ? 'epic' : t === 'STORY' ? 'story' : 'task';
@@ -83,6 +90,35 @@ function computeVisible(items, { status, assignee, project }) {
   return { visible, matchIds };
 }
 
+// Every task at or below a node, walking the parent links down (direct tasks and
+// tasks under the node's stories — the tree's lower two tiers). Cycle-guarded.
+function descendantTasks(rootId, items) {
+  const kids = new Map();
+  for (const it of items) {
+    if (!it.parent) continue;
+    (kids.get(it.parent) || kids.set(it.parent, []).get(it.parent)).push(it);
+  }
+  const out = [];
+  const seen = new Set();
+  const stack = [...(kids.get(rootId) || [])];
+  while (stack.length) {
+    const it = stack.pop();
+    if (seen.has(it.id)) continue;
+    seen.add(it.id);
+    if (kindOf(it.type) === 'task') out.push(it);
+    for (const c of kids.get(it.id) || []) stack.push(c);
+  }
+  return out;
+}
+
+// UTC-midnight ms of a date-ish value's calendar date, or NaN. Truncates any time
+// component so a stray timestamp can't skew the day-span (matches how the dates
+// display and how a task's own duration is computed).
+function dayMs(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || '');
+  return m ? Date.UTC(+m[1], +m[2] - 1, +m[3]) : NaN;
+}
+
 // A cheap list node. childCount is the raw number of items parented on this one,
 // known from a single pass over the file — no per-child fetch. `context` marks a
 // node pulled in only as an ancestor of a match (assigned elsewhere); the board
@@ -94,9 +130,10 @@ function shapeNode(item, items, context = false) {
     kind: kindOf(item.type),
     type: String(item.type || 'TASK').toUpperCase(),
     title: item.title || '(untitled)',
-    // Contract status is binary. Fold this source's stored value (which may be a
-    // legacy 'Resolved' from before the binary model) to Open/Closed on read.
-    status: CLOSED_STATES.has(item.status) ? 'Closed' : 'Open',
+    // Fold this source's stored native value to the contract status on read: a
+    // legacy 'Resolved'/'Closed' -> 'Closed', 'Abandoned' -> 'Abandoned' (closed-
+    // not-completed), anything else -> 'Open'. See statusOf.
+    status: statusOf(item.status),
     assignee: item.assignee || null,
     project: item.project || null,
     context,
@@ -151,6 +188,12 @@ module.exports = function createLocalFilePlugin() {
       attachments: false,
       points: true,
       taskDates: true,
+      epicVelocity: true,
+      // This source can record a close that abandoned the work unfinished (the
+      // native 'Abandoned' status) distinctly from a completing close, so the board
+      // offers "Closed (not completed)", excludes it from velocity, and doesn't nag
+      // it for missing estimates/dates.
+      incompleteClose: true,
     },
 
     // The projects (declared in the file) the board can scope to. null project =
@@ -215,13 +258,15 @@ module.exports = function createLocalFilePlugin() {
       }
       else item[field] = value;
       // Completion date is a side effect of status, never edited directly: stamp it
-      // when a TASK first crosses into a closed state, clear it if it reopens. Only
-      // tasks carry dates (the taskDates capability is task-tier), so higher tiers
-      // don't accrue a completion date from their own status changes.
+      // when a TASK first crosses into a COMPLETING close, clear it otherwise. Keyed
+      // on the folded contract status, so only a real completion ('Closed') stamps —
+      // an abandoned close never completed, so it carries no completion date, and
+      // reopening (or abandoning) clears any prior stamp. Only tasks carry dates (the
+      // taskDates capability is task-tier), so higher tiers don't accrue one.
       if (field === 'status' && kindOf(item.type) === 'task') {
-        const closed = CLOSED_STATES.has(item.status || 'Open');
-        if (closed && !item.completionDate) item.completionDate = new Date().toISOString();
-        else if (!closed) item.completionDate = null;
+        const completed = statusOf(item.status) === 'Closed';
+        if (completed && !item.completionDate) item.completionDate = new Date().toISOString();
+        else if (!completed) item.completionDate = null;
       }
       item.lastUpdatedDate = new Date().toISOString();
       save(items);
@@ -292,6 +337,37 @@ module.exports = function createLocalFilePlugin() {
       });
       save(items);
       return shapeItem(item, items);
+    },
+
+    // Points-per-day velocity across an epic's whole task tree. A HISTORICAL metric
+    // over completed work, so it spans all statuses (no filter). Only tasks with a
+    // computable duration (both a start and a completion date) contribute — and
+    // because a completion date is stamped ONLY on a completing close (never on an
+    // abandoned one, see editField), abandoned tasks carry no completion date and
+    // are excluded here for free: work dropped unfinished never delivered its points.
+    // The rate is total points over the CALENDAR SPAN (earliest start -> latest
+    // completion), so parallel work counts once; same-day-only work yields days=0
+    // and a null rate.
+    epicVelocity(epicId) {
+      const { items } = load();
+      const tasks = descendantTasks(epicId, items);
+      let points = 0;
+      let tasksCounted = 0;
+      let minStart = Infinity;
+      let maxEnd = -Infinity;
+      for (const t of tasks) {
+        if (statusOf(t.status) === 'Abandoned') continue; // abandoned work never delivered
+        const start = dayMs(t.startDate);
+        const end = dayMs(t.completionDate);
+        if (Number.isNaN(start) || Number.isNaN(end) || end < start) continue; // no computable duration
+        points += Number(t.estimate) || 0;
+        tasksCounted += 1;
+        if (start < minStart) minStart = start;
+        if (end > maxEnd) maxEnd = end;
+      }
+      const days = tasksCounted ? Math.round((maxEnd - minStart) / 86_400_000) : 0;
+      const pointsPerDay = days > 0 ? points / days : null;
+      return { points, days, pointsPerDay, tasksCounted };
     },
   };
 };

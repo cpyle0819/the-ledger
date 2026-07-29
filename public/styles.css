@@ -349,6 +349,9 @@ ledger-card.deemph:hover {
 .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-faint); }
 .st-Open .dot { background: var(--seal-epic); }
 .st-Closed .dot, .st-Resolved .dot { background: var(--seal-story); }
+/* Abandoned (closed-not-completed): a grey/inert dot, distinct from the warm dot
+   of a completed close — the same slate the "Not done" stamp/tag uses. */
+.st-Abandoned .dot { background: rgba(74,78,86,.8); }
 .who { font-family: var(--gara); font-style: italic; font-size: 13px; color: var(--ink-soft); }
 .who b { color: var(--ink); font-weight: 600; font-style: normal; }
 /* Context node in the outline lens — mirror of the shadow-DOM rule in
@@ -456,14 +459,17 @@ ledger-card.deemph:hover {
 .ol-task-row .card-title { font-family: var(--gara); font-size: 15px; flex: 1; }
 
 /* Closed row (shown only when "show closed items" is on): marked with a small wax
-   "CLOSED" tag — the outline analogue of the card's corner stamp. The tag alone
-   carries the closed signal; the row is not dimmed. */
+   tag — the outline analogue of the card's corner stamp. The tag alone carries the
+   closed signal; the row is not dimmed. A completed close is oxblood "CLOSED"; an
+   abandoned close is slate "NOT DONE" (.abandoned), matching the card stamp's two
+   inks so the terminal states read differently here too. */
 .ol-closed-tag {
   font-family: var(--fell); font-weight: 700; text-transform: uppercase;
   font-size: 10px; letter-spacing: .12em; line-height: 1;
   color: rgba(140,43,34,.85); padding: 2px 7px; border-radius: 3px;
   border: 1.5px solid rgba(140,43,34,.55); white-space: nowrap;
 }
+.ol-closed-tag.abandoned { color: rgba(74,78,86,.9); border-color: rgba(74,78,86,.5); }
 .ol-caret { font-family: var(--fell); color: var(--ink-soft); width: 13px; display: inline-block; transition: transform .15s; }
 .collapsed .ol-caret { transform: rotate(-90deg); }
 .collapsed .ol-children { display: none; }

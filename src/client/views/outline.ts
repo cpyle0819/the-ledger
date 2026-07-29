@@ -7,12 +7,17 @@ import { state, storiesOf, directTasksOf, type CachedNode } from '../core/state.
 import { el, asButton } from '../components/util.js';
 import { idTag, noEstimateChip, noStartDateChip } from '../components/shared-styles.js';
 import { emptyMsg, whoChip } from './render-helpers.js';
+import { isClosed, isAbandoned } from '../../shared/status.js';
+import type { LedgerNode } from '../../shared/contract';
 import type { ViewHandlers } from './types.js';
 
-// A small wax "CLOSED" tag for a closed outline row — the row's analogue of the
-// card's corner stamp. Styled in styles.css (.ol-closed-tag).
-function closedTag(): HTMLElement {
-  const tag = el('span', 'ol-closed-tag', 'Closed');
+// A small wax tag for a closed outline row — the row's analogue of the card's
+// corner stamp. A completed close reads "CLOSED"; an abandoned close reads "NOT
+// DONE" (the .abandoned modifier recolors it), so the two terminal states are
+// distinct in the tree too. Styled in styles.css (.ol-closed-tag).
+function closedTag(item: LedgerNode): HTMLElement {
+  const abandoned = isAbandoned(item.status);
+  const tag = el('span', `ol-closed-tag${abandoned ? ' abandoned' : ''}`, abandoned ? 'Not done' : 'Closed');
   tag.setAttribute('aria-hidden', 'true');
   return tag;
 }
@@ -71,16 +76,17 @@ function outlineNode(node: CachedNode, tier: 'epic' | 'story' | 'direct', h: Vie
 
 function regRow(item: CachedNode, caretGlyph: string, onToggle: () => void, expandable: boolean, h: ViewHandlers): HTMLElement {
   const row = el('div', 'ol-row');
-  if (item.status === 'Closed') row.classList.add('ol-closed');
+  if (isClosed(item.status)) row.classList.add('ol-closed');
   const caret = el('span', 'ol-caret', caretGlyph); caret.setAttribute('aria-hidden', 'true');
   const title = el('span', 'card-title', item.title);
   row.append(caret, el('span', `chip t-${item.type}`, item.type), idTag(item.shortId, item.url), title);
   // A closed epic/story (on the board only when "show closed items" is on) gets a
-  // small wax "CLOSED" tag, mirroring the card's stamp — the thin row has no room
-  // for a struck-across stamp.
-  if (item.status === 'Closed') row.append(closedTag());
-  // Flag an epic/story with no estimate, when the source has point estimates.
-  if (state.caps.points && !(item.estimate != null && item.estimate > 0)) row.append(noEstimateChip());
+  // small wax tag, mirroring the card's stamp — the thin row has no room for a
+  // struck-across stamp. isClosed() so an abandoned close is tagged too.
+  if (isClosed(item.status)) row.append(closedTag(item));
+  // Flag an epic/story with no estimate, when the source has point estimates —
+  // never for an abandoned item, which will never need the figure.
+  if (state.caps.points && !isAbandoned(item.status) && !(item.estimate != null && item.estimate > 0)) row.append(noEstimateChip());
   // A context epic/story shows its (elsewhere-)assignee so the pulled-in row is
   // legible as context, matching the card treatment.
   if (item.context && item.assignee) row.append(whoChip(item));
@@ -108,14 +114,17 @@ function regRow(item: CachedNode, caretGlyph: string, onToggle: () => void, expa
 
 function taskRow(t: CachedNode, direct: boolean, h: ViewHandlers): HTMLElement {
   const r = el('div', `ol-task-row${direct ? ' direct' : ''}`);
-  if (t.status === 'Closed') r.classList.add('ol-closed');
+  if (isClosed(t.status)) r.classList.add('ol-closed');
   const status = el('span', `pill st-${t.status}`); const dot = el('span', 'dot'); dot.setAttribute('aria-hidden', 'true'); status.append(dot);
   r.append(el('span', `chip t-${t.type}`, t.type), idTag(t.shortId, t.url), el('span', 'card-title', t.title), status);
-  // A closed task gets the same small wax "CLOSED" tag as closed epic/story rows.
-  if (t.status === 'Closed') r.append(closedTag());
-  if (state.caps.points && !(t.estimate != null && t.estimate > 0)) r.append(noEstimateChip());
-  // Flag a closed task with no start date (see the card treatment): can't yield a
-  // duration or feed velocity. Only when the source has a task-date model.
+  // A closed task gets the same small wax tag as closed epic/story rows (isClosed()
+  // so an abandoned close is tagged too — "Not done" vs "Closed").
+  if (isClosed(t.status)) r.append(closedTag(t));
+  // No missing-estimate flag for an abandoned task — it will never need the figure.
+  if (state.caps.points && !isAbandoned(t.status) && !(t.estimate != null && t.estimate > 0)) r.append(noEstimateChip());
+  // Flag a completed task with no start date (see the card treatment): can't yield a
+  // duration or feed velocity. Completion sense only (`=== 'Closed'`, not abandoned).
+  // Only when the source has a task-date model.
   if (state.caps.taskDates && t.status === 'Closed' && !t.startDate) r.append(noStartDateChip());
   if (t.assignee) r.append(whoChip(t));
   asButton(r, () => h.openDrawer(t),

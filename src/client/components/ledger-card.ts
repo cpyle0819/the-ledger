@@ -15,6 +15,7 @@
 
 import { el, asButton, plural } from './util.js';
 import { chromeSheet, idTag, noEstimateChip, noStartDateChip } from './shared-styles.js';
+import { isClosed, isAbandoned, STATUS_LABEL } from '../../shared/status.js';
 import type { LedgerNode } from '../../shared/contract';
 
 const cardSheet = new CSSStyleSheet();
@@ -130,11 +131,20 @@ cardSheet.replaceSync(`
     filter: url(#ledger-deckle);
     transition: opacity .15s;
   }
+  /* An abandoned close ("Not done"): a desaturated slate ink instead of the oxblood
+     of a completed close, so the two terminal states read differently at a glance —
+     done is warm/final, not-done is grey/inert. Slightly tighter tracking keeps the
+     two-word label compact in the corner. */
+  .closed-stamp.abandoned {
+    color: rgba(74,78,86,.7); border-color: rgba(74,78,86,.5);
+    letter-spacing: .08em;
+  }
   /* The hover "view details" affordance shares this corner; fade the stamp out on
      hover so the button is unobstructed (the card is clearly closed by then). */
   .card:hover .closed-stamp { opacity: 0; }
   /* A selected closed card: the stamp would fight the gild, so ease it back. */
   :host([selected]) .closed-stamp { color: rgba(140,43,34,.58); border-color: rgba(140,43,34,.46); }
+  :host([selected]) .closed-stamp.abandoned { color: rgba(74,78,86,.58); border-color: rgba(74,78,86,.4); }
 
   @media (prefers-reduced-motion: reduce) {
     :host([animate]) .card { animation: none; }
@@ -186,15 +196,16 @@ export class LedgerCard extends HTMLElement {
     // small rotated wax "CLOSED" stamp in the corner, so it reads as done at a glance
     // against its open neighbors — the status pill's tiny dot is too weak a signal,
     // and a source that shows workflowAction in place of status may not say "Closed"
-    // at all.
-    const closed = item.status === 'Closed';
+    // at all. isClosed(), not `=== 'Closed'`, so an abandoned close (closed-not-
+    // completed) is stamped too — it's terminal work, just not completed work.
+    const closed = isClosed(item.status);
     // The parchment leaf, behind the content, so the deckle filter warps only
     // the paper edges (see the .paper rule). aria-hidden: purely decorative.
     const paper = el('div', 'paper'); paper.setAttribute('aria-hidden', 'true');
 
     // Accessible name: type, id, title, step/status, and what activating it does.
     const action = drill ? 'show its children' : 'open details';
-    const stepLabel = item.workflowAction ? `Step ${item.workflowAction}` : `Status ${item.status}`;
+    const stepLabel = item.workflowAction ? `Step ${item.workflowAction}` : `Status ${STATUS_LABEL[item.status] ?? item.status}`;
     card.setAttribute('aria-label', `${item.type} ${item.shortId}: ${item.title}. ${stepLabel}. Activate to ${action}.`);
 
     const body = el('div', 'body');
@@ -204,18 +215,20 @@ export class LedgerCard extends HTMLElement {
     top.append(el('span', `chip t-${item.type}`, item.type));
     // Flag an item with no estimate (any tier), right beside the type chip. A
     // missing estimate is a data gap worth filling regardless of status. Only when
-    // the source has point estimates at all — a source without them isn't nagged.
-    if (hasPoints && !(item.estimate != null && item.estimate > 0)) top.append(noEstimateChip());
-    // Flag a closed task with no start date: a finished task with no recorded start
-    // can't yield a duration or feed epic velocity. Task-tier + closed only (an open
-    // task hasn't necessarily started; higher tiers carry no dates), and only when
-    // the source has a task-date model — mirrors the missing-estimate gate.
+    // the source has point estimates at all — a source without them isn't nagged —
+    // and never for an abandoned item, which will never need the figure.
+    if (hasPoints && !isAbandoned(item.status) && !(item.estimate != null && item.estimate > 0)) top.append(noEstimateChip());
+    // Flag a completed task with no start date: a finished task with no recorded
+    // start can't yield a duration or feed epic velocity. Task-tier + completed only
+    // (`=== 'Closed'`, the completion sense — an open task hasn't necessarily
+    // started, an abandoned one never delivered; higher tiers carry no dates), and
+    // only when the source has a task-date model — mirrors the missing-estimate gate.
     if (hasTaskDates && item.kind === 'task' && item.status === 'Closed' && !item.startDate) top.append(noStartDateChip());
     top.append(idTag(item.shortId, item.url));
     const title = el('p', 'card-title', item.title); title.setAttribute('part', 'title');
 
     const meta = el('div', 'card-meta');
-    const stepText = item.workflowAction || item.status;
+    const stepText = item.workflowAction || STATUS_LABEL[item.status] || item.status;
     const status = el('span', `pill st-${item.status}`); status.setAttribute('part', 'status-pill');
     status.append(el('span', 'dot', ''), document.createTextNode(stepText));
     (status.firstChild as HTMLElement).setAttribute('aria-hidden', 'true');
@@ -273,8 +286,15 @@ export class LedgerCard extends HTMLElement {
     const gildSeat = el('div', 'gild-seat'); gildSeat.setAttribute('aria-hidden', 'true');
     card.append(paper, gildSeat, body);
     // The wax "CLOSED" stamp in the corner (styled in cardSheet).
-    // Decorative — the status is already in the card's aria-label.
-    if (closed) { const stamp = el('div', 'closed-stamp', 'Closed'); stamp.setAttribute('aria-hidden', 'true'); card.append(stamp); }
+    // Decorative — the status is already in the card's aria-label. An abandoned
+    // close reads "NOT DONE" so the stamp itself distinguishes the two terminal
+    // states, rather than both saying "Closed".
+    if (closed) {
+      const stamp = el('div', 'closed-stamp', isAbandoned(item.status) ? 'Not done' : 'Closed');
+      if (isAbandoned(item.status)) stamp.classList.add('abandoned');
+      stamp.setAttribute('aria-hidden', 'true');
+      card.append(stamp);
+    }
 
     root.innerHTML = DECKLE_SVG;
     root.append(card);
