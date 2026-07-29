@@ -89,6 +89,10 @@ export async function loadTree(): Promise<void> {
     // raw child count until these land). Fire-and-forget: a rollup failure leaves
     // the fallback badge, never the loading state.
     warmEpicCounts(state.epics.map((e) => e.id));
+    // Warm the selected epic's velocity in the background so the drawer's Velocity
+    // line is already resolved (server-cached) by the time it opens, rather than
+    // showing "calculating…" on first open. Fire-and-forget, best-effort.
+    warmVelocity(state.selEpic);
   } catch (err) {
     const e = err as ApiError;
     // 422: the filter combination is intentionally unsupported (e.g. anyone +
@@ -149,6 +153,17 @@ async function warmEpicCounts(epicIds: string[]): Promise<void> {
   if (!any) return;
   if (state.lens === 'columns') refreshEpicColumn(handlers);
   else render();
+}
+
+// Prime the source's velocity cache for the selected epic right after a load, so
+// the drawer's Velocity line reads from a warm cache (already resolved) instead of
+// computing on first open. Gated on the capabilities exactly as the drawer is; the
+// response is discarded — the point is the server-side cache the fetch populates.
+// Best-effort and fire-and-forget: a failure just means the drawer computes on open
+// as before, exactly as it did without the warm.
+function warmVelocity(epicId: string | null): void {
+  if (!epicId || !state.caps.epicVelocity || !state.caps.points) return;
+  api(`/api/velocity?epic=${encodeURIComponent(epicId)}`).catch(() => { /* best-effort */ });
 }
 
 // ---- deep linking: hydrate on load, restore after load, follow Back/Forward ----
@@ -301,6 +316,9 @@ function selectEpic(id: string): void {
   refreshDownstreamColumns(handlers);
   const epic = byId(id);
   ensureChildren(epic).then(() => { if (state.selEpic === id) refreshDownstreamColumns(handlers); }).catch(handleError);
+  // Selecting an epic is the usual precursor to opening its drawer; warm its
+  // velocity now so the drawer's Velocity line is pre-resolved (server-cached).
+  warmVelocity(id);
 }
 function selectStory(id: string): void {
   // Re-clicking the selected story deselects it (the task column falls back to
