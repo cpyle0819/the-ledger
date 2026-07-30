@@ -23,7 +23,7 @@ const sheet = new CSSStyleSheet();
 sheet.replaceSync(`
   :host { display: block; }
   .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-  .label { font-family: var(--fell-sc, Georgia, serif); font-size: 15px; letter-spacing: .08em; color: var(--ink-red, #8f2f22); }
+  .label { font-family: var(--fell-sc, Georgia, serif); font-size: 17px; letter-spacing: .08em; color: var(--ink-red, #8f2f22); }
 
   .compose { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
   .compose textarea, .c-edit {
@@ -50,10 +50,10 @@ sheet.replaceSync(`
   .c-list { display: flex; flex-direction: column; gap: 12px; }
   .c-item { border-left: 2px solid var(--brass-lo, #7a5f30); padding: 6px 0 6px 12px; background: linear-gradient(90deg, rgba(196,172,124,.14), transparent 60%); }
   .c-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 3px; }
-  .c-author { font-family: var(--fell, serif); font-style: italic; font-weight: 600; font-size: 14px; color: var(--ink, #33291a); }
-  .c-when { font-family: var(--fell, serif); font-style: italic; font-size: 12.5px; color: var(--ink-faint, #6f5c3e); }
+  .c-author { font-family: var(--fell, serif); font-style: italic; font-weight: 600; font-size: 16px; color: var(--ink, #33291a); }
+  .c-when { font-family: var(--fell, serif); font-style: italic; font-size: 14.5px; color: var(--ink-faint, #6f5c3e); }
   .c-acts { margin-left: auto; display: flex; gap: 8px; }
-  .c-act { font-family: var(--fell, serif); font-style: italic; font-size: 13px; color: var(--ink-soft, #5b4a30); background: transparent; border: 0; padding: 0; cursor: pointer; text-decoration: underline dotted; }
+  .c-act { font-family: var(--fell, serif); font-style: italic; font-size: 15px; color: var(--ink-soft, #5b4a30); background: transparent; border: 0; padding: 0; cursor: pointer; text-decoration: underline dotted; }
   .c-act:hover { color: var(--wax, #7c2b22); }
   .c-body { font-family: var(--gara, serif); font-size: 16.5px; line-height: 1.6; color: var(--ink, #33291a); }
   .c-body p { margin: 0 0 6px; } .c-body p:last-child { margin-bottom: 0; }

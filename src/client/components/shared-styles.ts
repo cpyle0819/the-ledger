@@ -23,7 +23,7 @@ const sheet = (css: string): CSSStyleSheet => { const s = new CSSStyleSheet(); s
 // one stylesheet themes them everywhere.
 export const chromeSheet = sheet(`
   .chip {
-    font-family: var(--fell, Georgia, serif); font-size: 12px; font-weight: 400;
+    font-family: var(--fell, Georgia, serif); font-size: 14px; font-weight: 400;
     letter-spacing: .1em; line-height: 1; text-transform: uppercase;
     padding: 4px 9px; border-radius: 2px; color: #f6eed6;
     background: var(--seal, var(--ink-faint, #6f5c3e));
@@ -41,7 +41,7 @@ export const chromeSheet = sheet(`
      shape cue, the only per-item distinction) — the status dot, the estimate's
      operator glyph, the assignee nib, the count fleuron. Marks render as text,
      not emoji (the \\FE0E in .who/.count-badge forces monochrome). */
-  .pill { font-family: var(--fell, serif); font-style: italic; font-size: 14px; color: var(--ink-soft, #5b4a30); display: inline-flex; align-items: center; gap: 5px; }
+  .pill { font-family: var(--fell, serif); font-style: italic; font-size: var(--fs-meta, 16px); color: var(--ink-soft, #5b4a30); display: inline-flex; align-items: center; gap: 5px; }
   .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-faint, #6f5c3e); }
   .st-Open .dot { background: var(--seal-epic, #8a5a2b); }
   .st-Closed .dot { background: var(--seal-story, #3f5e4e); }
@@ -51,7 +51,7 @@ export const chromeSheet = sheet(`
   /* Assignee: same voice as the pills, with a nib mark for "owner". The name stays
      italic (the row is uniformly italic) but bold — weight, not slant, is its
      one accent as a proper noun. */
-  .who { font-family: var(--fell, serif); font-style: italic; font-size: 14px; color: var(--ink-soft, #5b4a30); }
+  .who { font-family: var(--fell, serif); font-style: italic; font-size: var(--fs-meta, 16px); color: var(--ink-soft, #5b4a30); }
   .who::before { content: "\\270E\\FE0E"; margin-right: 5px; font-style: normal; color: var(--ink-faint, #6f5c3e); }
   .who b { color: var(--ink, #33291a); font-weight: 600; }
   /* Context node: assigned to someone other than the filtered assignee, present
@@ -68,7 +68,7 @@ export const chromeSheet = sheet(`
      would be (or beside the type chip on a card). Neutral-but-noticeable so it
      draws the eye to fill it in without competing with selection or the risk meter. */
   .no-est {
-    font-family: var(--fell, serif); font-weight: 600; font-size: 13px; line-height: 1; letter-spacing: .02em;
+    font-family: var(--fell, serif); font-weight: 600; font-size: 15px; line-height: 1; letter-spacing: .02em;
     display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 2px;
     color: #f6eed6; background: var(--risk-under, #b8842a); border: 1px solid rgba(0,0,0,.25);
     box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 1px 2px rgba(0,0,0,.3); white-space: nowrap;
@@ -78,7 +78,7 @@ export const chromeSheet = sheet(`
      Planning list where the points pill would sit. */
   .no-est-icon { font-size: 15px; line-height: 1; color: var(--risk-under, #b8842a); cursor: help; }
 
-  .card-id { font-family: var(--fell, serif); font-style: italic; font-size: 14px; color: var(--ink-red, #8f2f22); letter-spacing: .01em; opacity: .85; }
+  .card-id { font-family: var(--fell, serif); font-style: italic; font-size: var(--fs-meta, 16px); color: var(--ink-red, #8f2f22); letter-spacing: .01em; opacity: .85; }
   .id-tag { display: inline-flex; align-items: center; gap: 4px; }
   .copy-link {
     position: relative; display: inline-flex; align-items: center; justify-content: center;
@@ -126,13 +126,14 @@ export function noEstimateIcon(): HTMLSpanElement { return missingIcon('No estim
 // (medium); a task's the committed figure (high) — and tasks are the only tier
 // whose estimates feed velocity. The coarser two exist for capacity planning and
 // for checking a high-level guess against the sum of its low-level estimates.
-export // The glyph is the pill's leading mark AND its confidence cue, one channel: the
-// relational-operator ladder ≈ → ~ → = reads "roughly → approximately → exactly",
+// The glyph is the pill's leading mark AND its confidence cue, one channel: the
+// relational-operator ladder ≈ → ∼ → = reads "roughly → approximately → exactly",
 // so a task's committed figure gets the firm "=" where the coarse tiers get the
-// approximation waves.
-const CONFIDENCE: Record<Kind, { label: string; glyph: string; meaning: string }> = {
+// approximation waves. All three are math operators (U+2248 / U+223C / U+003D) so
+// they render mid-height in IM Fell; a plain ASCII "~" drops to a dash there.
+export const CONFIDENCE: Record<Kind, { label: string; glyph: string; meaning: string }> = {
   epic:  { label: 'Rough',     glyph: '≈', meaning: 'Rough estimate — an order-of-magnitude guess. Not used for velocity; a sanity check against the summed story estimates.' },
-  story: { label: 'Estimate',  glyph: '~', meaning: 'Working estimate — a mid-confidence figure for capacity planning. Not used for velocity.' },
+  story: { label: 'Estimate',  glyph: '∼', meaning: 'Working estimate — a mid-confidence figure for capacity planning. Not used for velocity.' },
   task:  { label: 'Committed', glyph: '=', meaning: 'Committed estimate — the firm figure. Only task estimates are used to compute velocity.' },
 };
 

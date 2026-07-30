@@ -42,6 +42,14 @@
   --gara: 'EB Garamond', Georgia, serif;
   /* monospace, reserved for literal code / keystrokes only */
   --mono: ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, Consolas, monospace;
+
+  /* Metadata type sizes. The most common metadata (pills, ids, assignee) shares
+     one token so the card/drawer/comment components — including those in shadow
+     DOM, which these inherit into like the colour tokens — read the same scale;
+     tune it here. Content type (card titles, drawer description, comment bodies)
+     is deliberately NOT tokenised and keeps its own sizes. The rarer metadata
+     sizes (chip, labels, timestamps, outline rows) are set inline at their rules. */
+  --fs-meta: 16px;   /* pills, ids, assignee — the 14px metadata, bumped */
 }
 
 * { box-sizing: border-box; }
@@ -192,12 +200,12 @@ smoke-drift { z-index: 0; }
 .ctl { display: flex; align-items: center; gap: 11px; }
 .ctl.grow { flex: 1; }
 .ctl > .ctl-label {
-  font-family: var(--fell); font-style: italic; font-size: 15px; letter-spacing: .02em;
+  font-family: var(--fell); font-style: italic; font-size: 17px; letter-spacing: .02em;
   color: var(--brass-hi); opacity: .9;
 }
 .seg { display: flex; align-items: center; border: 1px solid var(--brass-lo); border-radius: 2px; overflow: hidden; background: rgba(20,14,7,.6); }
 .seg button {
-  font-family: var(--gara); font-size: 14px; color: var(--parch-lo);
+  font-family: var(--gara); font-size: 16px; color: var(--parch-lo);
   background: transparent; border: 0; border-right: 1px solid rgba(122,95,48,.4);
   padding: 7px 15px; cursor: pointer; transition: .13s; white-space: nowrap;
 }
@@ -210,7 +218,7 @@ smoke-drift { z-index: 0; }
 }
 .seg input {
   width: 104px; background: transparent; border: 0; border-left: 1px solid rgba(122,95,48,.4);
-  color: var(--parch-hi); font-family: var(--gara); font-style: italic; font-size: 14px; padding: 7px 11px; outline: none;
+  color: var(--parch-hi); font-family: var(--gara); font-style: italic; font-size: 16px; padding: 7px 11px; outline: none;
 }
 .seg input::placeholder { color: var(--brass); opacity: .75; }  /* readable on dark leather */
 
@@ -218,7 +226,7 @@ smoke-drift { z-index: 0; }
 .ctl-select {
   max-width: 260px; background: rgba(20,14,7,.6); color: var(--parch-hi);
   border: 1px solid var(--brass-lo); border-radius: 2px;
-  font-family: var(--gara); font-size: 14px; padding: 7px 11px; cursor: pointer; outline: none;
+  font-family: var(--gara); font-size: 16px; padding: 7px 11px; cursor: pointer; outline: none;
 }
 .ctl-select:hover { color: var(--parch-hi); border-color: var(--brass); }
 .ctl-select:focus { border-color: var(--brass-hi); }
@@ -240,7 +248,7 @@ smoke-drift { z-index: 0; }
 .switch input:checked + .switch-track { background: linear-gradient(180deg, var(--seal-story), #2f4a3c); border-color: var(--seal-story); }
 .switch input:checked + .switch-track .switch-thumb { transform: translateX(20px); background: linear-gradient(180deg, var(--parch-hi), var(--brass-hi)); }
 .switch input:focus-visible + .switch-track { outline: 2px solid var(--brass-hi); outline-offset: 2px; }
-.switch-text { font-family: var(--gara); font-size: 14px; color: var(--parch-lo); }
+.switch-text { font-family: var(--gara); font-size: 16px; color: var(--parch-lo); }
 .switch input:checked ~ .switch-text { color: var(--parch-hi); }
 
 /* ---- Stage ----------------------------------------------------------- */
@@ -317,14 +325,14 @@ ledger-card.deemph:hover {
    chip in chromeSheet used by the card/drawer shadow roots — kept in sync so the
    flag reads identically on every surface. */
 .no-est {
-  font-family: var(--fell); font-weight: 600; font-size: 13px; line-height: 1; letter-spacing: .02em;
+  font-family: var(--fell); font-weight: 600; font-size: 15px; line-height: 1; letter-spacing: .02em;
   display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 2px;
   color: #f6eed6; background: var(--risk-under); border: 1px solid rgba(0,0,0,.25);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 1px 2px rgba(0,0,0,.3); white-space: nowrap;
 }
 .no-est::before { content: "⚠"; font-size: 12px; }
 
-.card-id { font-family: var(--fell); font-style: italic; font-size: 14px; color: var(--ink-red); letter-spacing: .01em; opacity: .85; }
+.card-id { font-family: var(--fell); font-style: italic; font-size: var(--fs-meta, 16px); color: var(--ink-red); letter-spacing: .01em; opacity: .85; }
 
 /* ticket number + copy-link, as one inline unit */
 .id-tag { display: inline-flex; align-items: center; gap: 4px; }
@@ -348,7 +356,7 @@ ledger-card.deemph:hover {
 
 /* wax-seal chip */
 .chip {
-  font-family: var(--fell); font-size: 12px; font-weight: 400; letter-spacing: .1em; line-height: 1;
+  font-family: var(--fell); font-size: 14px; font-weight: 400; letter-spacing: .1em; line-height: 1;
   text-transform: uppercase; padding: 4px 9px; border-radius: 2px; color: #f6eed6;
   background: var(--seal, var(--ink-faint));
   box-shadow: inset 0 1px 0 rgba(255,255,255,.2), inset 0 -2px 3px rgba(0,0,0,.3), 0 1px 2px rgba(0,0,0,.3);
@@ -360,14 +368,14 @@ ledger-card.deemph:hover {
 .t-BUG    { --seal: var(--seal-bug); }
 .t-SUBTASK{ --seal: var(--ink-faint); }
 
-.pill { font-family: var(--fell); font-style: italic; font-size: 14px; color: var(--ink-soft); display: inline-flex; align-items: center; gap: 5px; }
+.pill { font-family: var(--fell); font-style: italic; font-size: var(--fs-meta, 16px); color: var(--ink-soft); display: inline-flex; align-items: center; gap: 5px; }
 .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-faint); }
 .st-Open .dot { background: var(--seal-epic); }
 .st-Closed .dot, .st-Resolved .dot { background: var(--seal-story); }
 /* Abandoned (closed-not-completed): a grey/inert dot, distinct from the warm dot
    of a completed close — the same slate the "Not done" stamp/tag uses. */
 .st-Abandoned .dot { background: rgba(74,78,86,.8); }
-.who { font-family: var(--gara); font-style: italic; font-size: 13px; color: var(--ink-soft); }
+.who { font-family: var(--gara); font-style: italic; font-size: 15px; color: var(--ink-soft); }
 .who b { color: var(--ink); font-weight: 600; font-style: normal; }
 /* Context node in the outline lens — mirror of the shadow-DOM rule in
    shared-styles.js (see there for rationale). */
@@ -378,7 +386,7 @@ ledger-card.deemph:hover {
 
 .lane-label {
   display: flex; align-items: center; gap: 11px;
-  font-family: var(--fell-sc); font-size: 14px; letter-spacing: .06em;
+  font-family: var(--fell-sc); font-size: 16px; letter-spacing: .06em;
   color: var(--brass-hi); margin: 10px 4px 14px;
 }
 .lane-label::before, .lane-label::after { content: ""; height: 1px; background: linear-gradient(90deg, transparent, var(--brass-lo), transparent); flex: 1; }
@@ -428,16 +436,16 @@ ledger-card.deemph:hover {
 /* Type scale — the primary rank signal. Epic largest; story a clear step down. */
 .ol-row .card-title { flex: 1; font-family: var(--fell); font-size: 18px; }
 .ol-epic > .ol-row .card-title { font-size: 22px; letter-spacing: .01em; }
-.ol-row .card-id { font-family: var(--fell); font-style: italic; font-size: 13px; color: var(--ink-red); margin-left: 0; }
+.ol-row .card-id { font-family: var(--fell); font-style: italic; font-size: 15px; color: var(--ink-red); margin-left: 0; }
 
 /* Chips as a quiet colour-key, not a wall of seals: flat (no pressed-wax
    shadow), smaller, and fading with depth so titles lead and the eye still gets
    a tier tint. Scoped to the outline — cards keep the full seal. */
 .outline .chip {
-  font-size: 10px; padding: 3px 7px; letter-spacing: .1em;
+  font-size: 12px; padding: 3px 7px; letter-spacing: .1em;
   box-shadow: none; border-color: rgba(0,0,0,.16); opacity: .9;
 }
-.ol-task-row .chip { font-size: 9px; padding: 2px 6px; opacity: .68; }
+.ol-task-row .chip { font-size: 11px; padding: 2px 6px; opacity: .68; }
 
 /* Continuity at the epic level: a faint spine drops from the epic head down its
    stories, so a story reads as hanging off the epic, not merely indented. */
@@ -480,7 +488,7 @@ ledger-card.deemph:hover {
    inks so the terminal states read differently here too. */
 .ol-closed-tag {
   font-family: var(--fell); font-weight: 700; text-transform: uppercase;
-  font-size: 10px; letter-spacing: .12em; line-height: 1;
+  font-size: 12px; letter-spacing: .12em; line-height: 1;
   color: rgba(140,43,34,.85); padding: 2px 7px; border-radius: 3px;
   border: 1.5px solid rgba(140,43,34,.55); white-space: nowrap;
 }
@@ -488,7 +496,7 @@ ledger-card.deemph:hover {
 .ol-caret { font-family: var(--fell); color: var(--ink-soft); width: 13px; display: inline-block; transition: transform .15s; }
 .collapsed .ol-caret { transform: rotate(-90deg); }
 .collapsed .ol-children { display: none; }
-.ol-sub-label { font-family: var(--fell-sc); font-size: 12px; letter-spacing: .08em; color: var(--ink-red); padding: 12px 18px 5px 44px; }
+.ol-sub-label { font-family: var(--fell-sc); font-size: 14px; letter-spacing: .08em; color: var(--ink-red); padding: 12px 18px 5px 44px; }
 /* Orphan groups reuse the epic-card chrome (.ol-epic) so their sub-label + rows
    sit on parchment. Their rows are top-level, not nested under an epic caret, so
    pull the label and row indents back to the card's own edge. */
@@ -496,7 +504,7 @@ ledger-card.deemph:hover {
 .ol-orphans .ol-story > .ol-row { padding-left: 18px; }
 .ol-orphans > .ol-children > .ol-task-row { padding-left: 18px; }
 .ol-read {
-  font-family: var(--fell); font-style: italic; font-size: 15px; letter-spacing: .02em;
+  font-family: var(--fell); font-style: italic; font-size: 17px; letter-spacing: .02em;
   color: var(--ink-soft); border: 1px solid var(--parch-edge); border-radius: 2px;
   padding: 0 9px; cursor: pointer; transition: .12s; background: rgba(243,234,208,.7); line-height: 1.4;
 }
@@ -504,7 +512,7 @@ ledger-card.deemph:hover {
 /* Per-row add affordance, revealed on hover/focus of the row (or when focused
    itself, so it's keyboard-reachable). Mirrors the drawer's per-section add. */
 .ol-add {
-  font-family: var(--fell); font-style: italic; font-size: 14px; letter-spacing: .02em;
+  font-family: var(--fell); font-style: italic; font-size: 16px; letter-spacing: .02em;
   color: var(--brass-hi); background: linear-gradient(180deg, var(--leather), var(--leather-2));
   border: 1px solid var(--brass-lo); border-radius: 2px; padding: 0 9px; cursor: pointer;
   line-height: 1.4; transition: .12s; opacity: 0;

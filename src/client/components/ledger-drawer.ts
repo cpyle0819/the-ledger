@@ -92,7 +92,7 @@ sheet.replaceSync(`
   .d-back {
     align-self: flex-start; display: inline-flex; align-items: baseline; gap: 6px; max-width: 100%;
     margin: -6px 0 6px; padding: 2px 2px; border: 0; background: none; cursor: pointer;
-    font-family: var(--fell, serif); font-style: italic; font-size: 15px; color: var(--ink-red, #8f2f22);
+    font-family: var(--fell, serif); font-style: italic; font-size: 17px; color: var(--ink-red, #8f2f22);
   }
   .d-back:hover { color: var(--wax, #7c2b22); }
   /* An explicit display overrides the UA [hidden] rule, so hide must be explicit
@@ -107,7 +107,7 @@ sheet.replaceSync(`
   .d-short:hover { color: var(--wax, #7c2b22); }
   /* No source link: plain id text, not a dead link. */
   .d-short.no-link { color: var(--ink-soft, #5b4a30); border-bottom: 0; cursor: default; pointer-events: none; }
-  .save-state { font-family: var(--fell, serif); font-style: italic; font-size: 14px; margin-left: 10px; color: var(--ink-faint, #6f5c3e); opacity: 0; transition: opacity .18s ease; }
+  .save-state { font-family: var(--fell, serif); font-style: italic; font-size: 16px; margin-left: 10px; color: var(--ink-faint, #6f5c3e); opacity: 0; transition: opacity .18s ease; }
   .save-state.saved { color: var(--seal-story, #3f5e4e); opacity: 1; }
   .ghost-btn {
     font-family: var(--fell, serif); font-style: italic; font-size: 16px; color: var(--brass-hi, #d8b878);
@@ -132,14 +132,14 @@ sheet.replaceSync(`
   .d-title-edit:focus { border-color: var(--brass-lo, #7a5f30); background: #fffaeb; }
   .d-rule { height: 2px; background: linear-gradient(90deg, var(--brass-lo, #7a5f30), transparent); margin-bottom: 20px; }
   .d-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 22px; margin-bottom: 20px; }
-  .d-field label { display: block; font-family: var(--fell, serif); font-style: italic; font-size: 15px; color: var(--ink-soft, #5b4a30); margin-bottom: 5px; }
+  .d-field label { display: block; font-family: var(--fell, serif); font-style: italic; font-size: 17px; color: var(--ink-soft, #5b4a30); margin-bottom: 5px; }
   /* A missing-estimate warning glyph beside the estimate label (the drawer's own
      item — just the icon, per the flag's window treatment). */
   .est-warn { margin-left: 7px; font-style: normal; font-size: 13px; color: var(--risk-under, #b8842a); }
   /* Confidence note under the estimate input: what this tier's estimate is for
      (a rough guess vs. a committed, velocity-feeding figure). A quiet italic
      footnote so it informs without competing with the field. */
-  .d-conf-note { margin: 6px 0 0; font-family: var(--fell, serif); font-style: italic; font-size: 13px; line-height: 1.4; color: var(--ink-faint, #6f5c3e); }
+  .d-conf-note { margin: 6px 0 0; font-family: var(--fell, serif); font-style: italic; font-size: 15px; line-height: 1.4; color: var(--ink-faint, #6f5c3e); }
   .d-conf-note:empty { display: none; }
   .d-field select, .d-field input, .d-typeahead input {
     box-sizing: border-box; width: 100%; background: rgba(255,250,235,.7); color: var(--ink, #33291a); border: 1px solid var(--parch-edge, #c4ac7c);
@@ -166,7 +166,7 @@ sheet.replaceSync(`
      Balanced stays calm and low-contrast so it recedes; an over/under imbalance
      lights a warning tone AND carries an arrow + literal numbers, so the risk
      reads without relying on color alone (see the hierarchy research). */
-  .d-risk { display: flex; flex-direction: column; align-items: stretch; gap: 6px; margin: 0 0 14px; font-family: var(--fell, serif); font-size: 14px; }
+  .d-risk { display: flex; flex-direction: column; align-items: stretch; gap: 6px; margin: 0 0 14px; font-family: var(--fell, serif); font-size: 16px; }
   /* The meter + verdict label share one row; the explanation rides below it. */
   .d-risk .rtop { display: flex; align-items: center; gap: 12px; }
   /* [hidden] must win over the display:flex above (and any state class) — an
@@ -176,7 +176,7 @@ sheet.replaceSync(`
   /* Why the meter reads over/under: what the delta says about the plan, in plain
      words. A quiet italic line so it explains without competing with the verdict
      label's tone above it. */
-  .d-risk .rwhy { margin: 0; font-style: italic; font-size: 13px; line-height: 1.45; color: var(--ink-soft, #5b4a30); }
+  .d-risk .rwhy { margin: 0; font-style: italic; font-size: 15px; line-height: 1.45; color: var(--ink-soft, #5b4a30); }
   .d-risk .rmeter {
     position: relative; flex: 0 0 132px; height: 9px; border-radius: 5px; overflow: hidden;
     background: rgba(91,74,48,.18); box-shadow: inset 0 0 0 1px rgba(91,74,48,.25);
@@ -186,7 +186,7 @@ sheet.replaceSync(`
   .d-risk .rfill { position: absolute; inset: 0 auto 0 0; height: 100%; border-radius: 5px 0 0 5px; transition: width .25s ease, background .2s ease; }
   .d-risk .rover { position: absolute; inset: 0 0 0 auto; width: 12px; background: repeating-linear-gradient(135deg, var(--risk-over, #a8321f) 0 4px, rgba(168,50,31,.55) 4px 8px); }
   .d-risk .rlabel { display: inline-flex; align-items: baseline; gap: 6px; }
-  .d-risk .rarrow { font-size: 13px; font-style: normal; }
+  .d-risk .rarrow { font-size: 15px; font-style: normal; }
   .d-risk .rnums { font-style: italic; color: var(--ink-soft, #5b4a30); }
   /* Balanced: calm brass fill, quiet ink label. Over: hot red. Under: cooler
      amber (ambiguous — may just mean more work is planned than was booked). */
@@ -201,12 +201,12 @@ sheet.replaceSync(`
 
   /* Planning section (was "Contents"): each group header carries the child count
      and their summed effort. Same dot separator the group labels already use. */
-  .cgroup-effort { margin-left: 14px; font-family: var(--fell, serif); font-style: italic; font-size: 15px; color: var(--ink-soft, #5b4a30); }
+  .cgroup-effort { margin-left: 14px; font-family: var(--fell, serif); font-style: italic; font-size: 17px; color: var(--ink-soft, #5b4a30); }
   .cgroup-effort::before { content: "· "; color: var(--ink-faint, #6f5c3e); }
 
   .d-contains { margin-bottom: 22px; padding: 14px 16px; border: 1px solid var(--parch-edge, #c4ac7c); border-radius: 2px; background: rgba(255,250,235,.4); }
-  .d-contains h4 { margin: 0 0 10px; font-family: var(--fell-sc, serif); font-size: 13px; letter-spacing: .08em; color: var(--ink-red, #8f2f22); font-weight: 400; }
-  .cline { display: flex; align-items: center; gap: 10px; padding: 6px 4px; cursor: pointer; border-bottom: 1px dotted rgba(91,74,48,.25); font-size: 14px; }
+  .d-contains h4 { margin: 0 0 10px; font-family: var(--fell-sc, serif); font-size: 15px; letter-spacing: .08em; color: var(--ink-red, #8f2f22); font-weight: 400; }
+  .cline { display: flex; align-items: center; gap: 10px; padding: 6px 4px; cursor: pointer; border-bottom: 1px dotted rgba(91,74,48,.25); font-size: 16px; }
   .cline:last-child { border-bottom: 0; }
   .cline:hover { color: var(--wax, #7c2b22); }
   .cline .ct { flex: 1; font-family: var(--gara, serif); }
@@ -216,20 +216,20 @@ sheet.replaceSync(`
   .cline.deemph:hover { filter: none; opacity: 1; }
   /* The collapsed closed-children row and its caret; the revealed list is indented. */
   .cclosed-toggle .ct { font-style: italic; color: var(--ink-soft, #5b4a30); }
-  .cclosed-caret { display: inline-block; width: 1em; color: var(--ink-faint, #6f5c3e); font-size: 12px; }
+  .cclosed-caret { display: inline-block; width: 1em; color: var(--ink-faint, #6f5c3e); font-size: 14px; }
   .cclosed-list { padding-left: 16px; }
   .cgroup { margin-top: 8px; }
   /* Velocity line: a calm italic footnote under the Planning groups. A top
      rule sets it apart as a summary of the tree above, not another group. */
   .cvelocity { margin-top: 12px; padding-top: 10px; border-top: 1px dotted rgba(91,74,48,.35);
-    font-family: var(--fell, serif); font-style: italic; font-size: 14px; color: var(--ink-soft, #5b4a30); }
+    font-family: var(--fell, serif); font-style: italic; font-size: 16px; color: var(--ink-soft, #5b4a30); }
   .cgroup-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 10px 0 4px; }
-  .cgroup-label { font-family: var(--fell, serif); font-style: italic; font-size: 15px; color: var(--ink-soft, #5b4a30); }
+  .cgroup-label { font-family: var(--fell, serif); font-style: italic; font-size: 17px; color: var(--ink-soft, #5b4a30); }
   /* The per-section add button is revealed on hover/focus of its group, so the
      contents list stays calm until you reach for it. It stays visible while
      keyboard-focused so it's reachable without a pointer. */
   .cgroup-add {
-    font-family: var(--fell, serif); font-style: italic; font-size: 13px; color: var(--brass-hi, #d8b878);
+    font-family: var(--fell, serif); font-style: italic; font-size: 15px; color: var(--brass-hi, #d8b878);
     background: linear-gradient(180deg, var(--leather, #2a1c10), var(--leather-2, #33230f));
     border: 1px solid var(--brass-lo, #7a5f30); border-radius: 2px; padding: 3px 10px; cursor: pointer;
     opacity: 0; transition: opacity .12s, color .12s, border-color .12s;
@@ -238,7 +238,7 @@ sheet.replaceSync(`
   .cgroup-add:hover { color: #fff; border-color: var(--brass, #b08d4f); }
 
   .d-desc-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-  .d-desc-label { font-family: var(--fell-sc, serif); font-size: 15px; letter-spacing: .08em; color: var(--ink-red, #8f2f22); }
+  .d-desc-label { font-family: var(--fell-sc, serif); font-size: 17px; letter-spacing: .08em; color: var(--ink-red, #8f2f22); }
   .d-desc-render { font-family: var(--gara, serif); font-size: 18px; line-height: 1.7; color: var(--ink, #33291a); min-height: 120px; cursor: text; border-radius: 2px; transition: background .12s; }
   .d-desc-render:hover { background: rgba(196,172,124,.12); }
   .d-desc-render.empty { font-style: italic; color: var(--ink-faint, #6f5c3e); }

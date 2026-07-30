@@ -26,7 +26,7 @@ sheet.replaceSync(`
   }
   h3::before { content: "§ "; opacity: .5; }
   .head-right { display: flex; align-items: baseline; gap: 12px; }
-  .count { font-family: var(--fell, serif); font-style: italic; font-size: 15px; color: var(--brass-hi, #d8b878); }
+  .count { font-family: var(--fell, serif); font-style: italic; font-size: 17px; color: var(--brass-hi, #d8b878); }
   /* The add "+" sits by the count; a small brass roundel that brightens on hover. */
   .col-add {
     align-self: center; width: 24px; height: 24px; padding: 0; cursor: pointer;
