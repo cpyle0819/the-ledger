@@ -20,7 +20,7 @@
 // full item is fetched and the drawer repaints.
 
 import { el, asButton, copyLink, plural } from './util.js';
-import { chromeSheet, idTag, noEstimateIcon, pointsPill, CONFIDENCE } from './shared-styles.js';
+import { chromeSheet, idTag, noEstimateIcon, pointsPill, CONFIDENCE, scrollbarSheet } from './shared-styles.js';
 import { renderInto } from './markdown.js';
 import './ledger-comment-thread.js';
 import type { LedgerCommentThread } from './ledger-comment-thread.js';
@@ -300,7 +300,7 @@ export class LedgerDrawer extends HTMLElement {
   connectedCallback(): void {
     if (this.shadowRoot) return;
     this.attachShadow({ mode: 'open' });
-    this.shadowRoot!.adoptedStyleSheets = [chromeSheet, sheet];
+    this.shadowRoot!.adoptedStyleSheets = [chromeSheet, sheet, scrollbarSheet];
     this.shadowRoot!.innerHTML = `
       <div class="scrim" part="scrim"></div>
       <div class="panel" role="dialog" aria-modal="true" tabindex="-1" part="panel">

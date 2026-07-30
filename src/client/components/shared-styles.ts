@@ -17,6 +17,22 @@ import type { Kind } from '../../shared/contract';
 
 const sheet = (css: string): CSSStyleSheet => { const s = new CSSStyleSheet(); s.replaceSync(css); return s; };
 
+// The aged-brass scrollbar, for every scroll container inside a shadow root.
+// ::-webkit-scrollbar pseudo-elements are document-scoped and do NOT cross the
+// shadow boundary — the global rule in styles.css styles only light-DOM scrollers
+// (the document, the outline lens), so a shadow-DOM scroller (a column body, the
+// drawer panel) falls back to the native bar and breaks the archive look. Adopt
+// this into any shadow root that scrolls to carry the brass bar across. The
+// standard scrollbar-color/-width ARE inherited, so they also cover Firefox from
+// here; kept in sync with the global rule in styles.css. */
+export const scrollbarSheet = sheet(`
+  :host { scrollbar-color: var(--brass-lo, #7a5f30) rgba(20,14,7,.5); scrollbar-width: thin; }
+  ::-webkit-scrollbar { width: 12px; height: 12px; }
+  ::-webkit-scrollbar-thumb { background: var(--brass-lo, #7a5f30); border-radius: 0; border: 3px solid var(--wood, #1c1409); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--brass, #b08d4f); }
+  ::-webkit-scrollbar-track { background: rgba(20,14,7,.5); }
+`);
+
 // The wax-seal tier chip, tier→color map, status/estimate pills, assignee, and
 // the ticket-number + copy-link unit. These leaf bits render as part-tagged
 // nodes inside card/row/drawer components rather than as their own elements, so

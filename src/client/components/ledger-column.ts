@@ -10,6 +10,8 @@
 // `add-label` (optional): when set, the head shows a "+" button carrying that
 // label as its tooltip/aria-label; clicking it emits a composed `column-add`.
 
+import { scrollbarSheet } from './shared-styles.js';
+
 const sheet = new CSSStyleSheet();
 sheet.replaceSync(`
   :host { display: flex; flex-direction: column; min-height: 0; position: relative;
@@ -50,7 +52,7 @@ export class LedgerColumn extends HTMLElement {
   connectedCallback(): void {
     if (!this.shadowRoot) {
       this.attachShadow({ mode: 'open' });
-      this.shadowRoot!.adoptedStyleSheets = [sheet];
+      this.shadowRoot!.adoptedStyleSheets = [sheet, scrollbarSheet];
       this.shadowRoot!.innerHTML = `
         <div class="col-head" part="head">
           <h3 part="heading"></h3>

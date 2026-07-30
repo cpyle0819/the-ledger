@@ -9,7 +9,7 @@
 // styled from the :root design tokens that inherit through the shadow boundary.
 
 import { el, asButton } from './util.js';
-import { chromeSheet } from './shared-styles.js';
+import { chromeSheet, scrollbarSheet } from './shared-styles.js';
 
 const sheet = new CSSStyleSheet();
 sheet.replaceSync(`
@@ -81,7 +81,7 @@ export class LedgerAbout extends HTMLElement {
   connectedCallback(): void {
     if (this.shadowRoot) return;
     this.attachShadow({ mode: 'open' });
-    this.shadowRoot!.adoptedStyleSheets = [chromeSheet, sheet];
+    this.shadowRoot!.adoptedStyleSheets = [chromeSheet, sheet, scrollbarSheet];
     this.shadowRoot!.innerHTML = `
       <div class="scrim" part="scrim"></div>
       <div class="panel" role="dialog" aria-modal="true" aria-labelledby="a-title" tabindex="-1" part="panel">

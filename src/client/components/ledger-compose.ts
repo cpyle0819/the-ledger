@@ -24,7 +24,7 @@
 // the project picker; a child inherits its parent's project silently.
 
 import { el } from './util.js';
-import { chromeSheet, idTag } from './shared-styles.js';
+import { chromeSheet, idTag, scrollbarSheet } from './shared-styles.js';
 import type { Item, CreateInput, CreatableField, Capabilities, Project } from '../../shared/contract';
 
 /** The fetch wrapper the board injects (see app's api()). */
@@ -149,7 +149,7 @@ export class LedgerCompose extends HTMLElement {
   connectedCallback(): void {
     if (this.shadowRoot) return;
     this.attachShadow({ mode: 'open' });
-    this.shadowRoot!.adoptedStyleSheets = [chromeSheet, sheet];
+    this.shadowRoot!.adoptedStyleSheets = [chromeSheet, sheet, scrollbarSheet];
     this.shadowRoot!.innerHTML = `
       <div class="scrim" part="scrim"></div>
       <form class="panel" role="dialog" aria-modal="true" aria-labelledby="c-heading" tabindex="-1" part="panel">
