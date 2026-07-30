@@ -127,6 +127,10 @@ const server = http.createServer(async (req, res) => {
         status: (q.get('status') as Filters['status']) || 'Open',
       };
       if (source.capabilities.projects && q.get('project')) filters.project = q.get('project');
+      // A drill can ask for source-accurate node fields (the drawer's Planning
+      // rollup does), trading extra reads for estimates that match the source rather
+      // than a lagging list projection. Roots never set it (a whole-board re-read).
+      if (q.get('accurate') === '1') filters.accurate = true;
       const parent = q.get('parent') || null;
       if (!parent && source.capabilities.pagedRoots) {
         const page = await call('getRoots', q.get('cursor') || null, filters) as import('../shared/contract').NodePage;

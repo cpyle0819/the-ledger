@@ -71,7 +71,7 @@ export async function fetchRootsPage(cursor: string | null): Promise<RootsPage> 
 // items. Used by the drawer's Planning rollup, which measures capacity against the
 // complete decomposition (closed work included), not just what the board shows.
 export async function fetchChildrenAllStatus(parentId: string): Promise<CachedNode[]> {
-  const q = new URLSearchParams({ status: 'ALL', parent: parentId });
+  const q = new URLSearchParams({ status: 'ALL', parent: parentId, accurate: '1' });
   if (state.assignee) q.set('assignee', state.assignee);
   if (state.project) q.set('project', state.project);
   const { nodes } = await api<ChildrenResponse>(`/api/children?${q}`);

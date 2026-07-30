@@ -43,6 +43,14 @@ export interface Filters {
   status: StatusFilter;
   assignee?: string;
   project?: string | null;
+  /** Request source-accurate node fields even when that costs extra reads. A
+   *  source whose LIST query returns a lagging/eventually-consistent projection
+   *  (e.g. a Solr index behind the authoritative by-id read) can, when this is set,
+   *  re-read each returned node from the consistent store so estimates and other
+   *  fields are exact. The drawer's Planning rollup sets it — capacity math must be
+   *  source-accurate — accepting the extra per-node reads. A source whose list read
+   *  is already authoritative ignores the flag. Off by the board's own fast paths. */
+  accurate?: boolean;
 }
 
 /** The story/task rollup shown on an epic card, replacing the raw "N within".
