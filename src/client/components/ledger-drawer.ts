@@ -198,6 +198,27 @@ sheet.replaceSync(`
   .d-risk.under .rlabel { color: var(--risk-under, #b8842a); }
   /* No estimate to budget against, or a leaf: no meter, just a muted note. */
   .d-risk.none { color: var(--ink-faint, #6f5c3e); font-style: italic; }
+  /* Reserve the meter's height while the children load. It sits high (right under
+     the title), so its late arrival otherwise shoves the fields + description down.
+     72px matches the dominant filled case (an over/under imbalance with its
+     one-line explanation); a rare exactly-balanced item settles a touch shorter. */
+  .d-risk.skeleton { min-height: 72px; }
+
+  /* Loading skeletons for the two regions that resolve after the drawer has slid
+     in (the risk meter, the planning children). Calm dim blocks previewing the real
+     structure — a placeholder, not a spinner — so each swap-in fills reserved space
+     instead of growing the panel. A gentle pulse only when motion is welcome. */
+  .sk { background: rgba(91,74,48,.16); border-radius: 3px; }
+  @media (prefers-reduced-motion: no-preference) {
+    .sk { animation: d-sk-pulse 1.5s ease-in-out infinite; }
+  }
+  @keyframes d-sk-pulse { 0%, 100% { opacity: .5; } 50% { opacity: .85; } }
+  .sk-meter { height: 9px; width: 132px; }
+  .sk-line { height: 12px; }
+  .sk-cline { display: flex; align-items: center; gap: 10px; padding: 6px 4px; height: 37px; box-sizing: border-box; border-bottom: 1px dotted rgba(91,74,48,.18); }
+  .sk-cline .sk-chip { width: 54px; height: 16px; flex: 0 0 auto; }
+  .sk-cline .sk-ct { flex: 1; height: 12px; }
+  .sk-cline .sk-pts { width: 42px; height: 12px; flex: 0 0 auto; }
 
   /* Planning section (was "Contents"): each group header carries the child count
      and their summed effort. Same dot separator the group labels already use. */
@@ -898,6 +919,61 @@ export class LedgerDrawer extends HTMLElement {
       : 'The children add up to less than the estimate: the work broke down smaller than first thought.';
   }
 
+  // Reserve the risk meter's slot while children load — but only when the item will
+  // actually grow a meter (the source has point estimates and this item carries its
+  // own budget). Without a budget the resolved state is a one-line muted note, which
+  // is short enough that reserving 72px would itself leave a gap; let those paint live.
+  #paintRiskSkeleton(item: LedgerNode & Partial<Item>): void {
+    const box = this.#$('#d-risk');
+    if (!this.#caps.points || !(Number(item.estimate) > 0)) { this.#hideRisk(); return; }
+    box.className = 'd-risk skeleton'; box.hidden = false; box.innerHTML = '';
+    box.setAttribute('aria-hidden', 'true');
+    const top = el('div', 'rtop');
+    top.append(el('div', 'sk sk-meter'), el('div', 'sk sk-line', ''));
+    (top.lastChild as HTMLElement).style.flex = '1';
+    box.append(top);
+  }
+
+  // Reserve the planning list's slot with a skeleton that mirrors the real section's
+  // structure, so the resolved content fills the reserved space rather than growing
+  // the panel. Sizing is cheap and derived from what we already know: childCount (the
+  // number of child lines to reserve) and item.kind (how many groups the section will
+  // have — an epic renders a Stories group AND a Tasks-directly-on-epic group plus a
+  // velocity line; a story renders one Tasks group). childCount is the board's
+  // filtered count, so clamp to a sane band rather than reserve a wall of rows for a
+  // huge epic; the group headers + velocity account for the section's fixed chrome
+  // that a pure line count would miss.
+  #paintContainsSkeleton(item: LedgerNode & Partial<Item>): void {
+    const box = this.#$('#d-contains');
+    box.append(el('h4', null, 'Planning'));
+    const total = Math.min(8, Math.max(2, Number(item.childCount) || 2));
+    // An epic's children split across two groups; a story's sit in one. Spread the
+    // reserved lines across the group count so the total row height is honest.
+    const groupCount = item.kind === 'epic' ? 2 : 1;
+    const per = Math.max(1, Math.round(total / groupCount));
+    for (let g = 0; g < groupCount; g++) {
+      const grp = el('div', 'cgroup');
+      const head = el('div', 'cgroup-head'); head.setAttribute('aria-hidden', 'true');
+      head.append(el('div', 'sk sk-line', ''));
+      (head.firstChild as HTMLElement).style.width = '120px';
+      grp.append(head);
+      for (let i = 0; i < per; i++) {
+        const line = el('div', 'sk-cline');
+        line.setAttribute('aria-hidden', 'true');
+        line.append(el('div', 'sk sk-chip'), el('div', 'sk sk-ct'), el('div', 'sk sk-pts'));
+        grp.append(line);
+      }
+      box.append(grp);
+    }
+    // An epic also carries a velocity footnote below the groups.
+    if (item.kind === 'epic' && this.#caps.epicVelocity && this.#caps.points) {
+      const vel = el('div', 'cvelocity'); vel.setAttribute('aria-hidden', 'true');
+      vel.append(el('div', 'sk sk-line', ''));
+      (vel.firstChild as HTMLElement).style.width = '60%';
+      box.append(vel);
+    }
+  }
+
   // ---- contains (children summary) ----
   // Renders the item's children, grouped by tier, and — when the source can
   // create and the item can hold that tier — a per-section "Add <tier>" button
@@ -917,8 +993,11 @@ export class LedgerDrawer extends HTMLElement {
     // Planning measures capacity against the full decomposition, so it loads the
     // children at ALL statuses (closed included) rather than the board's filtered
     // set. This is a separate fetch held locally — the board's cache stays filtered.
+    // While it loads, reserve the space with a skeleton sized to childCount (known
+    // from the list node), so the real lines fill it rather than growing the panel.
     box.hidden = false; box.innerHTML = '';
-    box.append(el('h4', null, 'Planning'), el('div', 'cgroup-label', 'loading…'));
+    this.#paintContainsSkeleton(item);
+    this.#paintRiskSkeleton(item);
     let children: LedgerNode[] = [];
     if (this.planningChildren) {
       try { children = await this.planningChildren(item); } catch { /* leave loading */ }
