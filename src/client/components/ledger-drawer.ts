@@ -24,7 +24,7 @@ import { chromeSheet, idTag, noEstimateIcon, pointsPill, CONFIDENCE } from './sh
 import { renderInto } from './markdown.js';
 import './ledger-comment-thread.js';
 import type { LedgerCommentThread } from './ledger-comment-thread.js';
-import type { Item, LedgerNode, User, EditableField, Capabilities, EpicVelocity, Status } from '../../shared/contract';
+import type { Item, LedgerNode, User, EditableField, Capabilities, EpicVelocity, Status, Kind } from '../../shared/contract';
 import { STATUS_LABEL, isClosed as statusIsClosed, isAbandoned } from '../../shared/status.js';
 
 /** The fetch wrapper the board injects (see app's api()). */
@@ -166,11 +166,17 @@ sheet.replaceSync(`
      Balanced stays calm and low-contrast so it recedes; an over/under imbalance
      lights a warning tone AND carries an arrow + literal numbers, so the risk
      reads without relying on color alone (see the hierarchy research). */
-  .d-risk { display: flex; align-items: center; gap: 12px; margin: 0 0 14px; font-family: var(--fell, serif); font-size: 14px; }
+  .d-risk { display: flex; flex-direction: column; align-items: stretch; gap: 6px; margin: 0 0 14px; font-family: var(--fell, serif); font-size: 14px; }
+  /* The meter + verdict label share one row; the explanation rides below it. */
+  .d-risk .rtop { display: flex; align-items: center; gap: 12px; }
   /* [hidden] must win over the display:flex above (and any state class) — an
      explicit display value otherwise overrides the UA hidden rule, leaving a
      hidden-but-visible meter carrying a prior item's stale state. */
   .d-risk[hidden] { display: none; }
+  /* Why the meter reads over/under: what the delta says about the plan, in plain
+     words. A quiet italic line so it explains without competing with the verdict
+     label's tone above it. */
+  .d-risk .rwhy { margin: 0; font-style: italic; font-size: 13px; line-height: 1.45; color: var(--ink-soft, #5b4a30); }
   .d-risk .rmeter {
     position: relative; flex: 0 0 132px; height: 9px; border-radius: 5px; overflow: hidden;
     background: rgba(91,74,48,.18); box-shadow: inset 0 0 0 1px rgba(91,74,48,.25);
@@ -841,6 +847,7 @@ export class LedgerDrawer extends HTMLElement {
     const fillPct = Math.min(100, Math.round((actual / budget) * 100));
 
     box.className = `d-risk ${state}`; box.hidden = false; box.innerHTML = '';
+    const top = el('div', 'rtop');
     const meter = el('div', 'rmeter'); meter.setAttribute('aria-hidden', 'true');
     const fill = el('div', 'rfill'); fill.style.width = `${fillPct}%`; meter.append(fill);
     if (state === 'over') meter.append(el('div', 'rover'));
@@ -850,12 +857,45 @@ export class LedgerDrawer extends HTMLElement {
     const label = el('span', 'rlabel');
     label.append(el('span', 'rarrow', arrow), document.createTextNode(word),
       el('span', 'rnums', `(${budget} budgeted → ${actual} in children)`));
+    top.append(meter, label);
+    box.append(top);
+
+    // Under the meter, what the imbalance means for the plan — the delta read as a
+    // signal, not just a number. What "more/less child effort than the estimate"
+    // says depends on the tier: an epic's estimate is checked against its stories
+    // (a grooming/analysis signal), a story's against its tasks (an implementation
+    // signal). Balanced needs no explanation — the numbers agreed.
+    const why = this.#riskExplanation(item.kind, state);
+    if (why) box.append(el('p', 'rwhy', why));
 
     // Screen-reader summary: the meter is decorative, so the label carries it all.
     box.setAttribute('role', 'status');
     box.setAttribute('aria-label',
-      `Planning risk: ${word}. Estimate ${budget} points, children total ${actual} points.`);
-    box.append(meter, label);
+      `Planning risk: ${word}. Estimate ${budget} points, children total ${actual} points.${why ? ' ' + why : ''}`);
+  }
+
+  // What an over/under imbalance means for planning, by tier. An epic's own
+  // estimate is a rough guess made before grooming; its stories are the refined
+  // breakdown, so a mismatch is a business-analysis/grooming signal. A story's
+  // estimate is the pre-implementation figure; its tasks are the technical
+  // breakdown, so a mismatch is an implementation-complexity signal. Balanced
+  // returns '' — the estimate held, nothing to explain.
+  #riskExplanation(kind: Kind, state: 'balanced' | 'over' | 'under'): string {
+    if (state === 'balanced') return '';
+    if (kind === 'epic') {
+      return state === 'over'
+        ? 'The stories add up to more than the epic estimate: grooming found the feature more complicated than first thought.'
+        : 'The stories add up to less than the epic estimate: grooming found the feature simpler than first thought.';
+    }
+    if (kind === 'story') {
+      return state === 'over'
+        ? 'The tasks add up to more than the story estimate: breaking the work down found the implementation more complicated than first thought.'
+        : 'The tasks add up to less than the story estimate: breaking the work down found the implementation simpler than first thought.';
+    }
+    // Any other tier with children: state the imbalance without the tier-specific story.
+    return state === 'over'
+      ? 'The children add up to more than the estimate: the work broke down larger than first thought.'
+      : 'The children add up to less than the estimate: the work broke down smaller than first thought.';
   }
 
   // ---- contains (children summary) ----

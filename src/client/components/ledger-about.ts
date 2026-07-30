@@ -72,7 +72,6 @@ const DOC: Block[] = [
   { h: 'Why the Ledger uses epics, stories, and tasks' },
   { p: 'The Ledger sorts every item into one of three tiers: epic, story, task. Whatever depth your previous tracker allowed, the Ledger flattens it to these three. This is deliberate.' },
   { p: 'Three tiers answer three questions, and together they tell you where a plan stands. An epic is the outcome: the why. A story is a shippable piece of that outcome: the what. A task is a unit of work: the how. Any tier beyond these gives progress another place to hide. At three, you can read the whole board at once: this is the goal, these are the deliverables, this is what is being worked right now.' },
-  { p: 'Three tiers also fix the size of a unit of work. When work nests without limit, "we finished 40 points" means nothing: points buried deep are not the same size as points near the top, and a parent and its children get counted twice. Making the task the smallest unit is what makes progress countable.' },
 ];
 
 export class LedgerAbout extends HTMLElement {
