@@ -467,7 +467,7 @@ export class LedgerDrawer extends HTMLElement {
     this.sfx?.pageTurn();
     this.#item = node;
     this.#descMode = 'read';
-    this.#paint(node);
+    this.#paint(node, true);
     this.#lastFocus = document.activeElement as HTMLElement | null;
     this.setAttribute('open', '');
     this.#$('.panel').focus();
@@ -531,7 +531,11 @@ export class LedgerDrawer extends HTMLElement {
   }
 
   // ---- paint ----
-  #paint(item: LedgerNode & Partial<Item>): void {
+  // `preview` is the first paint from the list node, before the full item has
+  // loaded — some fields (the created date, the workflow step's option list) aren't
+  // on the node and only arrive with the readItem fetch. Where such a field WILL
+  // appear, reserve its slot now so the grid doesn't grow a row when it lands.
+  #paint(item: LedgerNode & Partial<Item>, preview = false): void {
     const caps = this.#caps;
     this.#paintBack();
     const type = this.#$('#d-type'); type.textContent = item.type; type.className = `chip t-${item.type}`;
@@ -575,13 +579,25 @@ export class LedgerDrawer extends HTMLElement {
     this.#$('#d-conf-note').textContent = caps.points ? CONFIDENCE[item.kind].meaning : '';
 
     this.#paintDates(item);
-    // Creation date: read-only, every tier, when the source records one. Hidden
-    // until the full item loads (the list node carries no createDate) and for a
-    // source that doesn't stamp one, rather than showing an empty line. Formatted
-    // like the completion date (UTC, date-granular).
+    // Creation date: read-only, every tier, when the source records one. The list
+    // node carries no createDate, so on the preview paint we don't yet know whether
+    // this source stamps one. A source that supports readItem almost always returns
+    // a createDate, so reserve the slot during preview (a dim placeholder) rather
+    // than let the field pop in and grow the grid; the real paint then fills it, or
+    // hides it for the rare source that returns none. Off preview, show it iff set.
     const createField = this.#$('#d-created-field');
-    createField.hidden = !item.createDate;
-    if (item.createDate) this.#$('#d-created-text').textContent = this.#formatDate(item.createDate);
+    const createText = this.#$('#d-created-text');
+    if (item.createDate) {
+      createField.hidden = false;
+      createText.className = 'd-readonly';
+      createText.textContent = this.#formatDate(item.createDate);
+    } else if (preview && caps.readItem) {
+      createField.hidden = false;
+      createText.className = 'd-readonly';
+      createText.replaceChildren(this.#skLine('64px'));
+    } else {
+      createField.hidden = true;
+    }
     const sel = this.#$<HTMLSelectElement>('#d-status-edit'); sel.innerHTML = '';
     // Offer 'Abandoned' ("Closed (not completed)") only when the source can tell an
     // abandoned close from a completion; otherwise the select is the old Open/Closed.
@@ -810,6 +826,14 @@ export class LedgerDrawer extends HTMLElement {
     const field = this.#$('#d-step-field'); const sel = this.#$<HTMLSelectElement>('#d-step-edit');
     field.hidden = true; sel.innerHTML = '';
     if (!this.#caps.stepOptions || !item.project || !this.api) return;
+    // The node carries the current workflowAction even before the option list loads.
+    // Show the field at full height right away with that value as the sole option, so
+    // it doesn't pop into the grid (and shove the description down) once the fetch
+    // returns — the fetch then just widens the choices in place.
+    if (item.workflowAction) {
+      const cur = el('option', null, item.workflowAction); cur.value = item.workflowAction; cur.selected = true;
+      sel.append(cur); field.hidden = false;
+    }
     let steps = this.#stepCache.get(item.project);
     if (!steps) {
       try { steps = (await this.api<{ steps: string[] }>(`/api/steps?project=${encodeURIComponent(item.project)}`)).steps || []; }
@@ -917,6 +941,15 @@ export class LedgerDrawer extends HTMLElement {
     return state === 'over'
       ? 'The children add up to more than the estimate: the work broke down larger than first thought.'
       : 'The children add up to less than the estimate: the work broke down smaller than first thought.';
+  }
+
+  // A single dim placeholder bar, for reserving an inline field's value slot while
+  // the datum it holds is still loading (the created date, a step field's options).
+  #skLine(width: string): HTMLElement {
+    const bar = el('div', 'sk sk-line');
+    bar.style.width = width;
+    bar.setAttribute('aria-hidden', 'true');
+    return bar;
   }
 
   // Reserve the risk meter's slot while children load — but only when the item will
