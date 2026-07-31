@@ -72,6 +72,12 @@ const DOC: Block[] = [
   { h: 'Why the Ledger uses epics, stories, and tasks' },
   { p: 'The Ledger sorts every item into one of three tiers: epic, story, task. Whatever depth your previous tracker allowed, the Ledger flattens it to these three. This is deliberate.' },
   { p: 'Three tiers answer three questions, and together they tell you where a plan stands. An epic is the outcome: the why. A story is a shippable piece of that outcome: the what. A task is a unit of work: the how. Any tier beyond these gives progress another place to hide. At three, you can read the whole board at once: this is the goal, these are the deliverables, this is what is being worked right now.' },
+
+  { h: 'How to estimate in points' },
+  { p: 'Start by choosing a baseline: one task that your team agrees is worth one point. There is no universal one point. It is whatever your team means by the smallest unit of work worth tracking, and it will differ from another team\'s. Everything else is measured against it.' },
+  { p: 'From that baseline, estimate by relative complexity. A task about twice as complex as the baseline is two points; three times, three points; and so on. This is ordinary story-point estimation. The Ledger does not require Fibonacci values, so use whatever scale your team finds honest.' },
+  { p: 'Estimate top down: the epic first, then its stories, then their tasks. On the first pass the numbers should reconcile. A fifty-point epic breaks down into stories that sum to about fifty points, and those into tasks that also sum to about fifty. Estimating each tier on its own, rather than adding up the tier below, is what keeps the epic\'s number an independent read on the whole outcome.' },
+  { p: 'As the work progresses you will add stories and tasks you did not foresee. When that happens, leave the original epic and story estimates alone. The point is not to keep a running total that always matches reality. It is to preserve what you first believed the work would cost, so you can compare it against what the work actually took and estimate better next time.' },
 ];
 
 export class LedgerAbout extends HTMLElement {
