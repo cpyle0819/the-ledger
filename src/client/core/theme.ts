@@ -1,11 +1,14 @@
-// Theme controller — themes are selected like plugins. A theme is a folder under
-// public/themes/<id>/ holding a theme.css (the token layer + this theme's own
-// decoration), listed in public/themes/themes.json with its display name, fonts,
-// ambient config, and foley. This module loads that manifest, resolves the active
-// theme, swaps the stylesheet/fonts/ambient/sound live, and drives the masthead
+// Theme controller — themes are npm packages like plugins. Each is a package
+// (themes/<id>/, or a third-party dependency) carrying a `ledgerTheme` block in
+// its package.json: display name, fonts, foley, and two theme-provided components
+// (logo, ambient). The server discovers every installed theme package and returns
+// the registry — with asset `src` values rewritten to /theme/<id>/… URLs — from
+// /api/themes. This module fetches that registry, resolves the active theme,
+// swaps the stylesheet/fonts/logo/ambient/sound live, and drives the masthead
 // switcher.
 //
-// The token layer (base.css) is always loaded; only the theme.css <link> swaps.
+// The token layer (base.css) is always loaded; only the theme's stylesheet <link>
+// swaps.
 // Because the design tokens are CSS custom properties that inherit through every
 // shadow boundary, swapping the theme sheet recolours the whole app — light DOM
 // and every component's shadow root — in one assignment, with no per-component
@@ -15,8 +18,8 @@
 //   1. the browser's stored choice (localStorage) — the switcher's last pick
 //   2. the server's configured default (ledger.config.json `theme`, via
 //      /api/source) — passed in as `configured`
-//   3. the manifest's own `default`
-//   4. the first theme in the manifest (last resort)
+//   3. the registry's own `default`
+//   4. the first theme in the registry (last resort)
 
 import { $ } from '../ui/dom.js';
 import { configureSfx, type SoundConfig } from './sound.js';
@@ -34,6 +37,7 @@ export interface Theme {
   name: string;
   tagline?: string;      // shown in the switcher option's world
   subtitle?: string;     // the masthead sub-line HTML (may contain <em>)
+  stylesheet: string;    // URL of the theme's token+decoration CSS (served from the theme package)
   fonts?: string;
   logo?: ThemeComponent;    // masthead mark; falls back to <ledger-mark>
   ambient?: ThemeComponent; // backdrop drift layer; absent → no ambient
@@ -44,7 +48,7 @@ interface Manifest { default: string; themes: Theme[] }
 const STORAGE_KEY = 'ledger:theme';
 // The fallback logo — the-ledger's wax-seal mark, loaded when a theme declares
 // no logo of its own (or its logo module fails to load/register).
-const FALLBACK_LOGO: ThemeComponent = { tag: 'ledger-mark', src: '/themes/the-ledger/mark.js' };
+const FALLBACK_LOGO: ThemeComponent = { tag: 'ledger-mark', src: '/theme/the-ledger/mark.js' };
 
 let manifest: Manifest | null = null;
 let active: Theme | null = null;
@@ -52,13 +56,14 @@ let active: Theme | null = null;
 /** The currently applied theme id, or null before the first apply. */
 export function activeThemeId(): string | null { return active?.id ?? null; }
 
-// Fetch + cache the manifest. A failure here leaves the app on whatever the HTML
-// shipped with (base.css + the-ledger theme link), so a manifest hiccup can't
-// blank the page.
+// Fetch + cache the theme registry — the server enumerates every installed theme
+// package and returns its manifest with asset URLs already rewritten. A failure
+// here leaves the app on whatever the HTML shipped with (base.css + the default
+// theme link), so a registry hiccup can't blank the page.
 async function loadManifest(): Promise<Manifest | null> {
   if (manifest) return manifest;
   try {
-    manifest = await (await fetch('/themes/themes.json')).json() as Manifest;
+    manifest = await (await fetch('/api/themes')).json() as Manifest;
   } catch { manifest = null; }
   return manifest;
 }
@@ -73,7 +78,7 @@ function findTheme(id: string | null | undefined): Theme | undefined {
 // one loads. Returns a promise that resolves when the new sheet has loaded, so
 // callers can defer a re-render (title, ambient) until the tokens are live and
 // avoid a flash of the old palette.
-function swapSheet(id: string): Promise<void> {
+function swapSheet(href: string): Promise<void> {
   return new Promise((resolve) => {
     let link = $<HTMLLinkElement>('#theme-css');
     if (!link) {
@@ -81,7 +86,6 @@ function swapSheet(id: string): Promise<void> {
       link.id = 'theme-css'; link.rel = 'stylesheet';
       document.head.append(link);
     }
-    const href = `/themes/${id}/theme.css`;
     if (link.getAttribute('href') === href) { resolve(); return; }
     // Resolve on load/error, but NEVER hang the rest of theme application on a
     // stylesheet event that can silently not fire (a missed `load` on an
@@ -170,7 +174,7 @@ export async function applyTheme(id: string): Promise<void> {
   if (!theme) return;
   active = theme;
   document.documentElement.setAttribute('data-theme', id);
-  await swapSheet(id);
+  await swapSheet(theme.stylesheet);
   swapFonts(theme);
   await applyLogo(theme);
   await applyAmbient(theme);

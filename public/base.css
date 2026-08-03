@@ -3,14 +3,16 @@
    This file is the STRUCTURE: layout, positioning, sizing, motion, and the
    accessibility primitives. It carries no palette of its own — every colour,
    font, background, texture, and filter is a `var(--token)` that a THEME
-   supplies. Load order is base.css first, then one themes/<id>/theme.css; the
-   theme's `:root` block fills in the tokens and overrides the handful of
-   paint-only rules at the end of each themed file (the app backdrop, grain,
-   vignette, scrollbars — structure here, skin there).
+   supplies. Load order is base.css first, then one theme's stylesheet (served
+   from its package at /theme/<id>/theme.css); the theme's `:root` block fills in
+   the tokens and overrides the handful of paint-only rules at the end of each
+   themed file (the app backdrop, grain, vignette, scrollbars — structure here,
+   skin there).
 
-   Themes are selected like plugins: a `theme` field in ledger.config.json names
-   the default, the masthead switcher overrides it per-browser (localStorage),
-   and the manifest at themes/themes.json lists what's installable. See
+   Themes are npm packages like plugins: each declares a `ledgerTheme` block in
+   its package.json, the server discovers every installed theme package into the
+   /api/themes registry, a `theme` field in ledger.config.json names the default,
+   and the masthead switcher overrides it per-browser (localStorage). See
    themes/the-ledger/theme.css for the token contract every theme must satisfy. */
 
 /* ---- Neutral token baseline ----------------------------------------

@@ -11,11 +11,13 @@
        waiting on the manifest. The theme controller swaps #theme-fonts on apply. -->
   <link id="theme-fonts" href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
   <!-- Structure (theme-agnostic) then the theme's token+decoration layer. The
-       controller swaps #theme-css to the resolved theme; this default keeps the
-       page painted before the manifest loads. Themes are selected like plugins —
-       see public/themes/themes.json and src/client/core/theme.ts. -->
+       controller swaps #theme-css to the resolved theme's stylesheet URL; this
+       default keeps the page painted before the registry loads. Themes are
+       packages like plugins — the server discovers installed theme packages and
+       serves their assets under /theme/<id>/… (see src/server/theme-interface.ts
+       and src/client/core/theme.ts). -->
   <link rel="stylesheet" href="/base.css" />
-  <link id="theme-css" rel="stylesheet" href="/themes/the-ledger/theme.css" />
+  <link id="theme-css" rel="stylesheet" href="/theme/the-ledger/theme.css" />
 </head>
 <body>
   <a class="skip-link" href="#stage">Skip to content</a>

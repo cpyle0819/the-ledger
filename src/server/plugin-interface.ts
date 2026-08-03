@@ -137,7 +137,7 @@ function activeSourceName(): string {
 // are selected like sources — a config field names the default; the client's
 // masthead switcher overrides it per-browser. Absent/blank → `null`, and the
 // client falls back to its own default (the built-in `the-ledger` theme). The
-// value is a theme id matched against public/themes/themes.json; an unknown id
+// value is a theme id matched against the /api/themes registry; an unknown id
 // is the client's problem to fall back on, not a server error.
 export function configuredTheme(): string | null {
   const theme = readConfig()?.theme;

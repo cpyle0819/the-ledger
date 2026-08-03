@@ -1,4 +1,4 @@
-# Reinstallable from package.json (smoke-drift comes from GitHub)
+# Reinstallable from package.json (theme deps like smoke-drift come from GitHub)
 node_modules/
 
 # Compiled TypeScript output — source is src/, build with `npm run build`.
@@ -29,3 +29,9 @@ build.log
 /plugins/*/
 !/plugins/local-file/
 !/plugins/github/
+
+# Theme packages, same rule as plugins: bundled themes are opt-in via negation;
+# any other theme package (a private or third-party one dropped in themes/) stays
+# local. Each is an npm package resolved via package.json, like a source plugin.
+/themes/*/
+!/themes/the-ledger/

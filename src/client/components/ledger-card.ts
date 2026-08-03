@@ -41,21 +41,20 @@ cardSheet.replaceSync(`
      column body's padding then shows as an even leather gutter on both sides,
      instead of the bulge overflowing the right into the column's overflow clip. */
   /* The surface stack, its blend, shadow, corner radius, and edge filter are all
-     theme RECIPE tokens (see themes/the-ledger/theme.css). The fallbacks are the
-     original parchment leaf, so a card dropped on a page with no theme layer
-     still reads as parchment. A theme with a machined surface sets
-     --deckle-filter:none and a rounded --card-radius. */
+     theme RECIPE tokens: base.css defines a neutral default for each and a theme
+     overrides them (see themes/the-ledger/theme.css for the parchment recipe —
+     layered stain + paper-stain.svg + gradient, chewed by the deckle filter). The
+     inline fallbacks here are only for a card dropped on a page with NO token
+     layer at all; they're a flat surface, not any theme's look — the app always
+     has base.css, so they never fire in practice. */
   .paper {
     content: ""; position: absolute; inset: 0 -5px 0 -4px; z-index: 0; pointer-events: none;
-    background: var(--card-surface,
-      radial-gradient(120px 80px at 82% 14%, rgba(120,80,40,.10), transparent 70%),
-      url("/paper-stain.svg"),
-      linear-gradient(180deg, var(--parch-hi, #f3ead0), var(--parch, #e8dbba) 60%, var(--parch-lo, #d8c69c)));
-    background-size: var(--card-surface-size, auto, 360px 260px, auto);
-    background-blend-mode: var(--card-surface-blend, multiply, multiply, normal);
-    border-radius: var(--card-radius, 0);
-    box-shadow: var(--card-shadow, 1px 2px 4px rgba(0,0,0,.22), inset 0 0 30px rgba(160,120,60,.06), inset 0 0 0 1px rgba(196,172,124,.5));
-    filter: var(--deckle-filter, url(#ledger-deckle));
+    background: var(--card-surface, #ececee);
+    background-size: var(--card-surface-size, auto);
+    background-blend-mode: var(--card-surface-blend, normal);
+    border-radius: var(--card-radius, 6px);
+    box-shadow: var(--card-shadow, 0 1px 3px rgba(0,0,0,.18));
+    filter: var(--deckle-filter, none);
   }
   .body { position: relative; z-index: 1; }
   :host([animate]) .card { animation: unfurl .4s cubic-bezier(.2,.7,.3,1) both; }
@@ -72,14 +71,11 @@ cardSheet.replaceSync(`
      a border alone shifts figure/ground too little to lead. The brightness rides
      on the deckle filter (kept first so the torn edge is preserved). */
   :host([selected]) .paper {
-    box-shadow: var(--card-shadow-selected, 2px 4px 12px rgba(0,0,0,.34), inset 0 0 34px rgba(160,120,60,.16));
-    background: var(--card-surface-selected,
-      radial-gradient(120px 80px at 82% 14%, rgba(120,80,40,.10), transparent 70%),
-      url("/paper-stain.svg"),
-      linear-gradient(180deg, var(--parch-hi, #f3ead0), var(--parch-hi, #f3ead0) 55%, var(--parch, #e8dbba)));
-    background-size: var(--card-surface-size, auto, 360px 260px, auto);
-    background-blend-mode: var(--card-surface-blend, multiply, multiply, normal);
-    filter: var(--deckle-filter-selected, url(#ledger-deckle) brightness(1.07) saturate(1.12));
+    box-shadow: var(--card-shadow-selected, 0 2px 10px rgba(0,0,0,.28));
+    background: var(--card-surface-selected, #f6f6f8);
+    background-size: var(--card-surface-size, auto);
+    background-blend-mode: var(--card-surface-blend, normal);
+    filter: var(--deckle-filter-selected, none);
   }
   /* Selected: a bold gilded frame, applied like a shoddy gold-leaf job — the
      gild is laid on thick then run through the same deckle displacement as the

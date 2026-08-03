@@ -8,6 +8,7 @@ import * as http from 'node:http';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { callPlugin, loadActiveSource, configuredTheme, REPO_ROOT } from './plugin-interface';
+import { themeRegistry, resolveThemeAsset } from './theme-interface';
 import type { CreatableField, CreateInput, Filters, SourcePlugin } from '../shared/contract';
 
 const PORT = Number(process.env.PORT) || 4317;
@@ -40,6 +41,14 @@ function sendJSON(res: http.ServerResponse, code: number, obj: unknown): void {
 function serveStatic(req: http.IncomingMessage, res: http.ServerResponse, urlPath: string): void {
   const rel = urlPath === '/' ? '/index.html' : urlPath;
   const file = path.join(PUBLIC_DIR, path.normalize(rel).replace(/^(\.\.[/\\])+/, ''));
+  serveFile(req, res, file);
+}
+
+// Serve one absolute file with MIME + range support. Shared by the public-dir
+// static handler and the /theme/<id>/… asset route (theme assets live outside
+// public/, resolved from the theme package), so both get identical range
+// handling — audio seeking needs the Content-Length + 206 path below.
+function serveFile(req: http.IncomingMessage, res: http.ServerResponse, file: string): void {
   fs.readFile(file, (err, buf) => {
     if (err) return sendJSON(res, 404, { error: 'not found' });
     const type = MIME[path.extname(file)] || 'application/octet-stream';
@@ -213,15 +222,26 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, { item: await call('deleteComment', commentOne[1], commentOne[2]) });
     }
 
-    if (p.startsWith('/api/')) return sendJSON(res, 404, { error: 'unknown endpoint' });
-    // serve the smoke-drift Web Component (npm dep) from node_modules
-    if (p === '/vendor/smoke-drift.js') {
-      return fs.readFile(require.resolve('smoke-drift'), (err, buf) => {
-        if (err) return sendJSON(res, 404, { error: 'smoke-drift not installed — run npm install' });
-        res.writeHead(200, { 'content-type': 'text/javascript' });
-        res.end(buf);
-      });
+    // The theme registry: every installed theme package's manifest, asset URLs
+    // rewritten, plus the built-in default. The client resolves the active theme
+    // from this list (see core/theme.ts).
+    if (p === '/api/themes' && req.method === 'GET') {
+      return sendJSON(res, 200, themeRegistry());
     }
+
+    if (p.startsWith('/api/')) return sendJSON(res, 404, { error: 'unknown endpoint' });
+
+    // Theme assets: /theme/<id>/<path> serves a theme package's own file
+    // (theme.css, mark.js, sounds/*); /theme/<id>/@dep/<specifier> serves a file
+    // from that theme's own node_modules (e.g. the-ledger's smoke-drift ambient).
+    // Both resolve via the theme package, not the app's public/ dir.
+    const themeAsset = p.match(/^\/theme\/([^/]+)\/(.+)$/);
+    if (themeAsset) {
+      const file = resolveThemeAsset(decodeURIComponent(themeAsset[1]!), decodeURIComponent(themeAsset[2]!));
+      if (!file) return sendJSON(res, 404, { error: 'theme asset not found' });
+      return serveFile(req, res, file);
+    }
+
     return serveStatic(req, res, p);
   } catch (err) {
     const e = err as { status?: number; message?: string };

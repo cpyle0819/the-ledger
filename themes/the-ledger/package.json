@@ -1,0 +1,32 @@
+{
+  "name": "the-ledger-theme-the-ledger",
+  "version": "1.0.0",
+  "description": "The Ledger's original theme: leather, parchment, brass, and a wax seal. The bundled reference theme.",
+  "type": "module",
+  "private": true,
+  "files": [
+    "theme.css",
+    "mark.js",
+    "leather.jpg",
+    "paper-stain.svg",
+    "sounds/"
+  ],
+  "dependencies": {
+    "smoke-drift": "github:cpyle0819/smoke-drift"
+  },
+  "ledgerTheme": {
+    "id": "the-ledger",
+    "name": "The Ledger",
+    "tagline": "leather, parchment & brass",
+    "subtitle": "an archive of <em>epics</em>, <em>stories</em> &amp; <em>tasks</em>",
+    "stylesheet": "./theme.css",
+    "fonts": "https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap",
+    "logo": { "tag": "ledger-mark", "src": "./mark.js" },
+    "ambient": { "tag": "smoke-drift", "src": "smoke-drift", "attrs": { "color": "rgb(232 222 196)", "opacity": "0.5", "wind": "300", "fire": true } },
+    "sounds": {
+      "pageTurn": { "src": "./sounds/page-turn.ogg", "volume": 0.5, "startAt": 1.7 },
+      "quill": { "src": "./sounds/quill.ogg", "volume": 0.45, "maxMs": 1400 }
+    }
+  },
+  "license": "MIT"
+}

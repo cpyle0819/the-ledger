@@ -70,16 +70,23 @@ Components live in `src/client/components/`, one self-registering module each:
   orchestrates and owns state (`ledger-board`). Data flows **down** as properties,
   events flow **up** as `CustomEvent`s with `{ bubbles: true, composed: true }`
   (composed is required to cross a shadow boundary).
-- **Theming is layered, and selected like plugins.** `public/base.css` is the
-  theme-agnostic skeleton: layout, a11y, motion, and a COMPLETE neutral `:root`
-  token baseline (flat grey, system font, no texture). A theme is
-  `public/themes/<id>/theme.css` — it overrides the tokens and paints its own
-  decoration (backdrop, card surface, edge filters). The active theme's
-  distinctive look must live ONLY in its theme.css: the test is that an empty
-  theme resolves to the neutral baseline, not to any real theme. `themes.json` is
-  the registry; `core/theme.ts` resolves the active theme (localStorage →
-  ledger.config.json `theme` via /api/source → manifest default) and swaps the
-  stylesheet/fonts/logo/ambient/sounds live.
+- **Theming is layered, and themes are npm packages like plugins.**
+  `public/base.css` is the theme-agnostic skeleton: layout, a11y, motion, and a
+  COMPLETE neutral `:root` token baseline (flat grey, system font, no texture). A
+  theme is a **package** in `themes/<id>/` (a `file:` dep, mirroring `plugins/`)
+  carrying a `ledgerTheme` block in its package.json and its own deps (the-ledger
+  owns `smoke-drift`). Its `theme.css` overrides the tokens and paints its own
+  decoration (backdrop, card surface, edge filters); assets referenced relative
+  resolve against the served stylesheet. The active theme's distinctive look must
+  live ONLY in its package: the test is that an empty theme resolves to the
+  neutral baseline, not to any real theme. The server (`server/theme-interface.ts`)
+  discovers every installed theme package into the `/api/themes` registry and
+  serves each theme's assets under `/theme/<id>/…` (own files) and
+  `/theme/<id>/@dep/<specifier>` (a theme dependency, e.g. smoke-drift).
+  `core/theme.ts` fetches the registry, resolves the active theme (localStorage →
+  ledger.config.json `theme` via /api/source → registry default), and swaps the
+  stylesheet/fonts/logo/ambient/sounds live. Add a theme by installing its
+  package — no code change.
 - **Theming crosses the shadow boundary for free:** the `:root` design tokens are
   CSS custom properties, which inherit through shadow roots. Components read
   `var(--token, fallback)`; there is no per-component theming machinery.
