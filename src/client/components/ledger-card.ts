@@ -40,21 +40,27 @@ cardSheet.replaceSync(`
      unevenly, more on some sides than others) stays INSIDE the card box — the
      column body's padding then shows as an even leather gutter on both sides,
      instead of the bulge overflowing the right into the column's overflow clip. */
+  /* The surface stack, its blend, shadow, corner radius, and edge filter are all
+     theme RECIPE tokens (see themes/the-ledger/theme.css). The fallbacks are the
+     original parchment leaf, so a card dropped on a page with no theme layer
+     still reads as parchment. A theme with a machined surface sets
+     --deckle-filter:none and a rounded --card-radius. */
   .paper {
     content: ""; position: absolute; inset: 0 -5px 0 -4px; z-index: 0; pointer-events: none;
-    background:
+    background: var(--card-surface,
       radial-gradient(120px 80px at 82% 14%, rgba(120,80,40,.10), transparent 70%),
       url("/paper-stain.svg"),
-      linear-gradient(180deg, var(--parch-hi, #f3ead0), var(--parch, #e8dbba) 60%, var(--parch-lo, #d8c69c));
-    background-size: auto, 360px 260px, auto;
-    background-blend-mode: multiply, multiply, normal;
-    box-shadow: 1px 2px 4px rgba(0,0,0,.22), inset 0 0 30px rgba(160,120,60,.06), inset 0 0 0 1px rgba(196,172,124,.5);
-    filter: url(#ledger-deckle);
+      linear-gradient(180deg, var(--parch-hi, #f3ead0), var(--parch, #e8dbba) 60%, var(--parch-lo, #d8c69c)));
+    background-size: var(--card-surface-size, auto, 360px 260px, auto);
+    background-blend-mode: var(--card-surface-blend, multiply, multiply, normal);
+    border-radius: var(--card-radius, 0);
+    box-shadow: var(--card-shadow, 1px 2px 4px rgba(0,0,0,.22), inset 0 0 30px rgba(160,120,60,.06), inset 0 0 0 1px rgba(196,172,124,.5));
+    filter: var(--deckle-filter, url(#ledger-deckle));
   }
   .body { position: relative; z-index: 1; }
   :host([animate]) .card { animation: unfurl .4s cubic-bezier(.2,.7,.3,1) both; }
   @keyframes unfurl { from { opacity: 0; transform: translateY(10px) rotate(-.4deg); } }
-  .card:hover .paper { box-shadow: 2px 4px 9px rgba(0,0,0,.3), inset 0 0 30px rgba(160,120,60,.08), inset 0 0 0 1px rgba(196,172,124,.6); }
+  .card:hover .paper { box-shadow: var(--card-shadow-hover, 2px 4px 9px rgba(0,0,0,.3), inset 0 0 30px rgba(160,120,60,.08), inset 0 0 0 1px rgba(196,172,124,.6)); }
 
   :host([selected]) .card { transform: translateY(-1px) rotate(-.2deg); }
   /* The active card is the column's focal point. Its dominance is carried mainly
@@ -66,14 +72,14 @@ cardSheet.replaceSync(`
      a border alone shifts figure/ground too little to lead. The brightness rides
      on the deckle filter (kept first so the torn edge is preserved). */
   :host([selected]) .paper {
-    box-shadow: 2px 4px 12px rgba(0,0,0,.34), inset 0 0 34px rgba(160,120,60,.16);
-    background:
+    box-shadow: var(--card-shadow-selected, 2px 4px 12px rgba(0,0,0,.34), inset 0 0 34px rgba(160,120,60,.16));
+    background: var(--card-surface-selected,
       radial-gradient(120px 80px at 82% 14%, rgba(120,80,40,.10), transparent 70%),
       url("/paper-stain.svg"),
-      linear-gradient(180deg, var(--parch-hi, #f3ead0), var(--parch-hi, #f3ead0) 55%, var(--parch, #e8dbba));
-    background-size: auto, 360px 260px, auto;
-    background-blend-mode: multiply, multiply, normal;
-    filter: url(#ledger-deckle) brightness(1.07) saturate(1.12);
+      linear-gradient(180deg, var(--parch-hi, #f3ead0), var(--parch-hi, #f3ead0) 55%, var(--parch, #e8dbba)));
+    background-size: var(--card-surface-size, auto, 360px 260px, auto);
+    background-blend-mode: var(--card-surface-blend, multiply, multiply, normal);
+    filter: var(--deckle-filter-selected, url(#ledger-deckle) brightness(1.07) saturate(1.12));
   }
   /* Selected: a bold gilded frame, applied like a shoddy gold-leaf job — the
      gild is laid on thick then run through the same deckle displacement as the
@@ -84,15 +90,15 @@ cardSheet.replaceSync(`
   :host([selected]) .card::after {
     content: ""; position: absolute; inset: 0 -5px 0 -4px; z-index: 2; pointer-events: none;
     border: 4px solid transparent;
-    border-image: linear-gradient(125deg,
+    border-image: var(--card-frame, linear-gradient(125deg,
       #f6e3a6 0%, #cfa544 14%, #8a641f 26%, #e7cf8e 34%, #a5791f 46%,
-      #6f4e17 58%, #d8b45e 70%, #8a641f 82%, #c79a3e 100%) 1;
-    filter: url(#ledger-deckle);
+      #6f4e17 58%, #d8b45e 70%, #8a641f 82%, #c79a3e 100%) 1);
+    filter: var(--card-frame-filter, var(--deckle-filter, url(#ledger-deckle)));
   }
-  /* A thin dark keyline just inside the fringed gild, to seat it on the paper. */
+  /* A thin dark keyline just inside the frame, to seat it on the surface. */
   :host([selected]) .card > .gild-seat {
     position: absolute; inset: 3px -2px 3px -1px; z-index: 1; pointer-events: none; border-radius: 2px;
-    box-shadow: inset 0 0 0 1px rgba(74,52,12,.5);
+    box-shadow: var(--card-frame-seat, inset 0 0 0 1px rgba(74,52,12,.5));
   }
 
   .card-top { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; }
@@ -125,10 +131,10 @@ cardSheet.replaceSync(`
     pointer-events: none; user-select: none;
     font-family: var(--fell, serif); font-weight: 700; text-transform: uppercase;
     font-size: 13px; letter-spacing: .13em; line-height: 1;
-    color: rgba(140,43,34,.7);
-    padding: 3px 9px; border: 2px double rgba(140,43,34,.58); border-radius: 3px;
+    color: var(--stamp-ink, rgba(140,43,34,.7));
+    padding: 3px 9px; border: 2px double var(--stamp-edge, rgba(140,43,34,.58)); border-radius: 3px;
     text-shadow: 0 1px 0 rgba(255,255,255,.18);
-    filter: url(#ledger-deckle);
+    filter: var(--stamp-filter, var(--deckle-filter, url(#ledger-deckle)));
     transition: opacity .15s;
   }
   /* An abandoned close ("Not done"): a desaturated slate ink instead of the oxblood
@@ -136,7 +142,7 @@ cardSheet.replaceSync(`
      done is warm/final, not-done is grey/inert. Slightly tighter tracking keeps the
      two-word label compact in the corner. */
   .closed-stamp.abandoned {
-    color: rgba(74,78,86,.7); border-color: rgba(74,78,86,.5);
+    color: var(--stamp-ink-abandoned, rgba(74,78,86,.7)); border-color: var(--stamp-edge-abandoned, rgba(74,78,86,.5));
     letter-spacing: .08em;
   }
   /* The hover "view details" affordance shares this corner; fade the stamp out on

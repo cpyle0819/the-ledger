@@ -1,0 +1,179 @@
+/* The Ledger — the original theme: an archive of works.
+   Crumbling parchment, tooled leather, wax seals, brass, stamped catalog
+   numbers, a drift of pipe smoke. Not a ticketing app — a reading room.
+
+   Type: IM Fell English (17th-c. digitized, display) · EB Garamond (body) ·
+   Special Elite (stamped accession numbers / labels).
+
+   This is the reference theme AND the token contract every other theme fills
+   in. Two token families:
+     1. NAMED tokens (--leather, --parch, --ink, --brass, --seal-*, …) — the
+        original palette. Their names are historical (leather/parchment/brass),
+        but base.css and the components treat them SEMANTICALLY: --leather is
+        "app chrome", --parch is "card surface", --ink is "text on a card",
+        --brass is "primary metal", --seal-* are "tier accents". A new theme
+        keeps the names and re-points the values.
+     2. RECIPE tokens (--card-surface, --panel-surface, --grain-image,
+        --deckle-filter, …) — the non-tokenizable decoration: layered
+        backgrounds, textures, and the SVG edge filter. base.css and the
+        components read these with fallbacks, so a theme restyles a surface
+        without touching component code. */
+
+:root {
+  /* ---- Fonts ---- */
+  --fell: 'IM Fell English', Georgia, serif;
+  --fell-sc: 'IM Fell English SC', Georgia, serif;
+  --gara: 'EB Garamond', Georgia, serif;
+  --mono: ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, Consolas, monospace;
+
+  /* ---- leather & wood — the room / app chrome ---- */
+  --leather:     #2a1c10;   /* deep oxblood-brown leather        */
+  --leather-2:   #33230f;
+  --wood:        #1c1409;   /* darkest — bookshelf shadow        */
+  --brass:       #b08d4f;   /* fittings, rules, hardware         */
+  --brass-lo:    #7a5f30;
+  --brass-hi:    #d8b878;
+
+  /* ---- parchment — the card / panel surface ---- */
+  --parch:       #e8dbba;   /* aged leaf                         */
+  --parch-lo:    #d8c69c;   /* shadowed / older leaf             */
+  --parch-hi:    #f3ead0;   /* fresh, lit leaf                   */
+  --parch-edge:  #c4ac7c;   /* torn/burnt edge                   */
+
+  /* ---- ink — text on the card surface ---- */
+  --ink:         #33291a;   /* iron-gall brown-black             */
+  --ink-soft:    #5b4a30;
+  --ink-faint:   #6f5c3e;   /* darkened to clear WCAG AA (4.5) on parchment */
+  --ink-red:     #8f2f22;   /* rubric red / correction ink       */
+
+  /* ---- tier accents (seals) ---- */
+  --seal-epic:   #8a5a2b;   /* burnt sienna — EPIC               */
+  --seal-story:  #3f5e4e;   /* verdigris green — STORY           */
+  --seal-task:   #47506e;   /* faded indigo — TASK               */
+  --seal-bug:    #8f2f22;   /* correction red — BUG              */
+  --wax:         #7c2b22;   /* sealing wax                       */
+
+  /* ---- planning-risk tones (estimate vs. summed child effort) ---- */
+  --risk-over:   #a8321f;   /* over budget — hot correction red  */
+  --risk-under:  #b8842a;   /* under budget — cooler burnt amber */
+
+  /* ---- Metadata type size. The most common metadata (pills, ids, assignee)
+     shares one token so every surface reads the same scale; tune it here. ---- */
+  --fs-meta: 16px;
+
+  /* ---- Semantic helper tokens (base.css reads these) ---- */
+  --focus-ring:        var(--brass-hi);      /* keyboard ring on dark chrome  */
+  --focus-ring-onlight: var(--ink-red);      /* ring on the light card fill   */
+  --skip-bg:           var(--brass-hi);
+  --skip-fg:           var(--wood);
+  --btn-hover-fg:      #fff;
+  --chip-fg:           #f6eed6;               /* text on a filled tier chip    */
+  --inert:             rgba(74,78,86,.8);     /* abandoned / not-done grey     */
+  --accent-warm:       #e6a07a;               /* "direct on epic" lane label   */
+  --accent-warm-faint: rgba(230,160,122,.5);
+  --hover-wash:        rgba(176,141,79,.12);  /* seg-button hover              */
+  --row-hover:         rgba(176,141,79,.12);  /* outline row hover             */
+  --copy-hover-bg:     rgba(243,234,208,.7);
+  --onlight-btn-bg:    rgba(243,234,208,.7);  /* .ol-read button on parchment  */
+  --switch-on-2:       #2f4a3c;               /* "show closed" on-state 2nd stop */
+  --closed-ink:        rgba(140,43,34,.85);   /* outline CLOSED tag            */
+  --closed-edge:       rgba(140,43,34,.55);
+  --abandoned-ink:     rgba(74,78,86,.9);
+  --abandoned-edge:    rgba(74,78,86,.5);
+  --seg-on-fg:         var(--wood);
+  --seg-on-bg:         linear-gradient(180deg, var(--brass-hi), var(--brass));
+
+  /* ---- Chrome seams: the wells, hairlines, and sheen of the dark chrome ----
+     Warm-black inset wells (inputs, segs), brass hairline dividers, and the thin
+     gilt sheen on raised buttons. Tokenised so a cold theme can shift them off
+     the warm brown; these values reproduce the original leather chrome. */
+  --well:              rgba(20,14,7,.6);       /* input / seg / select well     */
+  --well-soft:         rgba(20,14,7,.5);       /* the ident plate               */
+  --hairline:          rgba(122,95,48,.5);     /* controls-rail bottom border   */
+  --hairline-soft:     rgba(122,95,48,.4);     /* seg internal dividers         */
+  --chrome-sheen:      rgba(216,184,120,.15);  /* raised-button top gilt line   */
+
+  /* ---- Panel surface (outline epic cards, drawer, compose, toast) ---- */
+  --panel-radius:      3px;
+  --panel-surface:     linear-gradient(180deg, var(--parch-hi), var(--parch));
+  --panel-head-wash:   linear-gradient(90deg, rgba(138,90,43,.17), transparent 48%);
+
+  /* ---- Large sheet surfaces (drawer, compose, about) ----
+     A parchment sheet with a warm-corner glow. Drawer/compose glow from the
+     top-right binding corner; about glows from the top-left. --sheet-edge is the
+     brass border that binds the sheet. */
+  --sheet-surface:
+    radial-gradient(120% 60% at 100% 0%, rgba(196,172,124,.35), transparent 60%),
+    linear-gradient(180deg, var(--parch-hi), var(--parch) 70%, var(--parch-lo));
+  --sheet-surface-tl:
+    radial-gradient(120% 55% at 0% 0%, rgba(196,172,124,.35), transparent 60%),
+    linear-gradient(180deg, var(--parch-hi), var(--parch) 70%, var(--parch-lo));
+  --sheet-edge:        var(--brass-lo);
+
+  /* ---- Card surface recipe (the <ledger-card> parchment leaf) ----
+     A layered stack: a soft stain radial, the paper-stain texture, and the
+     parchment gradient. The deckle filter chews the paper edges into torn
+     paper. A theme with a machined surface sets --deckle-filter: none and
+     swaps the stack. --card-* are read by ledger-card's shadow styles. */
+  --card-surface:
+    radial-gradient(120px 80px at 82% 14%, rgba(120,80,40,.10), transparent 70%),
+    url("/paper-stain.svg"),
+    linear-gradient(180deg, var(--parch-hi), var(--parch) 60%, var(--parch-lo));
+  --card-surface-size: auto, 360px 260px, auto;
+  --card-surface-blend: multiply, multiply, normal;
+  --card-surface-selected:
+    radial-gradient(120px 80px at 82% 14%, rgba(120,80,40,.10), transparent 70%),
+    url("/paper-stain.svg"),
+    linear-gradient(180deg, var(--parch-hi), var(--parch-hi) 55%, var(--parch));
+  --card-shadow:        1px 2px 4px rgba(0,0,0,.22), inset 0 0 30px rgba(160,120,60,.06), inset 0 0 0 1px rgba(196,172,124,.5);
+  --card-shadow-hover:  2px 4px 9px rgba(0,0,0,.3), inset 0 0 30px rgba(160,120,60,.08), inset 0 0 0 1px rgba(196,172,124,.6);
+  --card-shadow-selected: 2px 4px 12px rgba(0,0,0,.34), inset 0 0 34px rgba(160,120,60,.16);
+  --card-radius:        0;                     /* torn paper has no rounded corner */
+  --deckle-filter:      url(#ledger-deckle);   /* the torn-edge displacement       */
+  --deckle-filter-selected: url(#ledger-deckle) brightness(1.07) saturate(1.12);
+  /* Selected card frame: a thick, ragged gold-leaf gild run through the deckle. */
+  --card-frame:
+    linear-gradient(125deg,
+      #f6e3a6 0%, #cfa544 14%, #8a641f 26%, #e7cf8e 34%, #a5791f 46%,
+      #6f4e17 58%, #d8b45e 70%, #8a641f 82%, #c79a3e 100%) 1;
+  --card-frame-seat:    inset 0 0 0 1px rgba(74,52,12,.5);
+  /* Closed stamp inks (the corner CLOSED / NOT DONE wax stamp on a card). */
+  --stamp-ink:          rgba(140,43,34,.7);
+  --stamp-edge:         rgba(140,43,34,.58);
+  --stamp-ink-abandoned: rgba(74,78,86,.7);
+  --stamp-edge-abandoned: rgba(74,78,86,.5);
+}
+
+/* ---- Paint-only chrome: the backdrop, grain, vignette, scrollbars ----
+   These are the rules base.css leaves as bare structure; the theme paints them.
+   Everything above is tokens; everything below is this theme's own texture. */
+
+/* Worn brown-leather desktop from a photographed CC0 texture (ambientCG
+   Leather011/031-derived, recolored to warm brown and baked into
+   public/leather.jpg). A soft candle-warmth radial sits above it for depth; the
+   base color fills any area beyond the tile. */
+ledger-board {
+  background:
+    radial-gradient(1200px 700px at 78% -8%, rgba(214,188,140,.10), transparent 55%),
+    url("/leather.jpg"),
+    linear-gradient(155deg, #5c482c, #3d2f1b);
+  background-size: auto, 620px 620px, auto;
+  background-repeat: no-repeat, repeat, no-repeat;
+  background-blend-mode: soft-light, normal, normal;
+  background-color: #3d2f1b;
+}
+
+/* paper-tooth / dust grain — fractal-noise SVG, multiplied faintly over all. */
+.grain {
+  opacity: .06; mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+/* candle-lit vignette — a soft darkening at the corners, not a tunnel. */
+.vignette { box-shadow: inset 0 0 200px 20px rgba(15,10,4,.34); }
+
+/* scrollbars — aged brass (light-DOM scrollers; shadow scrollers get the
+   matching constructable sheet in shared-styles.ts). */
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-thumb { background: var(--brass-lo); border-radius: 0; border: 3px solid var(--wood); }
+::-webkit-scrollbar-thumb:hover { background: var(--brass); }
+::-webkit-scrollbar-track { background: rgba(20,14,7,.5); }

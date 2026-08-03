@@ -24,10 +24,10 @@ sheet.replaceSync(`
     transform: translate(-50%, -46%); opacity: 0;
     transition: transform .3s cubic-bezier(.2,.8,.2,1), opacity .3s;
     display: flex; flex-direction: column; color: var(--ink, #33291a);
-    background:
+    background: var(--sheet-surface-tl,
       radial-gradient(120% 55% at 0% 0%, rgba(196,172,124,.35), transparent 60%),
-      linear-gradient(180deg, var(--parch-hi, #f3ead0), var(--parch, #e8dbba) 70%, var(--parch-lo, #d8c69c));
-    border: 1px solid var(--brass-lo, #7a5f30); border-top: 6px solid var(--brass-lo, #7a5f30);
+      linear-gradient(180deg, var(--parch-hi, #f3ead0), var(--parch, #e8dbba) 70%, var(--parch-lo, #d8c69c)));
+    border: 1px solid var(--sheet-edge, var(--brass-lo, #7a5f30)); border-top: 6px solid var(--sheet-edge, var(--brass-lo, #7a5f30));
     border-radius: 3px; box-shadow: 0 28px 60px rgba(0,0,0,.5);
     padding: 26px 34px 0;
   }

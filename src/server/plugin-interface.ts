@@ -105,24 +105,43 @@ export async function callPlugin(
 // so a fresh clone runs with no config. A malformed file is a hard error, not a
 // silent fallback — a typo in the one file that picks the backend should fail
 // loudly rather than quietly serving the wrong (or default) source.
-function activeSourceName(): string {
+// Read + parse ledger.config.json once. Absent file → `null` (callers fall back
+// to their defaults). A malformed file is a hard error, not a silent fallback —
+// a typo in the one file that configures the app should fail loudly rather than
+// quietly serving defaults.
+function readConfig(): Record<string, unknown> | null {
   let raw: string;
   try {
     raw = fs.readFileSync(CONFIG_FILE, 'utf8');
   } catch {
-    return DEFAULT_SOURCE; // no config file — bundled default
+    return null; // no config file
   }
-  let parsed: unknown;
   try {
-    parsed = JSON.parse(raw);
+    return JSON.parse(raw) as Record<string, unknown>;
   } catch (e) {
     throw Object.assign(
       new Error(`Malformed ${path.basename(CONFIG_FILE)}: ${(e as Error).message}`),
       { status: 500 },
     );
   }
-  const source = (parsed as { source?: unknown })?.source;
+}
+
+// The active source's package name, from the `source` field. Absent file or
+// absent/blank field falls back to the bundled local-file source.
+function activeSourceName(): string {
+  const source = readConfig()?.source;
   return typeof source === 'string' && source.trim() ? source.trim() : DEFAULT_SOURCE;
+}
+
+// The default theme id, from ledger.config.json's optional `theme` field. Themes
+// are selected like sources — a config field names the default; the client's
+// masthead switcher overrides it per-browser. Absent/blank → `null`, and the
+// client falls back to its own default (the built-in `the-ledger` theme). The
+// value is a theme id matched against public/themes/themes.json; an unknown id
+// is the client's problem to fall back on, not a server error.
+export function configuredTheme(): string | null {
+  const theme = readConfig()?.theme;
+  return typeof theme === 'string' && theme.trim() ? theme.trim() : null;
 }
 
 // A source is a package name unless it looks like a path — a leading '.' or any

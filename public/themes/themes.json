@@ -1,0 +1,30 @@
+{
+  "_comment": "The theme registry — themes selected like plugins. `default` names the built-in fallback when neither ledger.config.json's `theme` field nor the browser's stored choice applies. Each theme: `id` (folder under themes/ AND the stylesheet at themes/<id>/theme.css), `name`/`tagline`/`subtitle` for the switcher + masthead, `fonts` (a Google Fonts href injected when active), `sounds` (foley cue file + playback opts, keyed by cue name), and two theme-provided components sharing one shape ({tag, src, attrs}): `logo` (the masthead mark — an ES module that self-registers `tag`; omit to fall back to the-ledger's <ledger-mark>) and `ambient` (the backdrop drift layer — pipe smoke, a starfield, …; omit for no ambient). The controller imports each module, creates <tag>, and sets attrs verbatim — it understands no specific tag or attr, so adding a theme touches no code.",
+  "default": "the-ledger",
+  "themes": [
+    {
+      "id": "the-ledger",
+      "name": "The Ledger",
+      "tagline": "leather, parchment & brass",
+      "subtitle": "an archive of <em>epics</em>, <em>stories</em> &amp; <em>tasks</em>",
+      "fonts": "https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap",
+      "logo": { "tag": "ledger-mark", "src": "/themes/the-ledger/mark.js" },
+      "ambient": { "tag": "smoke-drift", "src": "/vendor/smoke-drift.js", "attrs": { "color": "rgb(232 222 196)", "opacity": "0.5", "wind": "300", "fire": true } },
+      "sounds": {
+        "pageTurn": { "src": "/sounds/page-turn.ogg", "volume": 0.5, "startAt": 1.7 },
+        "quill": { "src": "/sounds/quill.ogg", "volume": 0.45, "maxMs": 1400 }
+      }
+    },
+    {
+      "id": "space-opera",
+      "name": "Space Opera",
+      "tagline": "a lived-in ship's manifest",
+      "subtitle": "a manifest of <em>ops</em>, <em>runs</em> &amp; <em>tasks</em>",
+      "fonts": "https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Barlow+Semi+Condensed:ital,wght@0,400;0,500;0,600;1,400&family=Share+Tech+Mono&display=swap",
+      "sounds": {
+        "pageTurn": { "src": "/themes/space-opera/sounds/hatch.ogg", "volume": 0.4 },
+        "quill": { "src": "/themes/space-opera/sounds/relay.ogg", "volume": 0.4, "maxMs": 900 }
+      }
+    }
+  ]
+}

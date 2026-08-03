@@ -1,10 +1,20 @@
-// Two short foley cues, public-domain (Wikimedia Commons): a page turn when a
-// record opens, a quill scratch when an edit saves. Audio is lazy — the browser
-// blocks playback until the first user gesture, so we don't preload aggressively
-// and we swallow the autoplay rejection silently (a muted cue is never an error
-// worth surfacing). The quill clip is long; we clip it to a brief scratch.
+// Foley cues, reconfigurable per theme. The Ledger's originals are two
+// public-domain clips (Wikimedia Commons): a page turn when a record opens, a
+// quill scratch when an edit saves. A theme can swap these for its own world's
+// sounds (a hatch seal, a relay click) via configureSfx — the theme controller
+// calls it from the active theme's manifest entry.
+//
+// Audio is lazy — the browser blocks playback until the first user gesture, so
+// we don't preload aggressively and we swallow the autoplay rejection silently
+// (a muted cue is never an error worth surfacing).
 
 interface CueOpts { volume?: number; startAt?: number; maxMs?: number }
+
+// One cue name → its clip + playback shaping. A theme's manifest supplies this
+// map; a name absent from a theme resolves to a no-op cue (silence, not error),
+// so a theme need only override the cues it wants to change.
+export interface CueSpec extends CueOpts { src: string }
+export type SoundConfig = Partial<Record<keyof Sfx, CueSpec>>;
 
 function makeCue(src: string, { volume = 0.55, startAt = 0, maxMs = 0 }: CueOpts = {}): () => void {
   const base = new Audio(src);
@@ -29,10 +39,24 @@ function makeCue(src: string, { volume = 0.55, startAt = 0, maxMs = 0 }: CueOpts
   };
 }
 
+const noop = (): void => {};
+
 export interface Sfx { pageTurn(): void; quill(): void }
 
+// The live cue functions. Mutated in place by configureSfx so every module that
+// imported `sfx` keeps a stable reference while the underlying clips swap with
+// the theme. Defaults to the Ledger's own foley so the app is audible before any
+// theme applies (and if a theme declares no sounds).
 export const sfx: Sfx = {
-  // The page-turn recording has ~1.7s of lead-in before the actual turn.
   pageTurn: makeCue('/sounds/page-turn.ogg', { volume: 0.5, startAt: 1.7 }),
   quill: makeCue('/sounds/quill.ogg', { volume: 0.45, maxMs: 1400 }),
 };
+
+// Rebind the cues from a theme's sound config. A cue the theme omits becomes
+// silent rather than falling back to another theme's clip — a theme's soundscape
+// is all-or-per-cue, never a mix. Called by the theme controller on apply.
+export function configureSfx(config: SoundConfig): void {
+  const cue = (spec: CueSpec | undefined) => (spec?.src ? makeCue(spec.src, spec) : noop);
+  sfx.pageTurn = cue(config.pageTurn);
+  sfx.quill = cue(config.quill);
+}

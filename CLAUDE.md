@@ -57,7 +57,7 @@ Components live in `src/client/components/`, one self-registering module each:
   (`api`, `fetchChildren`, `caps`, `sfx`, `toast`); emits `item-changed`.
 - `ledger-board` — the app root. **Light DOM** (no shadow): it owns the model,
   filters, and lens orchestration; its masthead/controls/stage children keep the
-  global styling in `styles.css`. Defined in `app.ts`.
+  global styling in `public/base.css`. Defined in `app.ts`.
 - `markdown.ts`, `shared-styles.ts`, `util.ts` — shared helpers: the markdown
   renderer, the constructable `chromeSheet` for leaf chrome (chip/pill/id-tag),
   and DOM utilities (`el`, `asButton`, `copyLink`, `relTime`). These are the
@@ -70,10 +70,30 @@ Components live in `src/client/components/`, one self-registering module each:
   orchestrates and owns state (`ledger-board`). Data flows **down** as properties,
   events flow **up** as `CustomEvent`s with `{ bubbles: true, composed: true }`
   (composed is required to cross a shadow boundary).
-- **Theming crosses the boundary for free:** the `:root` design tokens in
-  `styles.css` are CSS custom properties, which inherit through shadow roots.
-  Components read `var(--token, fallback)`; there is no per-component theming
-  machinery. Restyle the whole app from `:root`.
+- **Theming is layered, and selected like plugins.** `public/base.css` is the
+  theme-agnostic skeleton: layout, a11y, motion, and a COMPLETE neutral `:root`
+  token baseline (flat grey, system font, no texture). A theme is
+  `public/themes/<id>/theme.css` — it overrides the tokens and paints its own
+  decoration (backdrop, card surface, edge filters). The active theme's
+  distinctive look must live ONLY in its theme.css: the test is that an empty
+  theme resolves to the neutral baseline, not to any real theme. `themes.json` is
+  the registry; `core/theme.ts` resolves the active theme (localStorage →
+  ledger.config.json `theme` via /api/source → manifest default) and swaps the
+  stylesheet/fonts/logo/ambient/sounds live.
+- **Theming crosses the shadow boundary for free:** the `:root` design tokens are
+  CSS custom properties, which inherit through shadow roots. Components read
+  `var(--token, fallback)`; there is no per-component theming machinery.
+- **Non-CSS decoration is a token too.** A surface a theme can't express in a
+  plain colour — the card's layered background + torn-edge SVG filter, the panel
+  sheets — is a RECIPE token (`--card-surface`, `--deckle-filter`, `--card-frame`,
+  `--sheet-surface`, …) the component reads. A theme restyles the surface by
+  setting the recipe (e.g. `--deckle-filter: none` for a machined card), never by
+  editing the component.
+- **Logo and ambient are theme-provided components,** declared in the manifest as
+  `{tag, src, attrs}` and mounted by one generic `mountComponent` in `core/theme.ts`
+  (no theme-id branching). The logo falls back to the-ledger's `<ledger-mark>`;
+  ambient (the `<smoke-drift>`-style backdrop drift) is optional. A theme ships its
+  own by declaring one — the controller understands no specific tag or attr.
 - **Styles are constructable stylesheets** adopted per shadow root
   (`new CSSStyleSheet()` + `replaceSync()` + `adoptedStyleSheets`), not `<style>`
   tags. Shared leaf chrome comes from `shared-styles.js`; component-specific rules

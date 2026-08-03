@@ -7,7 +7,7 @@
 import * as http from 'node:http';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { callPlugin, loadActiveSource, REPO_ROOT } from './plugin-interface';
+import { callPlugin, loadActiveSource, configuredTheme, REPO_ROOT } from './plugin-interface';
 import type { CreatableField, CreateInput, Filters, SourcePlugin } from '../shared/contract';
 
 const PORT = Number(process.env.PORT) || 4317;
@@ -109,7 +109,7 @@ const server = http.createServer(async (req, res) => {
     // The frontend reads this once to learn who it's acting as and which actions
     // the active source supports, then hides the rest.
     if (p === '/api/source') {
-      return sendJSON(res, 200, { name: source.name, me: source.plugin.me, capabilities: source.capabilities });
+      return sendJSON(res, 200, { name: source.name, me: source.plugin.me, capabilities: source.capabilities, theme: configuredTheme() });
     }
 
     // Lazy hierarchy: no `parent` => roots (epics); otherwise that node's children.

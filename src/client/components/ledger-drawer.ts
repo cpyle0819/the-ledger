@@ -69,10 +69,10 @@ sheet.replaceSync(`
   :host([open]) .scrim { opacity: 1; }
   .panel {
     position: absolute; top: 0; right: 0; height: 100%; width: min(600px, 94vw); color: var(--ink, #33291a);
-    background:
+    background: var(--sheet-surface,
       radial-gradient(120% 60% at 100% 0%, rgba(196,172,124,.35), transparent 60%),
-      linear-gradient(180deg, var(--parch-hi, #f3ead0), var(--parch, #e8dbba) 70%, var(--parch-lo, #d8c69c));
-    border-left: 6px solid var(--brass-lo, #7a5f30); box-shadow: -24px 0 48px rgba(0,0,0,.4);
+      linear-gradient(180deg, var(--parch-hi, #f3ead0), var(--parch, #e8dbba) 70%, var(--parch-lo, #d8c69c)));
+    border-left: 6px solid var(--sheet-edge, var(--brass-lo, #7a5f30)); box-shadow: -24px 0 48px rgba(0,0,0,.4);
     transform: translateX(100%); transition: transform .3s cubic-bezier(.2,.8,.2,1);
     display: flex; flex-direction: column; padding: 26px 32px 0; overflow-y: auto;
   }

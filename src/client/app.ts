@@ -19,7 +19,7 @@ import './components/ledger-about.js';
 import { state } from './core/state.js';
 import { api, loadProjects } from './core/api.js';
 import { loadTree, render, wireDrawer, wireCompose, reconcile, syncUrl, hydrateStateFromUrl, restoreFromUrl, wireDeepLinkNav } from './core/board.js';
-import { buildTitle } from './ui/title-seal.js';
+import { initTheme } from './core/theme.js';
 import { $, need } from './ui/dom.js';
 import type { LedgerDrawer } from './components/ledger-drawer.js';
 import type { LedgerCompose } from './components/ledger-compose.js';
@@ -162,11 +162,15 @@ class LedgerBoard extends HTMLElement {
     wire();
     wireDeepLinkNav();
     syncControls();
-    buildTitle();
-    // One handshake: who we act as and which actions the active source supports.
+    // The masthead logo is a theme asset, rendered by initTheme once the theme
+    // resolves (see core/theme.applyLogo). Nothing to paint here first.
+    // One handshake: who we act as, which actions the active source supports, and
+    // the server-configured default theme. Apply the theme from that default
+    // (the browser's stored choice, if any, overrides it inside initTheme).
     try {
-      const { me, capabilities } = await api<{ me: string; capabilities: Capabilities }>('/api/source');
+      const { me, capabilities, theme } = await api<{ me: string; capabilities: Capabilities; theme: string | null }>('/api/source');
       state.me = me; state.caps = capabilities || {};
+      await initTheme(theme ?? null);
       need<LedgerDrawer>('#drawer').caps = state.caps;   // gate the drawer's fields on capabilities
       const name = $('#ident-name'); if (name) name.textContent = me;
       const projects = await fillProjects();        // fills + reveals the project picker if supported
@@ -177,7 +181,13 @@ class LedgerBoard extends HTMLElement {
         const compose = need<LedgerCompose>('#compose');
         compose.caps = state.caps; compose.me = me; compose.projects = projects;
       }
-    } catch { const name = $('#ident-name'); if (name) name.textContent = 'unknown'; }
+    } catch {
+      const name = $('#ident-name'); if (name) name.textContent = 'unknown';
+      // Handshake failed, but the theme layer is independent of the source — still
+      // resolve it (from stored choice / manifest default) so the app is themed
+      // and the switcher works.
+      await initTheme(null);
+    }
     await loadTree();
     // The tree is loaded; restore what it can't rebuild alone — the outline's
     // expanded subtrees and the open drawer from the deep link.

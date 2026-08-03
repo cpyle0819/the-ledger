@@ -7,17 +7,26 @@
   <link rel="icon" href="/seal.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/styles.css" />
+  <!-- Theme fonts: the built-in default's fonts, so first paint has them without
+       waiting on the manifest. The theme controller swaps #theme-fonts on apply. -->
+  <link id="theme-fonts" href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+  <!-- Structure (theme-agnostic) then the theme's token+decoration layer. The
+       controller swaps #theme-css to the resolved theme; this default keeps the
+       page painted before the manifest loads. Themes are selected like plugins —
+       see public/themes/themes.json and src/client/core/theme.ts. -->
+  <link rel="stylesheet" href="/base.css" />
+  <link id="theme-css" rel="stylesheet" href="/themes/the-ledger/theme.css" />
 </head>
 <body>
   <a class="skip-link" href="#stage">Skip to content</a>
   <div class="grain" aria-hidden="true"></div>
   <div class="vignette" aria-hidden="true"></div>
 
-  <!-- pipe smoke: the smoke-drift Web Component (npm: github:cpyle0819/smoke-drift),
-       served from node_modules at /vendor/smoke-drift.js. Parchment-toned to match. -->
-  <smoke-drift color="rgb(232 222 196)" opacity="0.5" wind="300" fire></smoke-drift>
+  <!-- Ambient drift layer — the active theme mounts its own effect component here
+       (the-ledger's pipe smoke, another theme's starfield, or nothing). The theme
+       controller (core/theme.applyAmbient) fills this from the manifest's
+       `ambient` {tag, src, attrs}; it starts empty. -->
+  <div id="ambient-layer" aria-hidden="true"></div>
 
   <!-- <ledger-board> is the app root: a light-DOM element that owns the model,
        filters, and lens rendering. Its children (masthead, controls, stage) keep
@@ -36,6 +45,9 @@
         <span class="sr-only">Signed in as</span>
         <span id="ident-name">…</span>
       </p>
+      <!-- Theme switcher — populated from the manifest by the theme controller. -->
+      <label class="sr-only" for="theme-select">Theme</label>
+      <select class="theme-select" id="theme-select" title="Switch theme" aria-label="Switch theme"></select>
       <button class="ghost-btn" id="refresh" aria-keyshortcuts="r" title="Refresh (r)">
         <span aria-hidden="true">↻ </span>refresh
       </button>
@@ -101,7 +113,6 @@
 
   <div class="toast" id="toast" role="status" aria-live="assertive"></div>
 
-  <script type="module" src="/vendor/smoke-drift.js"></script>
   <script type="module" src="/build/client/app.js"></script>
 </body>
 </html>
