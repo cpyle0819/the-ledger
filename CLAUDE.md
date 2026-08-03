@@ -73,7 +73,8 @@ Components live in `src/client/components/`, one self-registering module each:
 - **Theming is layered, and themes are npm packages like plugins.**
   `public/base.css` is the theme-agnostic skeleton: layout, a11y, motion, and a
   COMPLETE neutral `:root` token baseline (flat grey, system font, no texture). A
-  theme is a **package** in `themes/<id>/` (a `file:` dep, mirroring `plugins/`)
+  theme is an **external npm package** (published from the `ledger-themes`
+  monorepo — github.com/cpyle0819/ledger-themes — as `@cpyle0819/ledger-theme-<id>`)
   carrying a `ledgerTheme` block in its package.json and its own deps (the-ledger
   owns `smoke-drift`). Its `theme.css` overrides the tokens and paints its own
   decoration (backdrop, card surface, edge filters); assets referenced relative
@@ -86,7 +87,9 @@ Components live in `src/client/components/`, one self-registering module each:
   `core/theme.ts` fetches the registry, resolves the active theme (localStorage →
   ledger.config.json `theme` via /api/source → registry default), and swaps the
   stylesheet/fonts/logo/ambient/sounds live. Add a theme by installing its
-  package — no code change.
+  package (`npm install @cpyle0819/ledger-theme-<id>`, or any third-party theme
+  package) — no code change. The two bundled themes live in the ledger-themes
+  monorepo, not here.
 - **Theming crosses the shadow boundary for free:** the `:root` design tokens are
   CSS custom properties, which inherit through shadow roots. Components read
   `var(--token, fallback)`; there is no per-component theming machinery.

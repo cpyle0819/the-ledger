@@ -30,9 +30,7 @@ build.log
 !/plugins/local-file/
 !/plugins/github/
 
-# Theme packages, same rule as plugins: bundled themes are opt-in via negation;
-# any other theme package (a private or third-party one dropped in themes/) stays
-# local. Each is an npm package resolved via package.json, like a source plugin.
-/themes/*/
-!/themes/the-ledger/
-!/themes/space-opera/
+# Themes are external npm packages (published from the ledger-themes monorepo:
+# github.com/cpyle0819/ledger-themes), resolved via package.json like any other
+# dependency — nothing theme-related lives in this repo. A private/third-party
+# theme is installed the same way: `npm install <its-package>`.

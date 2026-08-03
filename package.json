@@ -16,8 +16,8 @@
   "dependencies": {
     "the-ledger-github": "file:plugins/github",
     "the-ledger-local-file": "file:plugins/local-file",
-    "the-ledger-theme-the-ledger": "file:themes/the-ledger",
-    "the-ledger-theme-space-opera": "file:themes/space-opera"
+    "@cpyle0819/ledger-theme-the-ledger": "^1.0.0",
+    "@cpyle0819/ledger-theme-space-opera": "^1.0.0"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",
