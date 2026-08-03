@@ -32,6 +32,21 @@ import { configureSfx, type SoundConfig } from './sound.js';
 // these; the controller branches on nothing. `attrs` with a `false`/`null` value
 // is omitted (lets a boolean attr like `fire` be turned off per theme).
 export interface ThemeComponent { tag: string; src: string; attrs?: Record<string, string | number | boolean | null> }
+// One user-tunable knob a theme declares in its manifest. The settings panel
+// renders a control from this and writes the chosen value back onto the target
+// component's attr — so the theme names WHICH of its own attrs are exposed and
+// how (a switch or a slider), while the controller still understands no specific
+// attr's meaning. `target` says which mounted component the attr lives on
+// (ambient today; logo is the same {tag,src,attrs} shape if ever needed). A
+// boolean renders a switch; a range renders a slider between min/max.
+export interface ThemeSetting {
+  target?: 'ambient' | 'logo';   // which component's attr this tunes (default: ambient)
+  attr: string;                  // the attribute name set on that component
+  type: 'boolean' | 'range';
+  label: string;                 // the control's visible label
+  default: boolean | number;     // the theme's shipped value (the reset target)
+  min?: number; max?: number; step?: number;   // range only
+}
 export interface Theme {
   id: string;
   name: string;
@@ -42,6 +57,7 @@ export interface Theme {
   logo?: ThemeComponent;    // masthead mark; falls back to <ledger-mark>
   ambient?: ThemeComponent; // backdrop drift layer; absent → no ambient
   sounds?: SoundConfig;
+  settings?: ThemeSetting[]; // user-tunable knobs surfaced by the gear panel; absent → no gear
 }
 interface Manifest { default: string; themes: Theme[] }
 
@@ -52,12 +68,78 @@ const STORAGE_KEY = 'ledger:theme';
 // choke point), so it always mirrors the theme actually resolved last load —
 // whether that came from the stored choice, the config default, or the manifest.
 const APPLIED_KEY = 'ledger:theme:applied';
+// Per-theme knob overrides live under this prefix + the theme id, so each theme
+// keeps its own choices and switching themes never crosses them. The stored
+// value is a flat { [attr]: boolean|number } of the user's non-default picks.
+const SETTINGS_PREFIX = 'ledger:theme:settings:';
 // The fallback logo — the-ledger's wax-seal mark, loaded when a theme declares
 // no logo of its own (or its logo module fails to load/register).
 const FALLBACK_LOGO: ThemeComponent = { tag: 'ledger-mark', src: '/theme/the-ledger/mark.js' };
 
 let manifest: Manifest | null = null;
 let active: Theme | null = null;
+
+// Subscribers notified after every applyTheme (init and each switch), so the
+// masthead can react to the resolved theme — e.g. show the gear only when the
+// active theme declares settings. Fired with the newly-active theme.
+type ThemeChangeFn = (theme: Theme) => void;
+const changeSubs: ThemeChangeFn[] = [];
+export function onThemeChange(fn: ThemeChangeFn): void { changeSubs.push(fn); }
+
+// ---- per-theme settings (the gear panel's model) ----
+type SettingValue = boolean | number;
+type Overrides = Record<string, SettingValue>;
+
+/** The active theme, so the settings panel can read its `settings` schema. */
+export function activeTheme(): Theme | null { return active; }
+
+// The user's saved overrides for one theme, or {} if none/unreadable. Only attrs
+// the user changed off their default are stored, so an empty object means "all
+// defaults" and a theme that drops a knob later just leaves a dead key ignored.
+export function loadSettings(id: string): Overrides {
+  try { return JSON.parse(localStorage.getItem(SETTINGS_PREFIX + id) || '{}') as Overrides; }
+  catch { return {}; }
+}
+
+// Persist one knob for a theme. A value equal to the schema default is removed
+// rather than stored, so the saved object stays a minimal diff from the manifest.
+export function saveSetting(id: string, attr: string, value: SettingValue, isDefault: boolean): void {
+  const cur = loadSettings(id);
+  if (isDefault) delete cur[attr];
+  else cur[attr] = value;
+  try {
+    if (Object.keys(cur).length) localStorage.setItem(SETTINGS_PREFIX + id, JSON.stringify(cur));
+    else localStorage.removeItem(SETTINGS_PREFIX + id);
+  } catch { /* private mode — settings are session-only, applied live below */ }
+}
+
+// Merge a theme's saved overrides onto a component's manifest attrs. Returns a
+// fresh attrs object so the manifest's own is never mutated. Only overrides whose
+// `target` matches are folded in (ambient knobs don't leak onto the logo).
+function withOverrides(comp: ThemeComponent, id: string, settings: ThemeSetting[] | undefined, target: 'ambient' | 'logo'): ThemeComponent {
+  if (!settings?.length) return comp;
+  const saved = loadSettings(id);
+  const attrs = { ...(comp.attrs ?? {}) };
+  for (const s of settings) {
+    if ((s.target ?? 'ambient') !== target) continue;
+    if (s.attr in saved) attrs[s.attr] = saved[s.attr]!;
+  }
+  return { ...comp, attrs };
+}
+
+// Apply one knob to the live mounted component without a full remount, so a
+// toggle/slider gives instant feedback. The starfield and smoke-drift elements
+// observe their attrs, so setAttribute alone re-drives them. A false/null boolean
+// removes the attr (its "off"); anything else sets the string value — the same
+// rule mountComponent uses, kept in sync here.
+export function applyLiveSetting(setting: ThemeSetting, value: SettingValue): void {
+  const target = setting.target ?? 'ambient';
+  const host = target === 'logo' ? $('.ledger-title') : $('#ambient-layer');
+  const node = host?.firstElementChild as HTMLElement | undefined;
+  if (!node) return;
+  if (value === false || value == null) node.removeAttribute(setting.attr);
+  else node.setAttribute(setting.attr, value === true ? '' : String(value));
+}
 
 /** The currently applied theme id, or null before the first apply. */
 export function activeThemeId(): string | null { return active?.id ?? null; }
@@ -156,7 +238,7 @@ async function mountComponent(host: Element, comp: ThemeComponent): Promise<bool
 async function applyLogo(theme: Theme): Promise<void> {
   const host = $('.ledger-title');
   if (!host) return;
-  const logo = theme.logo ?? FALLBACK_LOGO;
+  const logo = withOverrides(theme.logo ?? FALLBACK_LOGO, theme.id, theme.settings, 'logo');
   if (await mountComponent(host, logo)) return;
   if (logo.src !== FALLBACK_LOGO.src) await mountComponent(host, FALLBACK_LOGO);
 }
@@ -168,7 +250,7 @@ async function applyLogo(theme: Theme): Promise<void> {
 async function applyAmbient(theme: Theme): Promise<void> {
   const host = $('#ambient-layer');
   if (!host) return;
-  if (theme.ambient) await mountComponent(host, theme.ambient);
+  if (theme.ambient) await mountComponent(host, withOverrides(theme.ambient, theme.id, theme.settings, 'ambient'));
   else host.replaceChildren();
 }
 
@@ -195,6 +277,7 @@ export async function applyTheme(id: string): Promise<void> {
   // The masthead sub-line is themed prose; a theme without one keeps the HTML's.
   const sub = $('.mast-sub');
   if (sub && theme.subtitle) sub.innerHTML = theme.subtitle;
+  for (const fn of changeSubs) fn(theme);
 }
 
 // Resolve the active theme id and apply it. `configured` is the server default

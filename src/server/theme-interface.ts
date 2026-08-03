@@ -32,6 +32,9 @@ const DEP_MARK = '@dep';
 
 interface RawSound { src: string; volume?: number; startAt?: number; maxMs?: number }
 interface RawComponent { tag: string; src: string; attrs?: Record<string, unknown> }
+// A user-tunable knob a theme declares; carries no asset path, so it passes to
+// the client verbatim (the settings panel renders a control from it).
+interface RawSetting { target?: string; attr: string; type: string; label: string; default: unknown; min?: number; max?: number; step?: number }
 // The `ledgerTheme` block as authored in a theme package's package.json, with
 // asset `src` values relative to that package (own-file or dep specifier).
 interface ThemeManifest {
@@ -44,6 +47,7 @@ interface ThemeManifest {
   logo?: RawComponent;
   ambient?: RawComponent;
   sounds?: Record<string, RawSound>;
+  settings?: RawSetting[];
 }
 
 interface DiscoveredTheme {
@@ -120,6 +124,7 @@ export function themeRegistry(): unknown {
     logo: rewriteComponent(id, m.logo),
     ambient: rewriteComponent(id, m.ambient),
     sounds: rewriteSounds(id, m.sounds),
+    settings: m.settings,   // no asset paths — passed to the client verbatim
   }));
   return { default: DEFAULT_THEME, themes };
 }

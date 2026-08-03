@@ -15,15 +15,17 @@ import './components/ledger-drawer.js';
 import './components/ledger-compose.js';
 import './components/ledger-load-more.js';
 import './components/ledger-about.js';
+import './components/ledger-settings.js';
 
 import { state } from './core/state.js';
 import { api, loadProjects } from './core/api.js';
 import { loadTree, render, wireDrawer, wireCompose, reconcile, syncUrl, hydrateStateFromUrl, restoreFromUrl, wireDeepLinkNav } from './core/board.js';
-import { initTheme } from './core/theme.js';
+import { initTheme, onThemeChange } from './core/theme.js';
 import { $, need } from './ui/dom.js';
 import type { LedgerDrawer } from './components/ledger-drawer.js';
 import type { LedgerCompose } from './components/ledger-compose.js';
 import type { LedgerAbout } from './components/ledger-about.js';
+import type { LedgerSettings } from './components/ledger-settings.js';
 import type { Capabilities, Project } from '../shared/contract';
 
 // ---- controls ----
@@ -129,6 +131,11 @@ function wire(): void {
 
   need('#refresh').onclick = () => loadTree();
   need('#about-btn').onclick = () => need<LedgerAbout>('#about').open();
+  need('#settings-btn').onclick = () => need<LedgerSettings>('#settings').open();
+  // The gear is present only when the active theme has knobs to tune; the panel
+  // reads its own `hasSettings` off the active theme, so show/hide tracks it on
+  // every theme resolve and switch.
+  onThemeChange(() => { need('#settings-btn').hidden = !need<LedgerSettings>('#settings').hasSettings; });
   wireDrawer();
   wireCompose();
   wireReconcile();

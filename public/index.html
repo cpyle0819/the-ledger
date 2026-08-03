@@ -72,6 +72,9 @@
       <!-- Theme switcher — populated from the manifest by the theme controller. -->
       <label class="sr-only" for="theme-select">Theme</label>
       <select class="theme-select" id="theme-select" title="Switch theme" aria-label="Switch theme"></select>
+      <!-- Theme settings gear — shown only when the active theme declares tunable
+           knobs (app.ts toggles [hidden] on theme change). Opens <ledger-settings>. -->
+      <button class="ghost-btn icon-btn" id="settings-btn" title="Theme settings" aria-label="Theme settings" hidden>⚙</button>
       <button class="ghost-btn" id="refresh" aria-keyshortcuts="r" title="Refresh (r)">
         <span aria-hidden="true">↻ </span>refresh
       </button>
@@ -134,6 +137,10 @@
        measured velocity). Fixed prose, no injected services; opened from the
        masthead "?" button. -->
   <ledger-about id="about"></ledger-about>
+
+  <!-- Theme settings modal — renders the active theme's tunable knobs (ambient
+       effects, etc.) from its manifest; opened from the masthead gear. -->
+  <ledger-settings id="settings"></ledger-settings>
 
   <div class="toast" id="toast" role="status" aria-live="assertive"></div>
 
