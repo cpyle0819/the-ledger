@@ -101,3 +101,23 @@ A plugin whose backend is private can be version-controlled outside this repo an
 consumed as a `file:` dependency pointing at its checkout, or by pointing `source`
 at its path. This keeps a plugin that wraps an internal or credentialed system out
 of the public repo (see the `.gitignore` rule that excludes unlisted `plugins/*`).
+
+## Themes
+
+A **theme** re-skins the whole board — palette, fonts, textures, logo, ambient
+backdrop, and sounds — as an installable npm package, discovered automatically
+with no code change. `public/base.css` carries a complete neutral token baseline;
+a theme's `theme.css` overrides those tokens and paints its own decoration. Switch
+themes live from the masthead, or set the default with a `theme` field in
+`ledger.config.json`.
+
+The two bundled themes — leather-and-parchment **the-ledger** and dark-data-plate
+**space-opera** — are published from the
+[`ledger-themes`](https://github.com/cpyle0819/ledger-themes) repo; read them as
+example themes.
+
+### Adding your own theme
+
+See **[THEMES.md](THEMES.md)** for the full authoring guide: the token contract,
+the `ledgerTheme` manifest, and the path from empty folder to published, installed
+theme.
