@@ -124,6 +124,17 @@
   --stamp-ink-abandoned:   var(--abandoned-ink);
   --stamp-edge-abandoned:  var(--abandoned-edge);
   --stamp-filter:          none;
+
+  /* Editable-field + inset surfaces inside the shadow-DOM leaves (drawer/compose/
+     comment inputs, the "contains" box, card-act/copy-link hover chips). These
+     were baked light literals in the components; tokenised so a dark theme flips
+     them (a light fill under light --ink text is invisible otherwise). Neutral
+     defaults: a faint-white fill on the dark chrome, readable with --ink. */
+  --field-bg:        rgba(255,255,255,.06);   /* input/select/textarea rest      */
+  --field-bg-focus:  rgba(255,255,255,.10);   /* focused field                   */
+  --field-edge:      var(--parch-edge);       /* field border                    */
+  --inset-bg:        rgba(255,255,255,.04);   /* the drawer "contains" box        */
+  --onlight-chip-bg: rgba(255,255,255,.08);   /* card-act / copy-link hover chip  */
 }
 
 * { box-sizing: border-box; }
@@ -433,9 +444,13 @@ ledger-card.deemph:hover {
 .t-SUBTASK{ --seal: var(--ink-faint); }
 
 .pill { font-family: var(--fell); font-style: italic; font-size: var(--fs-meta, 16px); color: var(--ink-soft); display: inline-flex; align-items: center; gap: 5px; }
+/* Status dots use --dot-* tokens (falling back to the tier seals). On a light
+   theme the seal doubles as the dot fine; on a dark-surface theme the seal is
+   darkened for chip-text contrast, too dark for a dot on the plate — so a dark
+   theme sets brighter --dot-* values that clear 3:1 as a graphical object. */
 .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-faint); }
-.st-Open .dot { background: var(--seal-epic); }
-.st-Closed .dot, .st-Resolved .dot { background: var(--seal-story); }
+.st-Open .dot { background: var(--dot-open, var(--seal-epic)); }
+.st-Closed .dot, .st-Resolved .dot { background: var(--dot-closed, var(--seal-story)); }
 /* Abandoned (closed-not-completed): an inert grey dot, distinct from the warm dot
    of a completed close — the same slate the "Not done" stamp/tag uses. */
 .st-Abandoned .dot { background: var(--inert, rgba(74,78,86,.8)); }

@@ -106,7 +106,7 @@ cardSheet.replaceSync(`
   .card:hover .card-acts { opacity: 1; }
   .card-act {
     font-family: var(--fell, serif); font-style: italic; font-size: 15px; letter-spacing: .02em;
-    color: var(--ink-soft, #5b4a30); background: rgba(243,234,208,.85); border: 1px solid var(--parch-edge, #c4ac7c);
+    color: var(--ink-soft, #5b4a30); background: var(--onlight-chip-bg, rgba(243,234,208,.85)); border: 1px solid var(--field-edge, var(--parch-edge, #c4ac7c));
     border-radius: 2px; padding: 1px 9px; cursor: pointer; transition: .12s; line-height: 1.3;
   }
   .card-act:hover { background: var(--seal, var(--ink-red, #8f2f22)); color: #f3ead0; border-color: transparent; }

@@ -1,0 +1,191 @@
+/* Space Opera — a lived-in ship's manifest.
+   The Expanse / Firefly register: military-industrial, gunmetal panels, phosphor
+   readouts, amber warning lamps, hazard stripes. Futuristic but USED — scuffed
+   metal, not chrome showroom. A work board as a ship's ops terminal.
+
+   This is a THEME PACKAGE (the-ledger-theme-space-opera). It fills the same token
+   contract the-ledger defines; the big inversion is the card/panel surface — a
+   DARK brushed-metal data-plate instead of light parchment — so the "ink" tokens
+   flip to light readout text, and the tier "seals" become backlit labels. No
+   parchment, no deckle, no gilt: a machined surface with a phosphor edge-glow on
+   selection.
+
+   Type: Chakra Petch (squared techno display/labels) · Barlow Semi Condensed
+   (condensed body — manifest rows) · Share Tech Mono (readout mono). */
+
+:root {
+  /* ---- Fonts ---- */
+  --fell: 'Chakra Petch', 'Segoe UI', system-ui, sans-serif;   /* display / labels */
+  --fell-sc: 'Chakra Petch', 'Segoe UI', system-ui, sans-serif; /* small-caps role — tracking does the work */
+  --gara: 'Barlow Semi Condensed', 'Segoe UI', system-ui, sans-serif; /* body / rows */
+  --mono: 'Share Tech Mono', ui-monospace, Menlo, Consolas, monospace;
+
+  /* ---- Hull & chrome — the ship (the "leather"/"wood" slots) ---- */
+  --leather:   #1c2531;   /* gunmetal panel face                */
+  --leather-2: #232e3c;
+  --wood:      #0d131b;   /* darkest — hull shadow / recess      */
+
+  /* ---- Primary metal + phosphor readout (the "brass" slots) ----
+     brass-hi is the bright readout accent = phosphor cyan; the mids are dim
+     steel so hardware reads cool, not warm. */
+  --brass:     #5f7d8a;   /* steel rule / hardware               */
+  --brass-lo:  #3a4d59;   /* dim steel edge                      */
+  --brass-hi:  #58d7e6;   /* phosphor cyan — lit readout/heading */
+
+  /* ---- The "parchment" slots — here they are LIGHT chrome text, NOT the card
+     surface. base.css uses --parch* for body/control/input text on the dark
+     hull, so these must stay light or that text goes dark-on-dark (the collision
+     that broke the first cut). The DARK data-plate surface is defined by the
+     recipe tokens below (--card-surface / --panel-surface / --sheet-surface) with
+     literal plate colours, decoupled from these text tokens. ---- */
+  --parch:      #cbd6e0;   /* primary light text on dark chrome    */
+  --parch-lo:   #a4b2c0;   /* dimmer chrome text (seg rest, hints) */
+  --parch-hi:   #e8eff5;   /* brightest chrome text (focused input)*/
+  --parch-edge: #5c7284;   /* machined edge / rivet line (≥3:1 on hull) */
+
+  /* ---- Readout text on the data-plate (the "ink" slots) — LIGHT ---- */
+  --ink:       #dbe4ec;   /* primary readout                      */
+  --ink-soft:  #aab8c6;   /* meta — clears AA on the plate         */
+  --ink-faint: #8fa0b0;   /* dimmed label — clears AA (4.5) on plate */
+  --ink-red:   #f2ad44;   /* amber accession/readout accent (№, counts) */
+
+  /* ---- Tier labels (backlit "seals") — darkened so the light chip text
+     (--chip-fg) clears 4.5:1 on each. ---- */
+  --seal-epic:  #8f5a1e;   /* command amber — EPIC                */
+  --seal-story: #1f6470;   /* nominal teal — STORY                */
+  --seal-task:  #3f6088;   /* systems steel-blue — TASK           */
+  --seal-bug:   #a83019;   /* fault red — BUG                     */
+  --wax:        #e2632f;   /* hazard orange — the "seal"/link ink (on dark) */
+
+  /* ---- Planning-risk tones ---- */
+  --risk-over:  #e0492a;   /* over budget — fault red             */
+  --risk-under: #c8892c;   /* under budget — caution amber        */
+
+  --fs-meta: 16px;
+
+  /* ---- Semantic helpers ---- */
+  --focus-ring:         var(--brass-hi);   /* cyan ring on dark chrome           */
+  --focus-ring-onlight: #f0a838;           /* the plate is dark → amber ring reads on it */
+  --skip-bg:            var(--brass-hi);
+  --skip-fg:            #071016;
+  --btn-hover-fg:       #eafcff;
+  --chip-fg:            #e9f6f9;            /* cool-white text on a backlit tier chip */
+  --inert:              rgba(120,134,148,.85);  /* abandoned / offline grey       */
+  --accent-warm:        #f0a838;            /* "direct on epic" lane — amber lamp */
+  --accent-warm-faint:  rgba(240,168,56,.42);
+  --hover-wash:         rgba(88,215,230,.10);   /* seg-button hover — cyan wash   */
+  --row-hover:          rgba(88,215,230,.09);   /* outline row hover              */
+  --copy-hover-bg:      rgba(88,215,230,.14);
+  --onlight-btn-bg:     rgba(88,215,230,.10);   /* .ol-read button on a dark panel */
+  --switch-on-2:        #1f6b63;                /* "show closed" on-state 2nd stop */
+  --closed-ink:         rgba(240,168,56,.9);    /* CLOSED tag — amber stencil     */
+  --closed-edge:        rgba(240,168,56,.55);
+  --abandoned-ink:      rgba(140,152,164,.92);
+  --abandoned-edge:     rgba(140,152,164,.5);
+  --seg-on-fg:          #07141a;                /* dark text on the lit cyan seg  */
+  --seg-on-bg:          linear-gradient(180deg, var(--brass-hi), #2f9fb0);
+
+  /* ---- Chrome seams ---- */
+  --well:          rgba(0,0,0,.4);          /* input / seg / select well          */
+  --well-soft:     rgba(0,0,0,.34);         /* the ident plate                    */
+  --hairline:      rgba(88,215,230,.22);    /* controls-rail bottom border — cyan */
+  --hairline-soft: rgba(88,215,230,.14);    /* seg internal dividers              */
+  --chrome-sheen:  rgba(140,225,235,.16);   /* raised-button top edge glow        */
+  --masthead-bg:   linear-gradient(180deg, rgba(88,215,230,.05), transparent 70%);
+  --masthead-rule: linear-gradient(90deg, transparent, var(--brass-lo) 10%, var(--brass-hi) 50%, var(--brass-lo) 90%, transparent);
+  --controls-bg:   linear-gradient(180deg, rgba(9,14,20,.72), rgba(6,10,15,.55));
+
+  /* ---- Data-plate surface literals — the DARK metal the cards/panels/sheets are
+     built from. Separate from --parch* (which is light chrome text now). ---- */
+  --plate:      #28323e;   /* plate face                         */
+  --plate-lo:   #1f2833;   /* shadowed lower plate               */
+  --plate-hi:   #32404e;   /* lit upper plate                    */
+
+  /* ---- Panel + sheet surfaces (outline epics, drawer, compose, about, toast) ---- */
+  --panel-radius:    4px;
+  --panel-surface:   linear-gradient(180deg, var(--plate-hi), var(--plate) 70%, var(--plate-lo));
+  --panel-head-wash: linear-gradient(90deg, rgba(88,215,230,.10), transparent 52%);
+  --sheet-surface:   linear-gradient(180deg, var(--plate-hi), var(--plate) 72%, var(--plate-lo));
+  --sheet-surface-tl: linear-gradient(180deg, var(--plate-hi), var(--plate) 72%, var(--plate-lo));
+  --sheet-edge:      var(--brass-lo);
+
+  /* ---- Editable-field + inset surfaces (drawer/compose/comment inputs, the
+     contains box, card-act/copy hover chip). base.css bakes these light; on the
+     dark plate they must be dark wells so the light --ink text stays readable. ---- */
+  --field-bg:        rgba(0,0,0,.28);        /* input rest — a recessed dark well */
+  --field-bg-focus:  rgba(0,0,0,.4);         /* focused — deeper, cyan border adds the lift */
+  --field-edge:      #6b8296;                /* machined field border (≥3:1 on plate) */
+  --inset-bg:        rgba(0,0,0,.2);          /* the "contains" box                */
+  --onlight-chip-bg: rgba(88,215,230,.12);    /* card-act / copy hover — cyan wash */
+
+  /* Status dots — brighter than the (chip-tuned, darker) seals so each clears
+     3:1 as a graphical object on the dark plate; hue-matched to its tier. */
+  --dot-open:   #d99a3a;   /* Open — amber (matches EPIC hue)     */
+  --dot-closed: #3fb0c2;   /* Closed/Resolved — bright teal       */
+
+  /* ---- Card surface recipe — brushed gunmetal data-plate ----
+     A machined plate: a cool vertical gradient with a fine brushed-metal streak
+     and a top sheen. No paper texture, no deckle (--deckle-filter:none), a slight
+     radius, and a cyan edge-glow on selection instead of the gilt frame. */
+  --card-surface:
+    linear-gradient(180deg, rgba(120,150,170,.10), transparent 22%),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.018) 0 2px, transparent 2px 4px),
+    linear-gradient(180deg, var(--plate-hi), var(--plate) 62%, var(--plate-lo));
+  --card-surface-size: auto, auto, auto;
+  --card-surface-blend: screen, normal, normal;
+  --card-surface-selected:
+    linear-gradient(180deg, rgba(88,215,230,.16), transparent 26%),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.02) 0 2px, transparent 2px 4px),
+    linear-gradient(180deg, var(--plate-hi), var(--plate) 58%, var(--plate-lo));
+  --card-shadow:          0 1px 3px rgba(0,0,0,.5), inset 0 1px 0 rgba(140,190,205,.10), inset 0 0 0 1px rgba(70,89,106,.6);
+  --card-shadow-hover:    0 3px 10px rgba(0,0,0,.55), inset 0 1px 0 rgba(140,190,205,.14), inset 0 0 0 1px rgba(88,215,230,.35);
+  --card-shadow-selected: 0 3px 14px rgba(0,0,0,.6), inset 0 0 0 1px rgba(88,215,230,.5), 0 0 16px rgba(88,215,230,.22);
+  --card-radius:          4px;
+  --deckle-filter:          none;   /* machined edge — no torn-paper displacement */
+  --deckle-filter-selected: brightness(1.08) saturate(1.12);
+  /* Selected frame: a glowing cyan rule (no gilt), crisp — no deckle filter. */
+  --card-frame:
+    linear-gradient(135deg, #7fe8f2 0%, #58d7e6 40%, #2f9fb0 70%, #58d7e6 100%) 1;
+  --card-frame-filter: none;
+  --card-frame-seat:   inset 0 0 0 1px rgba(88,215,230,.4), 0 0 10px rgba(88,215,230,.25);
+  /* Closed stamp: an amber stencil rather than a wax seal; no deckle. */
+  --stamp-ink:          rgba(240,168,56,.82);
+  --stamp-edge:         rgba(240,168,56,.55);
+  --stamp-ink-abandoned: rgba(140,152,164,.8);
+  --stamp-edge-abandoned: rgba(140,152,164,.5);
+  --stamp-filter:       none;
+}
+
+/* ---- Paint-only chrome: backdrop, grain, vignette, scrollbars ---------
+   Everything above is tokens; below is this theme's own texture. */
+
+/* The ship's hull: a deep space-black-blue base with a cold cyan glow from the
+   overhead lighting, a faint warm amber cast from a nearby lamp (the lived-in
+   Firefly warmth in an otherwise cold room), and a subtle panel-seam grid so the
+   backdrop reads as riveted plating, not flat void. The ambient starfield lives
+   in the ambient component (a separate repo); until then this backdrop carries
+   the atmosphere on its own. */
+ledger-board {
+  background:
+    radial-gradient(1100px 620px at 82% -10%, rgba(88,215,230,.10), transparent 55%),
+    radial-gradient(900px 560px at 6% 108%, rgba(240,168,56,.06), transparent 55%),
+    repeating-linear-gradient(0deg, rgba(0,0,0,.16) 0 1px, transparent 1px 96px),
+    repeating-linear-gradient(90deg, rgba(0,0,0,.16) 0 1px, transparent 1px 96px),
+    linear-gradient(160deg, #10161f, #0a0e15);
+  background-color: #0a0e15;
+}
+
+/* Fine dust/scanline grain — cooler and lighter than the reading-room's, for a
+   powered-CRT tooth over the plating. */
+.grain {
+  opacity: .05; mix-blend-mode: screen;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+/* Vignette — cold, deeper at the corners than the reading-room. */
+.vignette { box-shadow: inset 0 0 220px 30px rgba(3,6,10,.5); }
+
+/* Scrollbars — dim steel with a cyan-lit thumb hover. */
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-thumb { background: var(--brass-lo); border-radius: 0; border: 3px solid var(--wood); }
+::-webkit-scrollbar-thumb:hover { background: var(--brass-hi); }
+::-webkit-scrollbar-track { background: rgba(6,10,15,.6); }

@@ -1,0 +1,26 @@
+{
+  "name": "the-ledger-theme-space-opera",
+  "version": "1.0.0",
+  "description": "A lived-in ship's-manifest theme for The Ledger: gunmetal data-plates, phosphor-cyan readouts, amber warnings, hazard accents — Expanse-cold.",
+  "type": "module",
+  "private": true,
+  "files": [
+    "theme.css",
+    "mark.js",
+    "sounds/"
+  ],
+  "ledgerTheme": {
+    "id": "space-opera",
+    "name": "Space Opera",
+    "tagline": "a lived-in ship's manifest",
+    "subtitle": "a manifest of <em>epics</em>, <em>stories</em> &amp; <em>tasks</em>",
+    "stylesheet": "./theme.css",
+    "fonts": "https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Barlow+Semi+Condensed:ital,wght@0,400;0,500;0,600;1,400&family=Share+Tech+Mono&display=swap",
+    "logo": { "tag": "space-opera-mark", "src": "./mark.js" },
+    "sounds": {
+      "pageTurn": { "src": "./sounds/hatch.wav", "volume": 0.4 },
+      "quill": { "src": "./sounds/relay.wav", "volume": 0.4, "maxMs": 900 }
+    }
+  },
+  "license": "MIT"
+}

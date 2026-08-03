@@ -122,12 +122,12 @@ sheet.replaceSync(`
   .c-field label { font-family: var(--fell, serif); font-style: italic; font-size: 15px; color: var(--ink-soft, #5b4a30); margin-bottom: 5px; }
   .c-field .req { color: var(--ink-red, #8f2f22); }
   .c-field select, .c-field input, .c-field textarea {
-    box-sizing: border-box; width: 100%; background: rgba(255,250,235,.7); color: var(--ink, #33291a);
+    box-sizing: border-box; width: 100%; background: var(--field-bg, rgba(255,250,235,.7)); color: var(--ink, #33291a);
     border: 1px solid var(--parch-edge, #c4ac7c); border-radius: 2px; padding: 8px 10px;
     font-family: var(--gara, serif); font-size: 15px; outline: none;
   }
   .c-field textarea { min-height: 96px; resize: vertical; line-height: 1.55; }
-  .c-field select:focus, .c-field input:focus, .c-field textarea:focus { border-color: var(--brass-lo, #7a5f30); background: #fffaeb; }
+  .c-field select:focus, .c-field input:focus, .c-field textarea:focus { border-color: var(--brass-lo, #7a5f30); background: var(--field-bg-focus, #fffaeb); }
 
   .foot { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 4px; }
   .c-err { flex: 1; font-family: var(--gara, serif); font-size: 14px; color: var(--wax, #7c2b22); }

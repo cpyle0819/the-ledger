@@ -59,8 +59,8 @@ export const chromeSheet = sheet(`
      not emoji (the \\FE0E in .who/.count-badge forces monochrome). */
   .pill { font-family: var(--fell, serif); font-style: italic; font-size: var(--fs-meta, 16px); color: var(--ink-soft, #5b4a30); display: inline-flex; align-items: center; gap: 5px; }
   .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-faint, #6f5c3e); }
-  .st-Open .dot { background: var(--seal-epic, #8a5a2b); }
-  .st-Closed .dot { background: var(--seal-story, #3f5e4e); }
+  .st-Open .dot { background: var(--dot-open, var(--seal-epic, #8a5a2b)); }
+  .st-Closed .dot { background: var(--dot-closed, var(--seal-story, #3f5e4e)); }
   /* The estimate's leading mark: the confidence operator (≈ / ~ / =), upright and
      slightly muted so it reads as a sign, not a letter. */
   .pmark { font-style: normal; color: var(--ink-faint, #6f5c3e); }
@@ -103,7 +103,7 @@ export const chromeSheet = sheet(`
     color: var(--ink, #33291a); font-size: 13px; line-height: 1;
     opacity: .7; transition: opacity .12s, color .12s, background .12s, border-color .12s;
   }
-  .copy-link:hover { opacity: 1; color: var(--wax, #7c2b22); background: rgba(243,234,208,.7); border-color: var(--parch-edge, #c4ac7c); }
+  .copy-link:hover { opacity: 1; color: var(--wax, #7c2b22); background: var(--onlight-chip-bg, rgba(243,234,208,.7)); border-color: var(--field-edge, var(--parch-edge, #c4ac7c)); }
   .copy-link.copied { opacity: 1; color: var(--seal-story, #3f5e4e); border-color: var(--seal-story, #3f5e4e); }
   .copy-link.copied .copy-icon { visibility: hidden; }
   .copy-link.copied::after { content: "✓"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }

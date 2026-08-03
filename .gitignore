@@ -35,3 +35,4 @@ build.log
 # local. Each is an npm package resolved via package.json, like a source plugin.
 /themes/*/
 !/themes/the-ledger/
+!/themes/space-opera/

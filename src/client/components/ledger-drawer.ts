@@ -127,9 +127,9 @@ sheet.replaceSync(`
   .d-title-edit {
     box-sizing: border-box; width: 100%; margin: 18px 0 12px; padding: 2px 6px;
     font-family: var(--fell, serif); font-weight: 400; font-size: 30px; line-height: 1.2; color: var(--ink, #33291a);
-    background: rgba(255,250,235,.7); border: 1px solid var(--parch-edge, #c4ac7c); border-radius: 2px; outline: none;
+    background: var(--field-bg, rgba(255,250,235,.7)); border: 1px solid var(--field-edge, var(--parch-edge, #c4ac7c)); border-radius: 2px; outline: none;
   }
-  .d-title-edit:focus { border-color: var(--brass-lo, #7a5f30); background: #fffaeb; }
+  .d-title-edit:focus { border-color: var(--brass-lo, #7a5f30); background: var(--field-bg-focus, #fffaeb); }
   .d-rule { height: 2px; background: linear-gradient(90deg, var(--brass-lo, #7a5f30), transparent); margin-bottom: 20px; }
   .d-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 22px; margin-bottom: 20px; }
   .d-field label { display: block; font-family: var(--fell, serif); font-style: italic; font-size: 17px; color: var(--ink-soft, #5b4a30); margin-bottom: 5px; }
@@ -142,10 +142,10 @@ sheet.replaceSync(`
   .d-conf-note { margin: 6px 0 0; font-family: var(--fell, serif); font-style: italic; font-size: 15px; line-height: 1.4; color: var(--ink-faint, #6f5c3e); }
   .d-conf-note:empty { display: none; }
   .d-field select, .d-field input, .d-typeahead input {
-    box-sizing: border-box; width: 100%; background: rgba(255,250,235,.7); color: var(--ink, #33291a); border: 1px solid var(--parch-edge, #c4ac7c);
+    box-sizing: border-box; width: 100%; background: var(--field-bg, rgba(255,250,235,.7)); color: var(--ink, #33291a); border: 1px solid var(--field-edge, var(--parch-edge, #c4ac7c));
     border-radius: 2px; padding: 8px 10px; font-family: var(--gara, serif); font-size: 15px; outline: none;
   }
-  .d-field select:focus, .d-field input:focus, .d-typeahead input:focus { border-color: var(--brass-lo, #7a5f30); background: #fffaeb; }
+  .d-field select:focus, .d-field input:focus, .d-typeahead input:focus { border-color: var(--brass-lo, #7a5f30); background: var(--field-bg-focus, #fffaeb); }
   /* A read-only field value (the completion date, written by the source on close,
      never edited here): the field-box metrics without an input's affordances. */
   .d-readonly { box-sizing: border-box; padding: 8px 10px; font-family: var(--gara, serif); font-size: 15px; color: var(--ink, #33291a); }
@@ -225,7 +225,7 @@ sheet.replaceSync(`
   .cgroup-effort { margin-left: 14px; font-family: var(--fell, serif); font-style: italic; font-size: 17px; color: var(--ink-soft, #5b4a30); }
   .cgroup-effort::before { content: "· "; color: var(--ink-faint, #6f5c3e); }
 
-  .d-contains { margin-bottom: 22px; padding: 14px 16px; border: 1px solid var(--parch-edge, #c4ac7c); border-radius: 2px; background: rgba(255,250,235,.4); }
+  .d-contains { margin-bottom: 22px; padding: 14px 16px; border: 1px solid var(--field-edge, var(--parch-edge, #c4ac7c)); border-radius: 2px; background: var(--inset-bg, rgba(255,250,235,.4)); }
   .d-contains h4 { margin: 0 0 10px; font-family: var(--fell-sc, serif); font-size: 15px; letter-spacing: .08em; color: var(--ink-red, #8f2f22); font-weight: 400; }
   .cline { display: flex; align-items: center; gap: 10px; padding: 6px 4px; cursor: pointer; border-bottom: 1px dotted rgba(91,74,48,.25); font-size: 16px; }
   .cline:last-child { border-bottom: 0; }
@@ -276,7 +276,7 @@ sheet.replaceSync(`
   .d-desc-render blockquote { margin: 0 0 12px; padding: 4px 16px; border-left: 3px solid var(--brass-lo, #7a5f30); color: var(--ink-soft, #5b4a30); font-style: italic; }
   .d-desc-render hr { border: 0; height: 1px; background: linear-gradient(90deg, var(--brass-lo, #7a5f30), transparent); margin: 18px 0; }
   .d-desc {
-    width: 100%; min-height: 300px; resize: vertical; color: var(--ink, #33291a); background: rgba(255,250,235,.7);
+    width: 100%; min-height: 300px; resize: vertical; color: var(--ink, #33291a); background: var(--field-bg, rgba(255,250,235,.7));
     border: 1px solid var(--parch-edge, #c4ac7c); border-radius: 2px; padding: 16px; font-family: var(--gara, serif);
     font-size: 15px; line-height: 1.65; outline: none;
     background-image: repeating-linear-gradient(180deg, transparent 0 27px, rgba(91,74,48,.12) 27px 28px);
