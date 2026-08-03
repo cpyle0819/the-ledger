@@ -111,11 +111,16 @@ fill the `ledgerTheme` block.
   "fonts": "https://fonts.googleapis.com/css2?family=…&display=swap",  // optional
   "logo":    { "tag": "your-mark", "src": "./mark.js" },               // optional
   "ambient": { "tag": "star-field", "src": "@cpyle0819/ambience/starfield",
-               "attrs": { "density": "44", "twinkle": true } },        // optional
+               "attrs": { "density": "44", "flip": true } },           // optional
   "sounds": {                                                          // optional
     "pageTurn": { "src": "./sounds/hatch.wav", "volume": 0.4 },
     "quill":    { "src": "./sounds/relay.wav", "volume": 0.4, "maxMs": 900 }
-  }
+  },
+  "settings": [                                                        // optional
+    { "target": "ambient", "attr": "flip", "type": "boolean", "label": "Flip-and-burn", "default": true },
+    { "target": "ambient", "attr": "speed", "type": "range", "label": "Cruise speed",
+      "min": 500, "max": 3000, "step": 100, "default": 1500 }
+  ]
 }
 ```
 
@@ -131,10 +136,37 @@ fill the `ledgerTheme` block.
 - **`sounds`** — `pageTurn` plays on drawer open, `quill` on a save. `volume`
   (0–1), optional `startAt` (seconds into the clip) and `maxMs` (cap the
   playback length).
+- **`settings`** — the knobs the masthead gear exposes (below). Omit it and the
+  theme has no gear.
 
 Keep `package.json` honest with reality: the `files` array must list every asset
 you ship (`theme.css`, `mark.js`, `sounds/`, any images), and a `smoke-drift`- or
 `starfield`-style ambient adds `@cpyle0819/ambience` to `peerDependencies`.
+
+### User-tunable knobs (`settings`)
+
+The masthead gear lets a user tune your theme's atmosphere; you decide what it
+exposes. Each entry in `settings` names one attribute on your `ambient` (or
+`logo`) component and how to edit it:
+
+| Field | Meaning |
+|---|---|
+| `target` | which component the attr lives on — `ambient` (default) or `logo` |
+| `attr` | the attribute name set on that component |
+| `type` | `boolean` (renders a switch) or `range` (renders a slider) |
+| `label` | the control's visible label |
+| `default` | your shipped value — the reset target, and what "off the default" is measured against |
+| `min` / `max` / `step` | range only |
+
+The chosen value is written straight onto the mounted component's attribute
+(live, no reload) and saved per-theme in the browser's localStorage. So a knob is
+only meaningful for an attribute the component actually observes — declare knobs
+for the same attrs you set in `ambient.attrs`, and confirm the underlying element
+reacts to them (e.g. `star-field` observes `flip`, `planets`, `speed`;
+`smoke-drift` observes `fire`, `wind`). The `default` should match the value you
+ship in `attrs`, so "Reset to theme defaults" returns the theme to how it looks
+out of the box. The controller understands no specific attr — it renders whatever
+you declare — so nothing but this schema decides which knobs a user sees.
 
 ## Step 2 — fill the token contract
 
