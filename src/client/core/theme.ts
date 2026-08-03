@@ -46,6 +46,12 @@ export interface Theme {
 interface Manifest { default: string; themes: Theme[] }
 
 const STORAGE_KEY = 'ledger:theme';
+// The last-applied theme's resolved asset URLs, cached so the pre-paint inline
+// script in index.html can replay them before first paint and avoid a flash of
+// the HTML's shipped default on reload. Written on every applyTheme (the single
+// choke point), so it always mirrors the theme actually resolved last load —
+// whether that came from the stored choice, the config default, or the manifest.
+const APPLIED_KEY = 'ledger:theme:applied';
 // The fallback logo — the-ledger's wax-seal mark, loaded when a theme declares
 // no logo of its own (or its logo module fails to load/register).
 const FALLBACK_LOGO: ThemeComponent = { tag: 'ledger-mark', src: '/theme/the-ledger/mark.js' };
@@ -174,6 +180,13 @@ export async function applyTheme(id: string): Promise<void> {
   if (!theme) return;
   active = theme;
   document.documentElement.setAttribute('data-theme', id);
+  // Cache the resolved asset URLs so the next reload's pre-paint inline script
+  // (index.html) can apply this theme before first paint — no flash of the
+  // HTML's shipped default. Keyed by id so the script can trust it only when it
+  // matches the stored choice.
+  try {
+    localStorage.setItem(APPLIED_KEY, JSON.stringify({ id, stylesheet: theme.stylesheet, fonts: theme.fonts ?? null }));
+  } catch { /* private mode — the inline script just falls back to the HTML default */ }
   await swapSheet(theme.stylesheet);
   swapFonts(theme);
   await applyLogo(theme);

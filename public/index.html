@@ -18,6 +18,28 @@
        and src/client/core/theme.ts). -->
   <link rel="stylesheet" href="/base.css" />
   <link id="theme-css" rel="stylesheet" href="/theme/the-ledger/theme.css" />
+  <!-- Pre-paint theme replay. The theme controller caches the last-resolved
+       theme's asset URLs in localStorage (`ledger:theme:applied`); this blocking
+       inline script replays them onto #theme-css/#theme-fonts before first paint,
+       so a reload paints in the active theme instead of flashing the-ledger
+       default above while the module loads and the /api/source handshake resolves.
+       No cache (first-ever visit) → the HTML defaults stand. initTheme still runs
+       and is authoritative; this only skips the flash. -->
+  <script>
+    (function () {
+      try {
+        var applied = JSON.parse(localStorage.getItem('ledger:theme:applied') || 'null');
+        if (!applied || !applied.stylesheet) return;
+        document.documentElement.setAttribute('data-theme', applied.id);
+        var css = document.getElementById('theme-css');
+        if (css) css.href = applied.stylesheet;
+        if (applied.fonts) {
+          var fonts = document.getElementById('theme-fonts');
+          if (fonts) fonts.href = applied.fonts;
+        }
+      } catch (e) { /* malformed cache — the HTML defaults stand */ }
+    })();
+  </script>
 </head>
 <body>
   <a class="skip-link" href="#stage">Skip to content</a>
