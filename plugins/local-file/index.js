@@ -119,6 +119,18 @@ function dayMs(iso) {
   return m ? Date.UTC(+m[1], +m[2] - 1, +m[3]) : NaN;
 }
 
+// Business days (Mon-Fri) in the half-open span [startMs, endMs), both UTC-midnight
+// ms. Velocity is a working-days rate, so weekends between the earliest start and
+// latest completion don't inflate the denominator. A same-day span yields 0.
+function businessDaysBetween(startMs, endMs) {
+  let count = 0;
+  for (let ms = startMs; ms < endMs; ms += 86_400_000) {
+    const dow = new Date(ms).getUTCDay();
+    if (dow !== 0 && dow !== 6) count += 1;
+  }
+  return count;
+}
+
 // A cheap list node. childCount is the raw number of items parented on this one,
 // known from a single pass over the file — no per-child fetch. `context` marks a
 // node pulled in only as an ancestor of a match (assigned elsewhere); the board
@@ -345,18 +357,22 @@ module.exports = function createLocalFilePlugin() {
     // because a completion date is stamped ONLY on a completing close (never on an
     // abandoned one, see editField), abandoned tasks carry no completion date and
     // are excluded here for free: work dropped unfinished never delivered its points.
-    // The rate is total points over the CALENDAR SPAN (earliest start -> latest
-    // completion), so parallel work counts once; same-day-only work yields days=0
-    // and a null rate.
+    // The rate is total points over the BUSINESS-DAY SPAN (weekdays from earliest
+    // start to latest completion, weekends excluded), so parallel work counts once;
+    // same-day-only work yields days=0 and a null rate.
     epicVelocity(epicId) {
       const { items } = load();
       const tasks = descendantTasks(epicId, items);
       let points = 0;
       let tasksCounted = 0;
+      let openPoints = 0;
       let minStart = Infinity;
       let maxEnd = -Infinity;
       for (const t of tasks) {
-        if (statusOf(t.status) === 'Abandoned') continue; // abandoned work never delivered
+        const st = statusOf(t.status);
+        if (st === 'Abandoned') continue; // abandoned work never delivered
+        // Still-open tasks feed the remaining-work estimate, not the historical rate.
+        if (st === 'Open') openPoints += Number(t.estimate) || 0;
         const start = dayMs(t.startDate);
         const end = dayMs(t.completionDate);
         if (Number.isNaN(start) || Number.isNaN(end) || end < start) continue; // no computable duration
@@ -365,9 +381,9 @@ module.exports = function createLocalFilePlugin() {
         if (start < minStart) minStart = start;
         if (end > maxEnd) maxEnd = end;
       }
-      const days = tasksCounted ? Math.round((maxEnd - minStart) / 86_400_000) : 0;
+      const days = tasksCounted ? businessDaysBetween(minStart, maxEnd) : 0;
       const pointsPerDay = days > 0 ? points / days : null;
-      return { points, days, pointsPerDay, tasksCounted };
+      return { points, days, pointsPerDay, tasksCounted, openPoints };
     },
   };
 };

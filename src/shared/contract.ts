@@ -62,23 +62,30 @@ export interface EpicCounts {
   tasks: number;
 }
 
-/** A rough velocity rollup for an epic: story points completed per calendar day
+/** A rough velocity rollup for an epic: story points completed per working day
  *  across the epic's whole task tree. `points` sums the estimates of every task
  *  (direct or under a story) that has a computable duration (both a start and a
- *  completion date). `days` is the CALENDAR SPAN — earliest start to latest
- *  completion across those same tasks — not the sum of per-task durations, so
- *  parallel work counts once. `pointsPerDay` is points/days (null when days is 0,
- *  e.g. every qualifying task finished the day it started). `tasksCounted` is how
- *  many tasks contributed, so the UI can caveat a figure drawn from few samples.
- *  Unlike EpicCounts this is a HISTORICAL metric over completed work, so it spans
- *  all statuses and ignores the board's status filter — but a source that can tell
- *  an abandoned close from a completion (the incompleteClose capability) excludes
- *  the abandoned tasks, since work dropped unfinished never "delivered" its points. */
+ *  completion date). `days` is the BUSINESS-DAY SPAN — weekdays from earliest start
+ *  to latest completion across those same tasks, weekends excluded — not the sum of
+ *  per-task durations, so parallel work counts once. `pointsPerDay` is points/days
+ *  (null when days is 0, e.g. every qualifying task finished the day it started).
+ *  `tasksCounted` is how many tasks contributed, so the UI can caveat a figure drawn
+ *  from few samples. Unlike EpicCounts this is a HISTORICAL metric over completed
+ *  work, so it spans all statuses and ignores the board's status filter — but a
+ *  source that can tell an abandoned close from a completion (the incompleteClose
+ *  capability) excludes the abandoned tasks, since work dropped unfinished never
+ *  "delivered" its points.
+ *
+ *  `openPoints` is the forward-looking counterpart: the summed estimate of the
+ *  epic's still-open tasks (not closed, not abandoned), in the same task-point
+ *  units as `points`. Dividing it by `pointsPerDay` yields a rough estimated working
+ *  days remaining, so the two figures share one rollup. */
 export interface EpicVelocity {
   points: number;
   days: number;
   pointsPerDay: number | null;
   tasksCounted: number;
+  openPoints: number;
 }
 
 /** A page of root nodes with an optional continuation cursor — the contract's

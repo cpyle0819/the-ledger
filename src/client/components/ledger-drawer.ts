@@ -1097,10 +1097,21 @@ export class LedgerDrawer extends HTMLElement {
     if (item.kind === 'epic' && this.epicVelocity && this.#caps.epicVelocity && this.#caps.points) {
       const vel = el('div', 'cvelocity', 'Velocity · calculating…');
       box.append(vel);
+      // A companion line, filled from the same rollup: estimated days remaining, open
+      // points at the current rate. Appended empty and revealed only when there's a
+      // rate to divide by and open work to divide, so it stays quiet otherwise.
+      const rem = el('div', 'cvelocity'); rem.hidden = true;
+      box.append(rem);
       const forId = item.id;
       this.epicVelocity(item.id)
-        .then((v) => { if (this.#item?.id === forId) vel.textContent = this.#velocityText(v); })
-        .catch(() => { if (this.#item?.id === forId) vel.remove(); });
+        .then((v) => {
+          if (this.#item?.id !== forId) return;
+          vel.textContent = this.#velocityText(v);
+          const remText = this.#remainingText(v);
+          rem.textContent = remText ?? '';
+          rem.hidden = remText == null;
+        })
+        .catch(() => { if (this.#item?.id === forId) { vel.remove(); rem.remove(); } });
     }
   }
 
@@ -1113,7 +1124,16 @@ export class LedgerDrawer extends HTMLElement {
     const n = `across ${v.tasksCounted} ${v.tasksCounted === 1 ? 'task' : 'tasks'}`;
     if (v.pointsPerDay == null) return `Velocity · ${v.points} pts completed same-day (${n}); no per-day rate.`;
     const rate = v.pointsPerDay >= 10 ? Math.round(v.pointsPerDay) : v.pointsPerDay.toFixed(1);
-    return `Velocity · ≈ ${rate} pts/day (${v.points} pts over ${v.days} ${v.days === 1 ? 'day' : 'days'}, ${n}).`;
+    return `Velocity · ≈ ${rate} pts/working day (${v.points} pts over ${v.days} working ${v.days === 1 ? 'day' : 'days'}, ${n}).`;
+  }
+
+  // The remaining-work line's text, or null when there's nothing honest to show:
+  // no per-day rate to divide by, or no open points left. Working days remaining is
+  // open points over the working-day rate, rounded up — a partial day still needs a day.
+  #remainingText(v: EpicVelocity): string | null {
+    if (v.pointsPerDay == null || v.pointsPerDay <= 0 || v.openPoints <= 0) return null;
+    const days = Math.ceil(v.openPoints / v.pointsPerDay);
+    return `Remaining · ≈ ${days} working ${days === 1 ? 'day' : 'days'} (${v.openPoints} pts open at current velocity).`;
   }
 
   // One child line in the Planning list. `deemph` dims it (used for closed items
