@@ -14,11 +14,11 @@
     "prepare": "tsc -b"
   },
   "dependencies": {
-    "the-ledger-github": "file:plugins/github",
-    "the-ledger-local-file": "file:plugins/local-file",
-    "@cpyle0819/ledger-theme-the-ledger": "^1.1.0",
+    "@cpyle0819/ambience": "github:cpyle0819/ambience",
     "@cpyle0819/ledger-theme-space-opera": "^1.1.0",
-    "@cpyle0819/ambience": "github:cpyle0819/ambience"
+    "@cpyle0819/ledger-theme-the-ledger": "^1.1.0",
+    "the-ledger-github": "file:plugins/github",
+    "the-ledger-local-file": "file:plugins/local-file"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",
