@@ -116,6 +116,10 @@ The two bundled themes — leather-and-parchment **the-ledger** and dark-data-pl
 [`ledger-themes`](https://github.com/cpyle0819/ledger-themes) repo; read them as
 example themes.
 
+A theme is code, not just a stylesheet: its logo and ambient are JS modules the
+app runs with full access to your board. Install a third-party theme only if you
+trust it, like any npm dependency — see [THEMES.md](THEMES.md) for the details.
+
 ### Adding your own theme
 
 See **[THEMES.md](THEMES.md)** for the full authoring guide: the token contract,

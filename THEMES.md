@@ -18,6 +18,21 @@ overriding; read the reference theme's
 [`theme.css`](https://github.com/cpyle0819/ledger-themes/blob/main/packages/the-ledger/theme.css)
 as the annotated token contract and worked example at once.
 
+## A theme is code — install only ones you trust
+
+A theme is not a stylesheet; it is an npm package that runs with your app's full
+privileges. Its logo and ambient are ES modules The Ledger `import()`s into the
+page, so a theme's JavaScript executes in your origin: it can read and write every
+board item through `/api/*`, exactly as you can. Its `subtitle` is injected as
+HTML, and its `fonts` URL is fetched as you load the page. There is no sandbox.
+
+This is by design — themes ship web components — and it is no more access than any
+npm dependency already has (a package's install scripts run on your machine before
+its code ever reaches the browser). But it means a theme carries the same trust as
+a plugin or any other dependency: **vet a third-party theme's source before
+installing it, and pin the version.** Treat "install this theme" as "run this
+person's code," because that is what it is.
+
 ## How theming works
 
 The Ledger loads two stylesheets in order: `public/base.css`, then your
