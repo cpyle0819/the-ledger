@@ -1,57 +1,47 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="The Ledger">
   <title>The Ledger</title>
+  <!-- The standalone mark: a square tooled-leather cartouche carrying a
+       gold-tooled "TL" monogram. Shares its look with the masthead logo
+       (@cpyle0819/ledger-theme-the-ledger mark.js) — keep the two in sync. A
+       plate of oxblood leather with an engraved gold double-keyline border and
+       the monogram stamped in gold leaf, read by both value contrast (~7-10:1)
+       and edge relief. -->
   <defs>
-    <!-- Wax body: molten gold, lit upper-left, deepening lower-right. -->
-    <radialGradient id="wax" cx="40%" cy="34%" r="70%">
-      <stop offset="0" stop-color="#f6e08f"/>
-      <stop offset="0.5" stop-color="#d9a92e"/>
-      <stop offset="1" stop-color="#8a6015"/>
-    </radialGradient>
-    <!-- The pressed inner disc: slightly darker/flatter than the raised rim, so
-         the rim reads as a glossy ridge squeezed up around a stamped face. -->
-    <radialGradient id="disc" cx="42%" cy="38%" r="66%">
-      <stop offset="0" stop-color="#e8c25a"/>
-      <stop offset="0.6" stop-color="#c7961f"/>
-      <stop offset="1" stop-color="#9a6f18"/>
-    </radialGradient>
-    <!-- Broad specular sheen — real sealing wax is shiny; a soft off-centre
-         hot-spot near the upper-left sells the rounded, lacquered surface. -->
-    <radialGradient id="sheen" cx="36%" cy="28%" r="46%">
-      <stop offset="0" stop-color="#fff6d8" stop-opacity="0.8"/>
-      <stop offset="0.5" stop-color="#fff6d8" stop-opacity="0.13"/>
-      <stop offset="1" stop-color="#fff6d8" stop-opacity="0"/>
-    </radialGradient>
+    <!-- Tooled-leather face: warm oxblood-brown, lit upper-left. -->
+    <linearGradient id="leather" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4a3419"/>
+      <stop offset="0.5" stop-color="#33230f"/>
+      <stop offset="1" stop-color="#241708"/>
+    </linearGradient>
+    <!-- Gold-leaf tooling: lit crown to shadowed foot. -->
+    <linearGradient id="tool" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e4c584"/>
+      <stop offset="0.5" stop-color="#b08d4f"/>
+      <stop offset="1" stop-color="#7a5f30"/>
+    </linearGradient>
   </defs>
 
-  <!-- Cast shadow of the blob on the surface below. -->
-  <ellipse cx="33" cy="36" rx="28" ry="27" fill="#000" opacity="0.3"/>
+  <!-- Cast shadow lifting the plate off the surface below. -->
+  <rect x="6.5" y="8.5" width="52" height="52" rx="9" fill="#000" opacity="0.34"/>
 
-  <!-- Wax blob: broad, squeezed-out lobes, smooth continuous curves — a pressed
-       pool of sealing wax, not a struck coin. (Shared with buildTitle.) -->
-  <path fill="url(#wax)" d="M 59.07 32.44 C 58.71 40.15, 50.32 52.60, 44.84 56.49 C 39.37 60.38, 32.33 57.84, 26.21 55.78 C 20.08 53.73, 10.91 50.43, 8.09 44.16 C 5.27 37.89, 6.91 23.95, 9.29 18.18 C 11.68 12.41, 16.11 10.87, 22.40 9.54 C 28.68 8.22, 40.90 6.42, 47.01 10.23 C 53.13 14.05, 59.43 24.73, 59.07 32.44 Z"/>
+  <!-- The leather plate. -->
+  <rect x="5" y="6" width="52" height="52" rx="9" fill="url(#leather)"
+        stroke="#5c421f" stroke-opacity="0.6" stroke-width="1"/>
 
-  <!-- Groove shadow just inside the rim, then the pressed inner disc on top: the
-       two levels give the raised-rim / stamped-face relief of a real seal. -->
-  <path fill="#000" opacity="0.18" d="M 52.54 32.33 C 52.26 38.19, 45.89 47.52, 41.72 50.53 C 37.55 53.54, 32.17 51.94, 27.52 50.39 C 22.87 48.85, 15.95 46.07, 13.81 41.25 C 11.67 36.43, 12.90 25.90, 14.70 21.47 C 16.50 17.04, 19.81 15.71, 24.60 14.70 C 29.39 13.69, 38.79 12.46, 43.45 15.40 C 48.11 18.34, 52.83 26.48, 52.54 32.33 Z"/>
-  <path fill="url(#disc)" d="M 52.54 32.33 C 52.26 38.19, 45.89 47.52, 41.72 50.53 C 37.55 53.54, 32.17 51.94, 27.52 50.39 C 22.87 48.85, 15.95 46.07, 13.81 41.25 C 11.67 36.43, 12.90 25.90, 14.70 21.47 C 16.50 17.04, 19.81 15.71, 24.60 14.70 C 29.39 13.69, 38.79 12.46, 43.45 15.40 C 48.11 18.34, 52.83 26.48, 52.54 32.33 Z"/>
+  <!-- Engraved double keyline: a blind (dark) impression with gold leaf laid in,
+       then a fainter innermost gold rule. -->
+  <rect x="9" y="10" width="44" height="44" rx="6" fill="none"
+        stroke="#1a1206" stroke-opacity="0.55" stroke-width="2.4"/>
+  <rect x="9" y="10" width="44" height="44" rx="6" fill="none"
+        stroke="url(#tool)" stroke-width="1.1"/>
+  <rect x="12.5" y="13.5" width="37" height="37" rx="4" fill="none"
+        stroke="url(#tool)" stroke-opacity="0.5" stroke-width="0.7"/>
 
-  <!-- Incised ring on the disc: a groove echoing the irregular edge. Dark-gold
-       shadow wall over a pale-gold catch-light, so the ring reads as recessed. -->
-  <path fill="none" stroke="#6e4e12" stroke-opacity="0.6" stroke-width="1" d="M 51.04 32.31 C 50.77 37.74, 44.87 46.38, 41.01 49.17 C 37.14 51.96, 32.16 50.48, 27.85 49.05 C 23.54 47.61, 17.12 45.04, 15.14 40.57 C 13.16 36.11, 14.30 26.34, 15.97 22.24 C 17.64 18.14, 20.70 16.90, 25.14 15.96 C 29.58 15.03, 38.29 13.89, 42.61 16.62 C 46.93 19.34, 51.31 26.88, 51.04 32.31 Z"/>
-  <path fill="none" stroke="#fbeeb6" stroke-opacity="0.5" stroke-width="0.8" d="M 50.04 32.29 C 49.79 37.43, 44.19 45.62, 40.53 48.27 C 36.87 50.91, 32.15 49.51, 28.07 48.15 C 23.98 46.79, 17.90 44.35, 16.03 40.12 C 14.15 35.89, 15.23 26.64, 16.81 22.75 C 18.39 18.87, 21.30 17.69, 25.50 16.81 C 29.71 15.92, 37.96 14.85, 42.05 17.43 C 46.14 20.01, 50.29 27.15, 50.04 32.29 Z"/>
-
-  <!-- Embossed TL monogram, raised out of the gold face — same gold as the disc,
-       so the letters are read ENTIRELY by their edge relief, not by fill color.
-       Light from the top-left: the top-left edges catch the light, the
-       bottom-right edges fall in shadow. A pale copy nudged up-left (the lit
-       crowns) and a dark copy nudged down-right (the shaded far walls) peek out
-       from behind the gold face. -->
-  <g font-family="'IM Fell English', Georgia, serif" font-size="21" text-anchor="middle" font-style="italic">
-    <text x="31.15" y="39.15" fill="#fff4cf" fill-opacity="0.9">TL</text>
-    <text x="32.85" y="40.85" fill="#5a3e0e" fill-opacity="0.85">TL</text>
-    <text x="32" y="40" fill="#cf9f28">TL</text>
+  <!-- Gold-tooled "TL": stamped in gold leaf over a dark drop, so it reads by
+       both value contrast and tooled-into-leather relief. -->
+  <g font-family="'Libre Caslon Display', 'IM Fell English', Georgia, serif"
+     font-size="26" text-anchor="middle" dominant-baseline="alphabetic">
+    <text x="31.6" y="41.8" fill="#120b03" fill-opacity="0.55">TL</text>
+    <text x="31" y="41" fill="url(#tool)" stroke="#6e5320" stroke-width="0.4" stroke-opacity="0.5">TL</text>
   </g>
-
-  <!-- Broad specular sheen last, over the whole blob, for a lacquered finish. -->
-  <path fill="url(#sheen)" pointer-events="none" d="M 59.07 32.44 C 58.71 40.15, 50.32 52.60, 44.84 56.49 C 39.37 60.38, 32.33 57.84, 26.21 55.78 C 20.08 53.73, 10.91 50.43, 8.09 44.16 C 5.27 37.89, 6.91 23.95, 9.29 18.18 C 11.68 12.41, 16.11 10.87, 22.40 9.54 C 28.68 8.22, 40.90 6.42, 47.01 10.23 C 53.13 14.05, 59.43 24.73, 59.07 32.44 Z"/>
 </svg>
