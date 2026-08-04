@@ -59,6 +59,10 @@ sheet.replaceSync(`
   .c-body p { margin: 0 0 6px; } .c-body p:last-child { margin-bottom: 0; }
   .c-body code { font-family: var(--mono, monospace); font-size: 12.5px; background: rgba(120,80,40,.12); padding: 1px 4px; border-radius: 2px; }
   .c-body a { color: var(--ink-red, #8f2f22); text-decoration: underline dotted; }
+  .c-body table { border-collapse: collapse; width: 100%; margin: 0 0 6px; font-size: 15px; }
+  .c-body th, .c-body td { border: 1px solid var(--parch-edge, #c4ac7c); padding: 4px 8px; text-align: left; vertical-align: top; }
+  .c-body th { font-family: var(--fell, serif); font-weight: 600; background: rgba(196,172,124,.18); }
+  .c-body tbody tr:nth-child(even) { background: rgba(196,172,124,.08); }
   .c-edit { margin-top: 4px; }
   .c-edit-bar { display: flex; gap: 8px; margin-top: 6px; }
   :focus-visible { outline: 2px solid var(--wax, #7c2b22); outline-offset: 2px; }

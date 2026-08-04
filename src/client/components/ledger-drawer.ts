@@ -275,6 +275,10 @@ sheet.replaceSync(`
   .d-desc-render li { margin: 3px 0; }
   .d-desc-render blockquote { margin: 0 0 12px; padding: 4px 16px; border-left: 3px solid var(--brass-lo, #7a5f30); color: var(--ink-soft, #5b4a30); font-style: italic; }
   .d-desc-render hr { border: 0; height: 1px; background: linear-gradient(90deg, var(--brass-lo, #7a5f30), transparent); margin: 18px 0; }
+  .d-desc-render table { border-collapse: collapse; width: 100%; margin: 0 0 12px; font-size: 16px; }
+  .d-desc-render th, .d-desc-render td { border: 1px solid var(--parch-edge, #c4ac7c); padding: 6px 10px; text-align: left; vertical-align: top; }
+  .d-desc-render th { font-family: var(--fell, serif); font-weight: 600; background: rgba(196,172,124,.18); color: var(--ink, #33291a); }
+  .d-desc-render tbody tr:nth-child(even) { background: rgba(196,172,124,.08); }
   .d-desc {
     width: 100%; min-height: 300px; resize: vertical; color: var(--ink, #33291a); background: var(--field-bg, rgba(255,250,235,.7));
     border: 1px solid var(--parch-edge, #c4ac7c); border-radius: 2px; padding: 16px; font-family: var(--gara, serif);
