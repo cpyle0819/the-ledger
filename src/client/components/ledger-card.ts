@@ -71,30 +71,19 @@ cardSheet.replaceSync(`
      a border alone shifts figure/ground too little to lead. The brightness rides
      on the deckle filter (kept first so the torn edge is preserved). */
   :host([selected]) .paper {
-    box-shadow: var(--card-shadow-selected, 0 2px 10px rgba(0,0,0,.28));
+    /* The gold frame is an inset box-shadow on .paper so it lives INSIDE the
+       deckle filter and its edges tear with the paper — not a separate ::after
+       whose border-image can only wobble as a rectangle. The shadow stack: the
+       outer gold gild (4px), a dark keyline seating it (1px inset), then the
+       original selected shadow beneath. A theme overrides via --card-frame-shadow. */
+    box-shadow: var(--card-frame-shadow,
+      inset 0 0 0 4px #cfa544,
+      inset 0 0 0 5px rgba(74,52,12,.5)),
+      var(--card-shadow-selected, 0 2px 10px rgba(0,0,0,.28));
     background: var(--card-surface-selected, #f6f6f8);
     background-size: var(--card-surface-size, auto);
     background-blend-mode: var(--card-surface-blend, normal);
     filter: var(--deckle-filter-selected, none);
-  }
-  /* Selected: a bold gilded frame, applied like a shoddy gold-leaf job — the
-     gild is laid on thick then run through the same deckle displacement as the
-     paper, so its edges fringe and flake unevenly instead of reading as a clean
-     machined rule. The gradient is stepped (hard color stops) so the metal looks
-     patchy and hand-burnished, not a smooth foil. No outer glow — the weight and
-     the ragged edge do the standing-out. */
-  :host([selected]) .card::after {
-    content: ""; position: absolute; inset: 0 -5px 0 -4px; z-index: 2; pointer-events: none;
-    border: 4px solid transparent;
-    border-image: var(--card-frame, linear-gradient(125deg,
-      #f6e3a6 0%, #cfa544 14%, #8a641f 26%, #e7cf8e 34%, #a5791f 46%,
-      #6f4e17 58%, #d8b45e 70%, #8a641f 82%, #c79a3e 100%) 1);
-    filter: var(--card-frame-filter, var(--deckle-filter, url(#ledger-deckle)));
-  }
-  /* A thin dark keyline just inside the frame, to seat it on the surface. */
-  :host([selected]) .card > .gild-seat {
-    position: absolute; inset: 3px -2px 3px -1px; z-index: 1; pointer-events: none; border-radius: 2px;
-    box-shadow: var(--card-frame-seat, inset 0 0 0 1px rgba(74,52,12,.5));
   }
 
   .card-top { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; }
@@ -284,9 +273,7 @@ export class LedgerCard extends HTMLElement {
 
     // The whole card is the primary activator (drill, or open for a leaf).
     asButton(card, () => this.#emit(drill ? 'card-activate' : 'card-open'));
-    // Seats the fringed gild on the paper when selected (styled in cardSheet).
-    const gildSeat = el('div', 'gild-seat'); gildSeat.setAttribute('aria-hidden', 'true');
-    card.append(paper, gildSeat, body);
+    card.append(paper, body);
     // The wax "CLOSED" stamp in the corner (styled in cardSheet).
     // Decorative — the status is already in the card's aria-label. An abandoned
     // close reads "NOT DONE" so the stamp itself distinguishes the two terminal
