@@ -68,7 +68,7 @@ sheet.replaceSync(`
   .scrim { position: absolute; inset: 0; background: rgba(12,8,3,.6); opacity: 0; transition: opacity .3s; }
   :host([open]) .scrim { opacity: 1; }
   .panel {
-    position: absolute; top: 0; right: 0; height: 100%; width: min(600px, 94vw); color: var(--ink, #33291a);
+    position: absolute; top: 0; right: 0; height: 100%; width: min(660px, 94vw); color: var(--ink, #33291a);
     background: var(--sheet-surface,
       radial-gradient(120% 60% at 100% 0%, rgba(196,172,124,.35), transparent 60%),
       linear-gradient(180deg, var(--parch-hi, #f3ead0), var(--parch, #e8dbba) 70%, var(--parch-lo, #d8c69c)));
