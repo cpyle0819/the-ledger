@@ -7,9 +7,10 @@ step and no code change in The Ledger — the server discovers every installed
 theme package and the client swaps the stylesheet, fonts, logo, ambient, and
 sounds live.
 
-Themes live outside this repo, as independent packages. The two bundled themes —
-**the-ledger** (the leather-and-parchment reference) and **space-opera** (a dark
-data-plate inversion) — are published from the
+Themes live outside this repo, as independent packages. The three bundled themes —
+**the-ledger** (the leather-and-parchment reference), **space-opera** (a dark
+data-plate inversion), and **professional** (a light-canvas theme with a
+light/dark mode switch) — are published from the
 [`ledger-themes`](https://github.com/cpyle0819/ledger-themes) monorepo; read them
 as worked examples. This guide takes you from an empty folder to an installed,
 switchable theme. Read [`CLAUDE.md`](CLAUDE.md) for the theming architecture and
@@ -43,11 +44,11 @@ handful of backdrop rules `base.css` leaves bare.
 
 Two kinds of token carry the skin:
 
-- **Named tokens** (`--leather`, `--parch`, `--ink`, `--brass`, `--seal-*`, …) —
-  the palette. The names are historical, but `base.css` and the components treat
-  them **semantically**: `--leather` is app chrome, `--parch` is the card
-  surface, `--ink` is text on a card, `--brass` is the primary metal, `--seal-*`
-  are tier accents. Keep the names, re-point the values.
+- **Named tokens** (`--frame`, `--surface`, `--text`, `--metal`, `--seal-*`, …) —
+  the palette. The names are semantic role names: `--frame` is app chrome,
+  `--surface` is the card surface, `--text` is text on a card, `--metal` is the
+  primary metal, `--frame-text` is text on the chrome, `--seal-*` are tier
+  accents. Keep the names, re-point the values.
 - **Recipe tokens** (`--card-surface`, `--sheet-surface`, `--deckle-filter`,
   `--card-frame`, …) — decoration a single colour can't express: layered
   backgrounds, textures, and SVG edge filters. Components read these with
@@ -119,7 +120,9 @@ fill the `ledgerTheme` block.
   "settings": [                                                        // optional
     { "target": "ambient", "attr": "flip", "type": "boolean", "label": "Flip-and-burn", "default": true },
     { "target": "ambient", "attr": "speed", "type": "range", "label": "Cruise speed",
-      "min": 500, "max": 3000, "step": 100, "default": 1500 }
+      "min": 500, "max": 3000, "step": 100, "default": 1500 },
+    { "target": "root", "attr": "data-mode", "type": "mode", "label": "Palette", "default": "dark",
+      "options": [ { "value": "dark", "label": "Dark" }, { "value": "light", "label": "Light" } ] }
   ]
 }
 ```
@@ -145,28 +148,40 @@ you ship (`theme.css`, `mark.js`, `sounds/`, any images), and a `smoke-drift`- o
 
 ### User-tunable knobs (`settings`)
 
-The masthead gear lets a user tune your theme's atmosphere; you decide what it
-exposes. Each entry in `settings` names one attribute on your `ambient` (or
-`logo`) component and how to edit it:
+The masthead gear lets a user tune your theme; you decide what it exposes. Each
+entry in `settings` names one attribute, the target it lives on, and how to edit
+it:
 
 | Field | Meaning |
 |---|---|
-| `target` | which component the attr lives on — `ambient` (default) or `logo` |
-| `attr` | the attribute name set on that component |
-| `type` | `boolean` (renders a switch) or `range` (renders a slider) |
+| `target` | where the attr is set — `ambient` (default) or `logo` (a mounted component), or `root` (the `<html>` element, for whole-app modes) |
+| `attr` | the attribute name set on that target |
+| `type` | `boolean` (renders a switch), `range` (renders a slider), or `mode` (renders a segmented control) |
 | `label` | the control's visible label |
 | `default` | your shipped value — the reset target, and what "off the default" is measured against |
 | `min` / `max` / `step` | range only |
+| `options` | mode only — the segmented choices, `[{ value, label }, …]` |
 
-The chosen value is written straight onto the mounted component's attribute
-(live, no reload) and saved per-theme in the browser's localStorage. So a knob is
-only meaningful for an attribute the component actually observes — declare knobs
-for the same attrs you set in `ambient.attrs`, and confirm the underlying element
-reacts to them (e.g. `star-field` observes `flip`, `planets`, `speed`;
-`smoke-drift` observes `fire`, `wind`). The `default` should match the value you
-ship in `attrs`, so "Reset to theme defaults" returns the theme to how it looks
-out of the box. The controller understands no specific attr — it renders whatever
-you declare — so nothing but this schema decides which knobs a user sees.
+For `ambient`/`logo` targets, the chosen value is written straight onto the
+mounted component's attribute (live, no reload) and saved per-theme in the
+browser's localStorage. So a knob is only meaningful for an attribute the
+component actually observes — declare knobs for the same attrs you set in
+`ambient.attrs`, and confirm the underlying element reacts to them (e.g.
+`star-field` observes `flip`, `planets`, `speed`; `smoke-drift` observes `fire`,
+`wind`). The `default` should match the value you ship in `attrs`, so "Reset to
+theme defaults" returns the theme to how it looks out of the box. The controller
+understands no specific attr — it renders whatever you declare — so nothing but
+this schema decides which knobs a user sees.
+
+**Whole-app modes (`type: "mode"`, `target: "root"`)** let one theme carry a full
+light/dark palette swap. The chosen value is set as an attribute on `<html>` (e.g.
+`data-mode="light"`), which your `theme.css` keys a token-override block on —
+`[data-mode="light"] { --surface: …; --text: …; }`. This target can't ride on a
+mounted component, so it writes to the document root instead. The mode is applied
+on every theme load and replayed from cache before first paint (via the inline
+script in `index.html`), so a reload never flashes the wrong palette. The
+`professional` theme ships this as a Light/Dark switch — read it as the worked
+example.
 
 ## Step 2 — fill the token contract
 
@@ -176,22 +191,24 @@ reference theme documents each one inline. The contract in full:
 | Family | Tokens | Meaning |
 |---|---|---|
 | Fonts | `--fell`, `--fell-sc`, `--gara`, `--mono` | display, small-caps, body, mono |
-| App chrome | `--leather`, `--leather-2`, `--wood` | the surrounding room / frame |
-| Primary metal | `--brass`, `--brass-lo`, `--brass-hi` | rules, hardware, the lit accent |
-| Card surface | `--parch`, `--parch-lo`, `--parch-hi`, `--parch-edge` | the item slip |
-| Text on card | `--ink`, `--ink-soft`, `--ink-faint`, `--ink-red` | reading text + correction red |
+| App chrome | `--frame`, `--frame-raised`, `--frame-deep` | the surrounding room / frame |
+| Chrome text | `--frame-text`, `--frame-text-dim`, `--frame-text-strong` | text on the chrome |
+| Primary metal | `--metal`, `--metal-dim`, `--metal-bright` | rules, hardware, the lit accent |
+| Card surface | `--surface`, `--surface-dim`, `--surface-bright`, `--border` | the item slip + its border |
+| Text on card | `--text`, `--text-muted`, `--text-faint`, `--alert` | reading text + correction/danger red |
 | Tier accents | `--seal-epic`, `--seal-story`, `--seal-task`, `--seal-bug`, `--wax` | the four tiers + wax |
 | Planning risk | `--risk-over`, `--risk-under` | over / under estimated effort |
 | Semantic helpers | `--focus-ring`, `--chip-fg`, `--hover-wash`, `--closed-ink`, … | focus, chips, states |
-| Chrome seams | `--well`, `--hairline`, `--chrome-sheen`, `--masthead-*`, `--controls-bg` | wells, hairlines, sheen |
+| Chrome seams | `--well`, `--hairline`, `--chrome-sheen`, `--masthead-bg`, `--masthead-rule`, `--controls-bg` | wells, hairlines, sheen |
 | Panel + sheet | `--panel-surface`, `--sheet-surface`, `--sheet-surface-tl`, `--sheet-edge` | outline epics, drawer, compose |
 | Card recipe | `--card-surface`, `--card-surface-selected`, `--card-shadow*`, `--card-radius`, `--deckle-filter*`, `--card-frame*`, `--stamp-*` | the full card decoration |
+| Focal recede | `--card-recede`, `--card-recede-opacity`, `--card-recede-hover` | how peer cards fade when one is focused |
 | Field surfaces | `--field-bg`, `--field-bg-focus`, `--field-edge`, `--inset-bg`, `--onlight-chip-bg` | inputs inside shadow leaves |
 
 You need only override the tokens whose value differs from neutral — anything you
 leave out keeps the `base.css` default. But override deliberately: the semantic
 names are a trap when your surface inverts. `space-opera` uses a **dark** card, so
-its `--ink` tokens flip to *light* readout text while `--parch*` stays light
+its `--text` tokens flip to *light* readout text while `--surface*` stays light
 (those slots also carry body/control text on the dark hull) and the dark plate
 lives in the recipe tokens instead. Read its header comment before inverting
 light/dark — the first cut of that theme shipped dark-on-dark text by trusting the
@@ -201,10 +218,10 @@ names literally.
 
 `base.css` supplies the focus-ring and screen-reader structure; your job is
 contrast. Text tokens must clear WCAG AA (4.5:1) against the surface they sit on —
-`--ink*` on `--parch*`, `--parch*`/chrome text on `--leather`/`--wood`. Set
-`--focus-ring` to a hue visible on your chrome and `--focus-ring-onlight` to one
-visible on your card fill. The reference theme darkened `--ink-faint` specifically
-to clear AA on parchment; hold that bar.
+`--text*` on `--surface*`, `--frame-text*` on `--frame*`. Set `--focus-ring` to a
+hue visible on your chrome and `--focus-ring-onlight` to one visible on your card
+fill. The reference theme darkened `--text-faint` specifically to clear AA on
+parchment; hold that bar.
 
 ## Step 3 — paint the backdrop
 
