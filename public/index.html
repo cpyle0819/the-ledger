@@ -84,9 +84,6 @@
       <!-- Theme settings gear — shown only when the active theme declares tunable
            knobs (app.ts toggles [hidden] on theme change). Opens <ledger-settings>. -->
       <button class="ghost-btn icon-btn" id="settings-btn" title="Theme settings" aria-label="Theme settings" hidden>⚙</button>
-      <button class="ghost-btn" id="refresh" aria-keyshortcuts="r" title="Refresh (r)">
-        <span aria-hidden="true">↻ </span>refresh
-      </button>
       <button class="ghost-btn icon-btn" id="about-btn" title="About" aria-label="About the Ledger">?</button>
     </div>
   </header>
@@ -122,6 +119,11 @@
         <button type="button" data-lens="columns" class="on" aria-pressed="true" aria-keyshortcuts="1" title="Columns (1)"><span aria-hidden="true">▚ </span>columns</button>
         <button type="button" data-lens="outline" aria-pressed="false" aria-keyshortcuts="2" title="Outline (2)"><span aria-hidden="true">☰ </span>outline</button>
       </div>
+    </div>
+    <div class="ctl">
+      <button class="ghost-btn" id="refresh" aria-keyshortcuts="r" title="Refresh (r)">
+        <span aria-hidden="true">↻ </span>refresh
+      </button>
     </div>
   </nav>
 
