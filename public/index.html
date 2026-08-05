@@ -31,6 +31,15 @@
         var applied = JSON.parse(localStorage.getItem('ledger:theme:applied') || 'null');
         if (!applied || !applied.stylesheet) return;
         document.documentElement.setAttribute('data-theme', applied.id);
+        // Replay root-target modes (e.g. data-mode="light") so a reload paints in
+        // the active mode, not the theme's CSS default — no flash of the wrong palette.
+        if (applied.root) {
+          for (var k in applied.root) {
+            if (Object.prototype.hasOwnProperty.call(applied.root, k)) {
+              document.documentElement.setAttribute(k, applied.root[k]);
+            }
+          }
+        }
         var css = document.getElementById('theme-css');
         if (css) css.href = applied.stylesheet;
         if (applied.fonts) {

@@ -125,6 +125,17 @@
   --stamp-edge-abandoned:  var(--abandoned-edge);
   --stamp-filter:          none;
 
+  /* Focal-emphasis recede: how a peer card looks when ANOTHER card in its column
+     is selected (figure/ground — the active card is figure, peers recede). The
+     default darkens+desaturates, which reads as "receding" against a DARK canvas.
+     A LIGHT-canvas theme must override these to fade peers TOWARD the light ground
+     instead (e.g. brightness(1)+lowered opacity), or darkening turns white peers
+     muddy-grey while the active card stays bright — reading as "everything dim but
+     the active card". --card-recede-hover lifts a receded card back on hover. */
+  --card-recede:         brightness(.82) saturate(.72);
+  --card-recede-opacity: .9;
+  --card-recede-hover:   brightness(1.02) saturate(1);
+
   /* Editable-field + inset surfaces inside the shadow-DOM leaves (drawer/compose/
      comment inputs, the "contains" box, card-act/copy-link hover chips). These
      were baked light literals in the components; tokenised so a dark theme flips
@@ -377,21 +388,21 @@ ledger-board {
    <ledger-column>, so :has()/the sibling dim apply here rather than in the card's
    shadow. */
 ledger-column:has(ledger-card[selected]) ledger-card:not([selected]) {
-  filter: brightness(.82) saturate(.72);
-  opacity: .9;
+  filter: var(--card-recede, brightness(.82) saturate(.72));
+  opacity: var(--card-recede-opacity, .9);
   transition: filter .18s ease, opacity .18s ease;
 }
 /* Task cards carry no [selected] state, so out-of-focus tasks are marked
    `.deemph` at build time (see buildTaskCol). Same values as the peer recede. */
 ledger-card.deemph {
-  filter: brightness(.82) saturate(.72);
-  opacity: .9;
+  filter: var(--card-recede, brightness(.82) saturate(.72));
+  opacity: var(--card-recede-opacity, .9);
   transition: filter .18s ease, opacity .18s ease;
 }
 /* Hovering a receded card lifts it back to (just past) full brightness. */
 ledger-column:has(ledger-card[selected]) ledger-card:not([selected]):hover,
 ledger-card.deemph:hover {
-  filter: brightness(1.02) saturate(1);
+  filter: var(--card-recede-hover, brightness(1.02) saturate(1));
   opacity: 1;
 }
 

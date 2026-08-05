@@ -74,6 +74,21 @@ sheet.replaceSync(`
   .range input { width: 150px; accent-color: var(--brass, #b08d4f); cursor: pointer; }
   .range-val { font-family: var(--mono, monospace); font-size: 13px; color: var(--ink-soft, #5b4a30); min-width: 3ch; text-align: right; }
 
+  /* Segmented mode control (e.g. Light / Dark) — a brass-framed pill group; the
+     active segment fills with the theme's on-gradient, matching the board's segs. */
+  .segmode { display: inline-flex; border: 1px solid var(--brass-lo, #7a5f30); border-radius: 999px; overflow: hidden; background: var(--well, rgba(20,14,7,.6)); }
+  .segmode button {
+    font-family: var(--gara, serif); font-size: 14px; color: var(--ink-soft, #5b4a30);
+    background: transparent; border: 0; padding: 6px 16px; cursor: pointer; transition: .15s; line-height: 1.3;
+  }
+  .segmode button + button { border-left: 1px solid var(--hairline-soft, rgba(122,95,48,.4)); }
+  .segmode button:hover { color: var(--ink, #33291a); }
+  .segmode button[aria-pressed="true"] {
+    color: var(--seg-on-fg, var(--wood, #1c1409)); font-weight: 600;
+    background: var(--seg-on-bg, linear-gradient(180deg, var(--brass-hi, #d8b878), var(--brass, #b08d4f)));
+  }
+  .segmode button:focus-visible { outline: 2px solid var(--focus-ring-onlight, var(--brass-hi, #d8b878)); outline-offset: -2px; }
+
   .s-foot { display: flex; justify-content: flex-end; padding: 14px 0 22px; }
   .s-reset {
     font-family: var(--fell, serif); font-style: italic; font-size: 14px; color: var(--ink-soft, #5b4a30);
@@ -145,12 +160,37 @@ export class LedgerSettings extends HTMLElement {
   // One knob row: its label plus a switch (boolean) or slider (range). Each
   // control writes through on change — persist the value (dropping it when it
   // equals the theme default) and apply it live to the mounted component.
-  #row(id: string, s: ThemeSetting, cur: boolean | number): HTMLElement {
+  #row(id: string, s: ThemeSetting, cur: boolean | number | string): HTMLElement {
     const row = el('div', 'row');
     const label = el('span', 'row-label', s.label);
     row.append(label);
 
-    if (s.type === 'boolean') {
+    if (s.type === 'mode') {
+      // A segmented pick from s.options; the chosen value is written straight to
+      // the target (a data-attr on <html> for a light/dark palette). No live
+      // remount — the token cascade repaints on the attribute change.
+      const group = el('div', 'segmode');
+      group.setAttribute('role', 'group');
+      group.setAttribute('aria-label', s.label);
+      const opts = s.options ?? [];
+      const paint = (chosen: string) => {
+        for (const b of group.children) {
+          (b as HTMLElement).setAttribute('aria-pressed', String((b as HTMLElement).dataset.value === chosen));
+        }
+      };
+      for (const o of opts) {
+        const b = document.createElement('button');
+        b.type = 'button'; b.dataset.value = o.value; b.textContent = o.label;
+        b.addEventListener('click', () => {
+          saveSetting(id, s.attr, o.value, o.value === s.default);
+          applyLiveSetting(s, o.value);
+          paint(o.value);
+        });
+        group.append(b);
+      }
+      paint(String(cur));
+      row.append(group);
+    } else if (s.type === 'boolean') {
       const wrap = el('label', 'switch');
       const input = document.createElement('input');
       input.type = 'checkbox';

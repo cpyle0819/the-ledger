@@ -40,12 +40,17 @@ export interface ThemeComponent { tag: string; src: string; attrs?: Record<strin
 // (ambient today; logo is the same {tag,src,attrs} shape if ever needed). A
 // boolean renders a switch; a range renders a slider between min/max.
 export interface ThemeSetting {
-  target?: 'ambient' | 'logo';   // which component's attr this tunes (default: ambient)
-  attr: string;                  // the attribute name set on that component
-  type: 'boolean' | 'range';
+  // Which surface this knob tunes. `ambient`/`logo` set an attr on that mounted
+  // component; `root` sets an attr on <html> (document.documentElement) — used for
+  // whole-app modes a theme keys its CSS on (e.g. a light/dark palette via
+  // `[data-mode="light"]` token overrides), since those can't ride on a component.
+  target?: 'ambient' | 'logo' | 'root';
+  attr: string;                  // the attribute name set on that target
+  type: 'boolean' | 'range' | 'mode';
   label: string;                 // the control's visible label
-  default: boolean | number;     // the theme's shipped value (the reset target)
+  default: boolean | number | string;   // the theme's shipped value (the reset target)
   min?: number; max?: number; step?: number;   // range only
+  options?: { value: string; label: string }[];   // mode only: the segmented choices
 }
 export interface Theme {
   id: string;
@@ -87,7 +92,7 @@ const changeSubs: ThemeChangeFn[] = [];
 export function onThemeChange(fn: ThemeChangeFn): void { changeSubs.push(fn); }
 
 // ---- per-theme settings (the gear panel's model) ----
-type SettingValue = boolean | number;
+type SettingValue = boolean | number | string;
 type Overrides = Record<string, SettingValue>;
 
 /** The active theme, so the settings panel can read its `settings` schema. */
@@ -116,7 +121,7 @@ export function saveSetting(id: string, attr: string, value: SettingValue, isDef
 // Merge a theme's saved overrides onto a component's manifest attrs. Returns a
 // fresh attrs object so the manifest's own is never mutated. Only overrides whose
 // `target` matches are folded in (ambient knobs don't leak onto the logo).
-function withOverrides(comp: ThemeComponent, id: string, settings: ThemeSetting[] | undefined, target: 'ambient' | 'logo'): ThemeComponent {
+function withOverrides(comp: ThemeComponent, id: string, settings: ThemeSetting[] | undefined, target: 'ambient' | 'logo' | 'root'): ThemeComponent {
   if (!settings?.length) return comp;
   const saved = loadSettings(id);
   const attrs = { ...(comp.attrs ?? {}) };
@@ -127,15 +132,19 @@ function withOverrides(comp: ThemeComponent, id: string, settings: ThemeSetting[
   return { ...comp, attrs };
 }
 
-// Apply one knob to the live mounted component without a full remount, so a
-// toggle/slider gives instant feedback. The starfield and smoke-drift elements
-// observe their attrs, so setAttribute alone re-drives them. A false/null boolean
-// removes the attr (its "off"); anything else sets the string value — the same
-// rule mountComponent uses, kept in sync here.
+// Apply one knob to its live target without a full remount, so a control gives
+// instant feedback. For `root`, the target is <html> and the value is written as
+// a plain attribute (e.g. data-mode="light") that the theme's CSS keys on — the
+// token cascade repaints the whole app in one assignment. For `ambient`/`logo`,
+// the target is the mounted component; those elements observe their attrs, so
+// setAttribute alone re-drives them. A false/null boolean removes the attr (its
+// "off"); anything else sets the string value — the same rule mountComponent uses.
 export function applyLiveSetting(setting: ThemeSetting, value: SettingValue): void {
   const target = setting.target ?? 'ambient';
-  const host = target === 'logo' ? $('.ledger-title') : $('#ambient-layer');
-  const node = host?.firstElementChild as HTMLElement | undefined;
+  const node: HTMLElement | undefined =
+    target === 'root' ? document.documentElement
+    : target === 'logo' ? ($('.ledger-title')?.firstElementChild as HTMLElement | undefined)
+    : ($('#ambient-layer')?.firstElementChild as HTMLElement | undefined);
   if (!node) return;
   if (value === false || value == null) node.removeAttribute(setting.attr);
   else node.setAttribute(setting.attr, value === true ? '' : String(value));
@@ -243,6 +252,26 @@ async function applyLogo(theme: Theme): Promise<void> {
   if (logo.src !== FALLBACK_LOGO.src) await mountComponent(host, FALLBACK_LOGO);
 }
 
+// Apply the theme's `root`-target settings (e.g. a light/dark mode) onto <html>,
+// merging saved overrides over the schema defaults. Returns the resolved
+// attr→value map so the caller can cache it for the pre-paint replay. Runs on
+// every applyTheme so a `root` knob takes effect at load, not only when the gear
+// is opened. A value equal to its "off" (false/null) removes the attr.
+function applyRootSettings(theme: Theme): Record<string, string> {
+  const root = document.documentElement;
+  const saved = loadSettings(theme.id);
+  const resolved: Record<string, string> = {};
+  for (const s of theme.settings ?? []) {
+    if ((s.target ?? 'ambient') !== 'root') continue;
+    const value = s.attr in saved ? saved[s.attr]! : s.default;
+    if (value === false || value == null) { root.removeAttribute(s.attr); continue; }
+    const str = value === true ? '' : String(value);
+    root.setAttribute(s.attr, str);
+    resolved[s.attr] = str;
+  }
+  return resolved;
+}
+
 // The ambient drift layer (pipe smoke, starfield, …). A theme declares its own
 // ambient component; a theme with none gets an empty layer (the host is cleared),
 // so switching from a themed ambient to none removes it. No fallback — ambient is
@@ -262,12 +291,15 @@ export async function applyTheme(id: string): Promise<void> {
   if (!theme) return;
   active = theme;
   document.documentElement.setAttribute('data-theme', id);
-  // Cache the resolved asset URLs so the next reload's pre-paint inline script
-  // (index.html) can apply this theme before first paint — no flash of the
-  // HTML's shipped default. Keyed by id so the script can trust it only when it
-  // matches the stored choice.
+  // Apply the theme's root-target modes (e.g. light/dark) onto <html> up front, so
+  // the palette is right the moment the sheet loads. Returned map is cached below.
+  const rootAttrs = applyRootSettings(theme);
+  // Cache the resolved asset URLs + root attrs so the next reload's pre-paint
+  // inline script (index.html) can apply this theme before first paint — no flash
+  // of the HTML's shipped default, nor of the wrong mode. Keyed by id so the
+  // script can trust it only when it matches the stored choice.
   try {
-    localStorage.setItem(APPLIED_KEY, JSON.stringify({ id, stylesheet: theme.stylesheet, fonts: theme.fonts ?? null }));
+    localStorage.setItem(APPLIED_KEY, JSON.stringify({ id, stylesheet: theme.stylesheet, fonts: theme.fonts ?? null, root: rootAttrs }));
   } catch { /* private mode — the inline script just falls back to the HTML default */ }
   await swapSheet(theme.stylesheet);
   swapFonts(theme);

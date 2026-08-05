@@ -34,7 +34,7 @@ interface RawSound { src: string; volume?: number; startAt?: number; maxMs?: num
 interface RawComponent { tag: string; src: string; attrs?: Record<string, unknown> }
 // A user-tunable knob a theme declares; carries no asset path, so it passes to
 // the client verbatim (the settings panel renders a control from it).
-interface RawSetting { target?: string; attr: string; type: string; label: string; default: unknown; min?: number; max?: number; step?: number }
+interface RawSetting { target?: string; attr: string; type: string; label: string; default: unknown; min?: number; max?: number; step?: number; options?: { value: string; label: string }[] }
 // The `ledgerTheme` block as authored in a theme package's package.json, with
 // asset `src` values relative to that package (own-file or dep specifier).
 interface ThemeManifest {
