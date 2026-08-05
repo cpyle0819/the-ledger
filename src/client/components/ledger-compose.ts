@@ -64,11 +64,11 @@ sheet.replaceSync(`
   :host([open]) .scrim { opacity: 1; }
   .panel {
     position: absolute; top: 50%; left: 50%; transform: translate(-50%, -46%);
-    width: min(560px, 94vw); max-height: 90vh; overflow-y: auto; color: var(--ink, #33291a);
+    width: min(560px, 94vw); max-height: 90vh; overflow-y: auto; color: var(--text, #33291a);
     background: var(--sheet-surface,
       radial-gradient(120% 60% at 100% 0%, rgba(196,172,124,.35), transparent 60%),
-      linear-gradient(180deg, var(--parch-hi, #f3ead0), var(--parch, #e8dbba) 70%, var(--parch-lo, #d8c69c)));
-    border: 1px solid var(--sheet-edge, var(--brass-lo, #7a5f30)); border-top: 6px solid var(--sheet-edge, var(--brass-lo, #7a5f30));
+      linear-gradient(180deg, var(--surface-bright, #f3ead0), var(--surface, #e8dbba) 70%, var(--surface-dim, #d8c69c)));
+    border: 1px solid var(--sheet-edge, var(--metal-dim, #7a5f30)); border-top: 6px solid var(--sheet-edge, var(--metal-dim, #7a5f30));
     border-radius: 3px; box-shadow: 0 24px 60px rgba(0,0,0,.5);
     opacity: 0; transition: opacity .25s, transform .25s cubic-bezier(.2,.8,.2,1);
     padding: 24px 30px 28px;
@@ -79,8 +79,8 @@ sheet.replaceSync(`
   .head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
   /* The eyebrow carries the tier chip: "new" + the wax seal of what's being made,
      so the type reads as a settled fact of the entry (no field to fill). */
-  .c-eyebrow { display: inline-flex; align-items: center; gap: 9px; font-family: var(--fell-sc, serif); font-size: 13px; letter-spacing: .1em; color: var(--ink-red, #8f2f22); text-transform: uppercase; }
-  .c-rule { height: 2px; background: linear-gradient(90deg, var(--brass-lo, #7a5f30), transparent); margin: 14px 0 18px; }
+  .c-eyebrow { display: inline-flex; align-items: center; gap: 9px; font-family: var(--fell-sc, serif); font-size: 13px; letter-spacing: .1em; color: var(--alert, #8f2f22); text-transform: uppercase; }
+  .c-rule { height: 2px; background: linear-gradient(90deg, var(--metal-dim, #7a5f30), transparent); margin: 14px 0 18px; }
 
   /* Mini-outline preview — the heading, rebuilt as the item's place in the tree.
      It borrows the register lens's three rank devices at a smaller base (same
@@ -89,28 +89,28 @@ sheet.replaceSync(`
      SPINE so the new row reads as hanging off its parent, not merely below it. */
   .mo { padding: 4px 2px 2px; }
   .mo-row { display: flex; align-items: center; gap: 9px; padding: 4px 0; }
-  .mo-title { font-family: var(--fell, serif); color: var(--ink, #33291a); line-height: 1.2; }
+  .mo-title { font-family: var(--fell, serif); color: var(--text, #33291a); line-height: 1.2; }
   .tier-EPIC  .mo-title { font-size: 19.5px; letter-spacing: .01em; }
   .tier-STORY .mo-title { font-size: 16px; }
   .tier-TASK .mo-title, .tier-BUG .mo-title, .tier-SUBTASK .mo-title { font-family: var(--gara, serif); font-size: 13px; }
   /* The new row's title is blank until typed, then mirrors the field live; the
      faint placeholder holds its place so the row never collapses. */
-  .mo-new .mo-title.empty { color: var(--ink-faint, #6f5c3e); font-style: italic; }
+  .mo-new .mo-title.empty { color: var(--text-faint, #6f5c3e); font-style: italic; }
   /* The id tag rides inline at the end of the title text with a small gap. */
   .mo-title .id-tag { margin-left: 8px; }
   .mo .chip { font-size: 9.5px; padding: 2px 6px; letter-spacing: .1em; box-shadow: none; border-color: rgba(0,0,0,.16); opacity: .85; }
   /* A child hangs off its parent under an indented spine (Gestalt continuity);
      a root new item has no parent row and sits flush. */
   .mo-children.nested { position: relative; padding-left: 30px; }
-  .mo-children.nested::before { content: ""; position: absolute; left: 12px; top: 1px; bottom: 4px; width: 1px; background: var(--parch-edge, #c4ac7c); opacity: .6; }
+  .mo-children.nested::before { content: ""; position: absolute; left: 12px; top: 1px; bottom: 4px; width: 1px; background: var(--border, #c4ac7c); opacity: .6; }
 
   .ghost-btn {
-    font-family: var(--fell, serif); font-style: italic; font-size: 16px; color: var(--brass-hi, #d8b878);
-    background: linear-gradient(180deg, var(--leather, #2a1c10), var(--leather-2, #33230f));
-    border: 1px solid var(--brass-lo, #7a5f30); border-radius: 2px; padding: 7px 14px; cursor: pointer; transition: .15s;
+    font-family: var(--fell, serif); font-style: italic; font-size: 16px; color: var(--metal-bright, #d8b878);
+    background: linear-gradient(180deg, var(--frame, #2a1c10), var(--frame-raised, #33230f));
+    border: 1px solid var(--metal-dim, #7a5f30); border-radius: 2px; padding: 7px 14px; cursor: pointer; transition: .15s;
     box-shadow: 0 1px 2px rgba(0,0,0,.4), inset 0 1px 0 rgba(216,184,120,.15);
   }
-  .ghost-btn:hover { color: #fff; border-color: var(--brass, #b08d4f); background: linear-gradient(180deg, var(--leather-2, #33230f), var(--leather, #2a1c10)); }
+  .ghost-btn:hover { color: #fff; border-color: var(--metal, #b08d4f); background: linear-gradient(180deg, var(--frame-raised, #33230f), var(--frame, #2a1c10)); }
   .ghost-btn:disabled { opacity: .5; cursor: default; }
 
   .c-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px 20px; margin-bottom: 18px; }
@@ -119,19 +119,19 @@ sheet.replaceSync(`
      out (the project picker leaking in for a child that inherits its parent's). */
   .c-field[hidden] { display: none; }
   .c-field.full { grid-column: 1 / -1; }
-  .c-field label { font-family: var(--fell, serif); font-style: italic; font-size: 15px; color: var(--ink-soft, #5b4a30); margin-bottom: 5px; }
-  .c-field .req { color: var(--ink-red, #8f2f22); }
+  .c-field label { font-family: var(--fell, serif); font-style: italic; font-size: 15px; color: var(--text-muted, #5b4a30); margin-bottom: 5px; }
+  .c-field .req { color: var(--alert, #8f2f22); }
   .c-field select, .c-field input, .c-field textarea {
-    box-sizing: border-box; width: 100%; background: var(--field-bg, rgba(255,250,235,.7)); color: var(--ink, #33291a);
-    border: 1px solid var(--parch-edge, #c4ac7c); border-radius: 2px; padding: 8px 10px;
+    box-sizing: border-box; width: 100%; background: var(--field-bg, rgba(255,250,235,.7)); color: var(--text, #33291a);
+    border: 1px solid var(--border, #c4ac7c); border-radius: 2px; padding: 8px 10px;
     font-family: var(--gara, serif); font-size: 15px; outline: none;
   }
   .c-field textarea { min-height: 96px; resize: vertical; line-height: 1.55; }
-  .c-field select:focus, .c-field input:focus, .c-field textarea:focus { border-color: var(--brass-lo, #7a5f30); background: var(--field-bg-focus, #fffaeb); }
+  .c-field select:focus, .c-field input:focus, .c-field textarea:focus { border-color: var(--metal-dim, #7a5f30); background: var(--field-bg-focus, #fffaeb); }
 
   .foot { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 4px; }
   .c-err { flex: 1; font-family: var(--gara, serif); font-size: 14px; color: var(--wax, #7c2b22); }
-  :focus-visible { outline: 2px solid var(--brass-hi, #d8b878); outline-offset: 3px; }
+  :focus-visible { outline: 2px solid var(--metal-bright, #d8b878); outline-offset: 3px; }
 `);
 
 export class LedgerCompose extends HTMLElement {

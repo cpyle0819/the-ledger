@@ -31,27 +31,34 @@
   --gara:    system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --mono:    ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
-  /* app chrome — neutral dark greys (the "leather"/"wood" slots) */
-  --leather:   #2b2d31;
-  --leather-2: #34363b;
-  --wood:      #1c1d20;
+  /* app frame — masthead, controls, canvas (neutral dark greys) */
+  --frame:   #2b2d31;
+  --frame-raised: #34363b;
+  --frame-deep:      #1c1d20;
 
-  /* primary metal / accent chrome (the "brass" slots) — plain steel */
-  --brass:     #8a8f98;
-  --brass-lo:  #5c6068;
-  --brass-hi:  #b9bec6;
+  /* primary metal — rules, hardware, accent chrome text (plain steel) */
+  --metal:     #8a8f98;
+  --metal-dim:  #5c6068;
+  --metal-bright:  #b9bec6;
 
-  /* card / panel surface (the "parchment" slots) — flat off-white */
-  --parch:      #ececee;
-  --parch-lo:   #dcdde0;
-  --parch-hi:   #f6f6f8;
-  --parch-edge: #c4c6cc;
+  /* card / panel / sheet surface fill — flat off-white */
+  --surface:        #ececee;
+  --surface-dim:    #dcdde0;
+  --surface-bright: #f6f6f8;
 
-  /* text on the card surface (the "ink" slots) */
-  --ink:       #23252a;
-  --ink-soft:  #4c4f56;
-  --ink-faint: #6a6e76;
-  --ink-red:   #b23b32;
+  /* text + bright elements ON the dark frame (light-on-dark; flips with the frame,
+     independent of the card surface — the split the physical --parch name masked) */
+  --frame-text:        #ececee;
+  --frame-text-dim:    #dcdde0;
+  --frame-text-strong: #f6f6f8;
+
+  --border: #c4c6cc;
+
+  /* text on the card surface */
+  --text:       #23252a;
+  --text-muted:  #4c4f56;
+  --text-faint: #6a6e76;
+  --alert:   #b23b32;
 
   /* tier accents + planning-risk tones — muted but distinct so tiers still read */
   --seal-epic:  #6f6a86;
@@ -65,14 +72,14 @@
   --fs-meta: 16px;
 
   /* semantic helpers */
-  --focus-ring:         var(--brass-hi);
-  --focus-ring-onlight: var(--ink-red);
-  --skip-bg:            var(--brass-hi);
-  --skip-fg:            var(--wood);
+  --focus-ring:         var(--metal-bright);
+  --focus-ring-onlight: var(--alert);
+  --skip-bg:            var(--metal-bright);
+  --skip-fg:            var(--frame-deep);
   --btn-hover-fg:       #fff;
   --chip-fg:            #f6f6f8;
   --inert:              rgba(120,124,132,.8);
-  --accent-warm:        var(--brass-hi);
+  --accent-warm:        var(--metal-bright);
   --accent-warm-faint:  rgba(185,190,198,.4);
   --hover-wash:         rgba(255,255,255,.06);
   --row-hover:          rgba(0,0,0,.05);
@@ -83,8 +90,8 @@
   --closed-edge:        rgba(178,59,50,.55);
   --abandoned-ink:      rgba(120,124,132,.9);
   --abandoned-edge:     rgba(120,124,132,.5);
-  --seg-on-fg:          var(--wood);
-  --seg-on-bg:          linear-gradient(180deg, var(--brass-hi), var(--brass));
+  --seg-on-fg:          var(--frame-deep);
+  --seg-on-bg:          linear-gradient(180deg, var(--metal-bright), var(--metal));
 
   /* chrome seams */
   --well:          rgba(0,0,0,.28);
@@ -93,32 +100,35 @@
   --hairline-soft: rgba(255,255,255,.10);
   --chrome-sheen:  rgba(255,255,255,.10);
   --masthead-bg:   linear-gradient(180deg, rgba(255,255,255,.03), transparent 70%);
-  --masthead-rule: linear-gradient(90deg, transparent, var(--brass) 12%, var(--brass-hi) 50%, var(--brass) 88%, transparent);
+  --masthead-rule: linear-gradient(90deg, transparent, var(--metal) 12%, var(--metal-bright) 50%, var(--metal) 88%, transparent);
   --controls-bg:   linear-gradient(180deg, rgba(0,0,0,.25), rgba(0,0,0,.18));
   --app-bg:        #26282c;   /* neutral flat backdrop; themes override wholesale */
 
   /* panel + sheet surfaces (outline epics, drawer, compose, about, toast) */
   --panel-radius:    6px;
-  --panel-surface:   var(--parch);
+  --panel-surface:   var(--surface);
   --panel-head-wash: linear-gradient(90deg, rgba(0,0,0,.05), transparent 48%);
-  --sheet-surface:    var(--parch);
-  --sheet-surface-tl: var(--parch);
-  --sheet-edge:       var(--brass-lo);
+  --sheet-surface:    var(--surface);
+  --sheet-surface-tl: var(--surface);
+  --sheet-edge:       var(--metal-dim);
 
   /* card surface recipe — flat fill, rounded corner, NO texture/deckle/gild */
-  --card-surface:          var(--parch);
+  --card-surface:          var(--surface);
   --card-surface-size:     auto;
   --card-surface-blend:    normal;
-  --card-surface-selected: var(--parch-hi);
+  --card-surface-selected: var(--surface-bright);
   --card-shadow:           0 1px 3px rgba(0,0,0,.18);
   --card-shadow-hover:     0 2px 8px rgba(0,0,0,.24);
   --card-shadow-selected:  0 2px 10px rgba(0,0,0,.28);
   --card-radius:           6px;
   --deckle-filter:          none;
   --deckle-filter-selected: none;
-  --card-frame:            var(--brass) 1;     /* solid accent frame, not gilt */
+  --card-frame:            var(--metal) 1;     /* solid accent frame, not gilt */
   --card-frame-filter:     none;
   --card-frame-seat:       inset 0 0 0 1px rgba(0,0,0,.25);
+  --card-frame-shadow:                         /* selected-card frame insets (frame only; component adds --card-shadow-selected). Neutral accent, no gilt. */
+    inset 0 0 0 4px var(--metal),
+    inset 0 0 0 5px rgba(0,0,0,.25);
   --stamp-ink:             var(--closed-ink);
   --stamp-edge:            var(--closed-edge);
   --stamp-ink-abandoned:   var(--abandoned-ink);
@@ -139,11 +149,11 @@
   /* Editable-field + inset surfaces inside the shadow-DOM leaves (drawer/compose/
      comment inputs, the "contains" box, card-act/copy-link hover chips). These
      were baked light literals in the components; tokenised so a dark theme flips
-     them (a light fill under light --ink text is invisible otherwise). Neutral
-     defaults: a faint-white fill on the dark chrome, readable with --ink. */
+     them (a light fill under light --text text is invisible otherwise). Neutral
+     defaults: a faint-white fill on the dark chrome, readable with --text. */
   --field-bg:        rgba(255,255,255,.06);   /* input/select/textarea rest      */
   --field-bg-focus:  rgba(255,255,255,.10);   /* focused field                   */
-  --field-edge:      var(--parch-edge);       /* field border                    */
+  --field-edge:      var(--border);       /* field border                    */
   --inset-bg:        rgba(255,255,255,.04);   /* the drawer "contains" box        */
   --onlight-chip-bg: rgba(255,255,255,.08);   /* card-act / copy-link hover chip  */
 }
@@ -191,7 +201,7 @@ html, body { height: 100%; }
 }
 body {
   margin: 0;
-  color: var(--parch);
+  color: var(--frame-text);
   font-family: var(--gara);
   font-size: 16px;
   line-height: 1.5;
@@ -234,12 +244,12 @@ ledger-board {
 .masthead {
   display: flex; align-items: flex-end; justify-content: space-between;
   padding: 22px 34px 18px; position: relative; z-index: 1;
-  border-bottom: 2px solid var(--brass-lo);
+  border-bottom: 2px solid var(--metal-dim);
   background: var(--masthead-bg, linear-gradient(180deg, rgba(176,141,79,.06), transparent 70%));
 }
 .masthead::after { /* metal hairline + gilt tick rule */
   content: ""; position: absolute; left: 0; right: 0; bottom: -2px; height: 2px;
-  background: var(--masthead-rule, linear-gradient(90deg, transparent, var(--brass) 12%, var(--brass-hi) 50%, var(--brass) 88%, transparent));
+  background: var(--masthead-rule, linear-gradient(90deg, transparent, var(--metal) 12%, var(--metal-bright) 50%, var(--metal) 88%, transparent));
   box-shadow: 0 1px 3px rgba(0,0,0,.5);
 }
 .mark { display: flex; align-items: center; gap: 18px; }
@@ -250,28 +260,28 @@ ledger-board {
 .ledger-title svg { height: 100%; width: auto; display: block; }
 .mast-sub {
   margin: 3px 0 0; font-family: var(--fell); font-style: italic; font-size: 15px;
-  color: var(--brass); letter-spacing: .02em;
+  color: var(--metal); letter-spacing: .02em;
 }
-.mast-sub em { color: var(--brass-hi); font-style: italic; }
+.mast-sub em { color: var(--metal-bright); font-style: italic; }
 .mast-right { display: flex; align-items: center; gap: 14px; }
 .ident {
   display: flex; align-items: center; gap: 9px;
-  font-family: var(--fell); font-style: italic; font-size: 16px; color: var(--parch);
-  padding: 5px 14px; border: 1px solid var(--brass-lo); border-radius: 2px;
+  font-family: var(--fell); font-style: italic; font-size: 16px; color: var(--frame-text);
+  padding: 5px 14px; border: 1px solid var(--metal-dim); border-radius: 2px;
   background: var(--well-soft, rgba(20,14,7,.5)); box-shadow: inset 0 1px 3px rgba(0,0,0,.4);
 }
 .ident-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--seal-story); box-shadow: 0 0 7px var(--seal-story); }
-.ident.stale { color: var(--ink-red); border-color: var(--ink-red); }
-.ident.stale .ident-dot { background: var(--ink-red); box-shadow: 0 0 8px var(--ink-red); }
+.ident.stale { color: var(--alert); border-color: var(--alert); }
+.ident.stale .ident-dot { background: var(--alert); box-shadow: 0 0 8px var(--alert); }
 
 .ghost-btn {
-  font-family: var(--fell); font-style: italic; font-size: 16px; color: var(--brass-hi);
-  background: linear-gradient(180deg, var(--leather), var(--leather-2));
-  border: 1px solid var(--brass-lo); border-radius: 2px;
+  font-family: var(--fell); font-style: italic; font-size: 16px; color: var(--metal-bright);
+  background: linear-gradient(180deg, var(--frame), var(--frame-raised));
+  border: 1px solid var(--metal-dim); border-radius: 2px;
   padding: 7px 14px; cursor: pointer; transition: .15s;
   box-shadow: 0 1px 2px rgba(0,0,0,.4), inset 0 1px 0 var(--chrome-sheen, rgba(216,184,120,.15));
 }
-.ghost-btn:hover { color: var(--btn-hover-fg, #fff); border-color: var(--brass); background: linear-gradient(180deg, var(--leather-2), var(--leather)); }
+.ghost-btn:hover { color: var(--btn-hover-fg, #fff); border-color: var(--metal); background: linear-gradient(180deg, var(--frame-raised), var(--frame)); }
 /* Icon-only ghost button (the masthead "?"): a squared-off variant, not-italic
    so the single glyph reads upright and centered. Keeps ghost-btn's 7px vertical
    padding so its height matches refresh; only the horizontal padding is squared. */
@@ -284,15 +294,15 @@ ledger-board {
    ghost buttons (same metal chrome). Its menu renders on a light native surface,
    so options take dark ink. */
 .theme-select {
-  font-family: var(--fell); font-style: italic; font-size: 16px; color: var(--brass-hi);
-  background: linear-gradient(180deg, var(--leather), var(--leather-2));
-  border: 1px solid var(--brass-lo); border-radius: 2px;
+  font-family: var(--fell); font-style: italic; font-size: 16px; color: var(--metal-bright);
+  background: linear-gradient(180deg, var(--frame), var(--frame-raised));
+  border: 1px solid var(--metal-dim); border-radius: 2px;
   padding: 7px 12px; cursor: pointer; transition: .15s; outline: none;
   box-shadow: 0 1px 2px rgba(0,0,0,.4), inset 0 1px 0 var(--chrome-sheen, rgba(216,184,120,.15));
 }
-.theme-select:hover { color: var(--btn-hover-fg, #fff); border-color: var(--brass); }
-.theme-select:focus-visible { border-color: var(--brass-hi); }
-.theme-select option { color: var(--ink); }
+.theme-select:hover { color: var(--btn-hover-fg, #fff); border-color: var(--metal); }
+.theme-select:focus-visible { border-color: var(--metal-bright); }
+.theme-select option { color: var(--text); }
 
 /* ---- Controls — the filter/view rail -------------------------------- */
 .controls {
@@ -304,55 +314,55 @@ ledger-board {
 .ctl.grow { flex: 1; }
 .ctl > .ctl-label {
   font-family: var(--fell); font-style: italic; font-size: 17px; letter-spacing: .02em;
-  color: var(--brass-hi); opacity: .9;
+  color: var(--metal-bright); opacity: .9;
 }
-.seg { display: flex; align-items: center; border: 1px solid var(--brass-lo); border-radius: 2px; overflow: hidden; background: var(--well, rgba(20,14,7,.6)); }
+.seg { display: flex; align-items: center; border: 1px solid var(--metal-dim); border-radius: 2px; overflow: hidden; background: var(--well, rgba(20,14,7,.6)); }
 .seg button {
-  font-family: var(--gara); font-size: 16px; color: var(--parch-lo);
+  font-family: var(--gara); font-size: 16px; color: var(--frame-text-dim);
   background: transparent; border: 0; border-right: 1px solid var(--hairline-soft, rgba(122,95,48,.4));
   padding: 7px 15px; cursor: pointer; transition: .13s; white-space: nowrap;
 }
 .seg button:last-of-type { border-right: 0; }
-.seg button:hover { color: var(--parch-hi); background: var(--hover-wash, rgba(176,141,79,.12)); }
+.seg button:hover { color: var(--frame-text-strong); background: var(--hover-wash, rgba(176,141,79,.12)); }
 .seg button.on {
-  color: var(--seg-on-fg, var(--wood)); font-weight: 600;
-  background: var(--seg-on-bg, linear-gradient(180deg, var(--brass-hi), var(--brass)));
+  color: var(--seg-on-fg, var(--frame-deep)); font-weight: 600;
+  background: var(--seg-on-bg, linear-gradient(180deg, var(--metal-bright), var(--metal)));
   text-shadow: 0 1px 0 rgba(255,255,255,.2);
 }
 .seg input {
   width: 104px; background: transparent; border: 0; border-left: 1px solid var(--hairline-soft, rgba(122,95,48,.4));
-  color: var(--parch-hi); font-family: var(--gara); font-style: italic; font-size: 16px; padding: 7px 11px; outline: none;
+  color: var(--frame-text-strong); font-family: var(--gara); font-style: italic; font-size: 16px; padding: 7px 11px; outline: none;
 }
-.seg input::placeholder { color: var(--brass); opacity: .75; }
+.seg input::placeholder { color: var(--metal); opacity: .75; }
 
 /* Project picker — a dropdown (rooms can number in the dozens, so not a seg). */
 .ctl-select {
-  max-width: 260px; background: var(--well, rgba(20,14,7,.6)); color: var(--parch-hi);
-  border: 1px solid var(--brass-lo); border-radius: 2px;
+  max-width: 260px; background: var(--well, rgba(20,14,7,.6)); color: var(--frame-text-strong);
+  border: 1px solid var(--metal-dim); border-radius: 2px;
   font-family: var(--gara); font-size: 16px; padding: 7px 11px; cursor: pointer; outline: none;
 }
-.ctl-select:hover { color: var(--parch-hi); border-color: var(--brass); }
-.ctl-select:focus { border-color: var(--brass-hi); }
-.ctl-select option { color: var(--ink); }  /* native menu renders on light bg */
+.ctl-select:hover { color: var(--frame-text-strong); border-color: var(--metal); }
+.ctl-select:focus { border-color: var(--metal-bright); }
+.ctl-select option { color: var(--text); }  /* native menu renders on light bg */
 
 /* metal toggle — "show closed" */
 .switch { display: inline-flex; align-items: center; gap: 9px; cursor: pointer; user-select: none; }
 .switch input { position: absolute; opacity: 0; width: 0; height: 0; }
 .switch-track {
   position: relative; width: 40px; height: 20px; border-radius: 20px;
-  background: var(--well, rgba(20,14,7,.6)); border: 1px solid var(--brass-lo);
+  background: var(--well, rgba(20,14,7,.6)); border: 1px solid var(--metal-dim);
   box-shadow: inset 0 1px 3px rgba(0,0,0,.5); transition: .18s;
 }
 .switch-thumb {
   position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%;
-  background: linear-gradient(180deg, var(--brass-hi), var(--brass-lo));
+  background: linear-gradient(180deg, var(--metal-bright), var(--metal-dim));
   box-shadow: 0 1px 2px rgba(0,0,0,.5); transition: .18s;
 }
 .switch input:checked + .switch-track { background: linear-gradient(180deg, var(--seal-story), var(--switch-on-2, #2f4a3c)); border-color: var(--seal-story); }
-.switch input:checked + .switch-track .switch-thumb { transform: translateX(20px); background: linear-gradient(180deg, var(--parch-hi), var(--brass-hi)); }
-.switch input:focus-visible + .switch-track { outline: 2px solid var(--brass-hi); outline-offset: 2px; }
-.switch-text { font-family: var(--gara); font-size: 16px; color: var(--parch-lo); }
-.switch input:checked ~ .switch-text { color: var(--parch-hi); }
+.switch input:checked + .switch-track .switch-thumb { transform: translateX(20px); background: linear-gradient(180deg, var(--frame-text-strong), var(--metal-bright)); }
+.switch input:focus-visible + .switch-track { outline: 2px solid var(--metal-bright); outline-offset: 2px; }
+.switch-text { font-family: var(--gara); font-size: 16px; color: var(--frame-text-dim); }
+.switch input:checked ~ .switch-text { color: var(--frame-text-strong); }
 
 /* ---- Stage ----------------------------------------------------------- */
 /* A flex column so a lens fills the height and the paged-roots "load more" bar
@@ -363,9 +373,9 @@ ledger-board {
 .stage > ledger-load-more { flex: 0 0 auto; }
 .loading {
   position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-  gap: 13px; color: var(--brass); font-family: var(--fell); font-style: italic; font-size: 19px;
+  gap: 13px; color: var(--metal); font-family: var(--fell); font-style: italic; font-size: 19px;
 }
-.spin { width: 15px; height: 15px; border: 2px solid var(--brass-lo); border-top-color: var(--brass-hi); border-radius: 50%; animation: spin .9s linear infinite; }
+.spin { width: 15px; height: 15px; border: 2px solid var(--metal-dim); border-top-color: var(--metal-bright); border-radius: 50%; animation: spin .9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ===== COLUMNS LENS ================================================== */
@@ -378,9 +388,9 @@ ledger-board {
    and scrolling body live in that component's shadow DOM. The cards, hints, lane
    labels, and empty/hint messages below are slotted light-DOM children. */
 /* Renders on the dark stage, not the card surface — so it needs a light colour
-   (--ink-faint is tuned for the card fill and vanishes here). */
-.col-empty { padding: 34px 20px; color: var(--brass-hi); font-family: var(--fell); font-style: italic; font-size: 15px; text-align: center; line-height: 1.7; }
-.col-empty > div:last-child { color: var(--parch-lo); opacity: .8; font-size: 14px; }
+   (--text-faint is tuned for the card fill and vanishes here). */
+.col-empty { padding: 34px 20px; color: var(--metal-bright); font-family: var(--fell); font-style: italic; font-size: 15px; text-align: center; line-height: 1.7; }
+.col-empty > div:last-child { color: var(--frame-text-dim); opacity: .8; font-size: 14px; }
 
 /* Focal emphasis (figure/ground): when a column holds a selected card, its
    OTHER cards recede — dimmed and desaturated — so the active card stands out as
@@ -420,7 +430,7 @@ ledger-card.deemph:hover {
 }
 .no-est::before { content: "⚠"; font-size: 12px; }
 
-.card-id { font-family: var(--fell); font-style: italic; font-size: var(--fs-meta, 16px); color: var(--ink-red); letter-spacing: .01em; opacity: .85; }
+.card-id { font-family: var(--fell); font-style: italic; font-size: var(--fs-meta, 16px); color: var(--alert); letter-spacing: .01em; opacity: .85; }
 
 /* ticket number + copy-link, as one inline unit */
 .id-tag { display: inline-flex; align-items: center; gap: 4px; }
@@ -429,22 +439,22 @@ ledger-card.deemph:hover {
   display: inline-flex; align-items: center; justify-content: center;
   width: 20px; height: 20px; padding: 0; cursor: pointer;
   background: transparent; border: 1px solid transparent; border-radius: 3px;
-  color: var(--ink); font-size: 13px; line-height: 1;
+  color: var(--text); font-size: 13px; line-height: 1;
   opacity: .7; transition: opacity .12s, color .12s, background .12s, border-color .12s;
 }
-.copy-link:hover { opacity: 1; color: var(--wax); background: var(--copy-hover-bg, rgba(243,234,208,.7)); border-color: var(--parch-edge); }
+.copy-link:hover { opacity: 1; color: var(--wax); background: var(--copy-hover-bg, rgba(243,234,208,.7)); border-color: var(--border); }
 .copy-link.copied { opacity: 1; color: var(--seal-story); border-color: var(--seal-story); }
 /* On copy, REPLACE the copy glyph with a checkmark (don't append). */
 .copy-link.copied .copy-icon { visibility: hidden; }
 .copy-link.copied::after { content: "✓"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
 .id-tag .copy-link:focus-visible { opacity: 1; }
-.card-title { font-family: var(--fell); font-size: 16.5px; line-height: 1.3; margin: 0; color: var(--ink); }
+.card-title { font-family: var(--fell); font-size: 16.5px; line-height: 1.3; margin: 0; color: var(--text); }
 
 /* tier chip */
 .chip {
   font-family: var(--fell); font-size: 14px; font-weight: 400; letter-spacing: .1em; line-height: 1;
   text-transform: uppercase; padding: 4px 9px; border-radius: 2px; color: var(--chip-fg, #f6eed6);
-  background: var(--seal, var(--ink-faint));
+  background: var(--seal, var(--text-faint));
   box-shadow: inset 0 1px 0 rgba(255,255,255,.2), inset 0 -2px 3px rgba(0,0,0,.3), 0 1px 2px rgba(0,0,0,.3);
   border: 1px solid rgba(0,0,0,.2);
 }
@@ -452,42 +462,42 @@ ledger-card.deemph:hover {
 .t-STORY  { --seal: var(--seal-story); }
 .t-TASK   { --seal: var(--seal-task); }
 .t-BUG    { --seal: var(--seal-bug); }
-.t-SUBTASK{ --seal: var(--ink-faint); }
+.t-SUBTASK{ --seal: var(--text-faint); }
 
-.pill { font-family: var(--fell); font-style: italic; font-size: var(--fs-meta, 16px); color: var(--ink-soft); display: inline-flex; align-items: center; gap: 5px; }
+.pill { font-family: var(--fell); font-style: italic; font-size: var(--fs-meta, 16px); color: var(--text-muted); display: inline-flex; align-items: center; gap: 5px; }
 /* Status dots use --dot-* tokens (falling back to the tier seals). On a light
    theme the seal doubles as the dot fine; on a dark-surface theme the seal is
    darkened for chip-text contrast, too dark for a dot on the plate — so a dark
    theme sets brighter --dot-* values that clear 3:1 as a graphical object. */
-.pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-faint); }
+.pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-faint); }
 .st-Open .dot { background: var(--dot-open, var(--seal-epic)); }
 .st-Closed .dot, .st-Resolved .dot { background: var(--dot-closed, var(--seal-story)); }
 /* Abandoned (closed-not-completed): an inert grey dot, distinct from the warm dot
    of a completed close — the same slate the "Not done" stamp/tag uses. */
 .st-Abandoned .dot { background: var(--inert, rgba(74,78,86,.8)); }
-.who { font-family: var(--gara); font-style: italic; font-size: 15px; color: var(--ink-soft); }
-.who b { color: var(--ink); font-weight: 600; font-style: normal; }
+.who { font-family: var(--gara); font-style: italic; font-size: 15px; color: var(--text-muted); }
+.who b { color: var(--text); font-weight: 600; font-style: normal; }
 /* Context node in the outline lens — mirror of the shadow-DOM rule in
    shared-styles.ts. */
-.who.context { color: var(--ink-faint); border: 1px dotted var(--parch-edge); border-radius: 2px; padding: 0 6px; cursor: help; }
+.who.context { color: var(--text-faint); border: 1px dotted var(--border); border-radius: 2px; padding: 0 6px; cursor: help; }
 .who.context::before { content: "↳ "; opacity: .7; }
-.who.context b { color: var(--ink-soft); font-weight: 500; }
-.count-badge { color: var(--ink-red); }
+.who.context b { color: var(--text-muted); font-weight: 500; }
+.count-badge { color: var(--alert); }
 
 .lane-label {
   display: flex; align-items: center; gap: 11px;
   font-family: var(--fell-sc); font-size: 16px; letter-spacing: .06em;
-  color: var(--brass-hi); margin: 10px 4px 14px;
+  color: var(--metal-bright); margin: 10px 4px 14px;
 }
-.lane-label::before, .lane-label::after { content: ""; height: 1px; background: linear-gradient(90deg, transparent, var(--brass-lo), transparent); flex: 1; }
+.lane-label::before, .lane-label::after { content: ""; height: 1px; background: linear-gradient(90deg, transparent, var(--metal-dim), transparent); flex: 1; }
 .lane-label.direct { color: var(--accent-warm, #e6a07a); }
 .lane-label.direct::before, .lane-label.direct::after { background: linear-gradient(90deg, transparent, var(--accent-warm-faint, rgba(230,160,122,.5)), transparent); }
 
 .col-hint {
-  padding: 46px 24px; text-align: center; color: var(--parch-lo);
+  padding: 46px 24px; text-align: center; color: var(--frame-text-dim);
   font-family: var(--fell); font-style: italic; font-size: 17px; line-height: 1.75;
 }
-.col-hint .k { font-family: var(--mono); font-style: normal; font-size: 11px; border: 1px solid var(--brass-lo); border-radius: 2px; padding: 1px 6px; color: var(--brass); }
+.col-hint .k { font-family: var(--mono); font-style: normal; font-size: 11px; border: 1px solid var(--metal-dim); border-radius: 2px; padding: 1px 6px; color: var(--metal); }
 
 /* ===== OUTLINE LENS ================================================== */
 /* Rank is built with three hierarchy devices in descending strength: a type
@@ -497,14 +507,14 @@ ledger-card.deemph:hover {
 .outline { height: 100%; overflow-y: auto; padding: 26px 40px 70px; }
 .ol-epic {
   margin: 0 auto 26px; max-width: 1000px;
-  border: 1px solid var(--parch-edge); border-radius: var(--panel-radius, 3px); overflow: hidden;
-  background: var(--panel-surface, linear-gradient(180deg, var(--parch-hi), var(--parch)));
+  border: 1px solid var(--border); border-radius: var(--panel-radius, 3px); overflow: hidden;
+  background: var(--panel-surface, linear-gradient(180deg, var(--surface-bright), var(--surface)));
   box-shadow: 3px 5px 16px rgba(0,0,0,.45);
-  color: var(--ink);
+  color: var(--text);
 }
 /* The epic head — the illuminated chapter opening: largest type, a warm wash in
    from the binding edge, and a heavier rule closing it off from its entries. */
-.ol-epic > .ol-row { background: var(--panel-head-wash, linear-gradient(90deg, rgba(138,90,43,.17), transparent 48%)); border-bottom: 1.5px solid var(--parch-edge); }
+.ol-epic > .ol-row { background: var(--panel-head-wash, linear-gradient(90deg, rgba(138,90,43,.17), transparent 48%)); border-bottom: 1.5px solid var(--border); }
 .ol-row {
   display: flex; align-items: center; gap: 12px; padding: 12px 18px; cursor: pointer;
   transition: background .13s;
@@ -513,7 +523,7 @@ ledger-card.deemph:hover {
 /* Type scale — the primary rank signal. Epic largest; story a clear step down. */
 .ol-row .card-title { flex: 1; font-family: var(--fell); font-size: 18px; }
 .ol-epic > .ol-row .card-title { font-size: 22px; letter-spacing: .01em; }
-.ol-row .card-id { font-family: var(--fell); font-style: italic; font-size: 15px; color: var(--ink-red); margin-left: 0; }
+.ol-row .card-id { font-family: var(--fell); font-style: italic; font-size: 15px; color: var(--alert); margin-left: 0; }
 
 /* Chips as a quiet colour-key, not a wall of seals: flat, smaller, fading with
    depth so titles lead. Scoped to the outline — cards keep the full chip. */
@@ -529,7 +539,7 @@ ledger-card.deemph:hover {
 .ol-epic > .ol-children { position: relative; }
 .ol-epic > .ol-children::before {
   content: ""; position: absolute; left: 27px; top: 2px; bottom: 10px;
-  width: 1px; background: var(--parch-edge); opacity: .45;
+  width: 1px; background: var(--border); opacity: .45;
 }
 
 .ol-story { position: relative; }
@@ -540,9 +550,9 @@ ledger-card.deemph:hover {
 .ol-story > .ol-children { position: relative; }
 .ol-story > .ol-children::before {
   content: ""; position: absolute; left: 100px; top: 0; bottom: 6px;
-  width: 1px; background: var(--parch-edge); opacity: .7;
+  width: 1px; background: var(--border); opacity: .7;
 }
-.ol-task-row { display: flex; align-items: center; gap: 11px; padding: 7px 18px 7px 128px; cursor: pointer; font-family: var(--gara); font-size: 15px; color: var(--ink); }
+.ol-task-row { display: flex; align-items: center; gap: 11px; padding: 7px 18px 7px 128px; cursor: pointer; font-family: var(--gara); font-size: 15px; color: var(--text); }
 .ol-task-row:hover { background: var(--row-hover, rgba(176,141,79,.12)); }
 /* A task parented directly on the epic sits at the story level. */
 .ol-task-row.direct { padding-left: 44px; }
@@ -558,29 +568,29 @@ ledger-card.deemph:hover {
   border: 1.5px solid var(--closed-edge, rgba(140,43,34,.55)); white-space: nowrap;
 }
 .ol-closed-tag.abandoned { color: var(--abandoned-ink, rgba(74,78,86,.9)); border-color: var(--abandoned-edge, rgba(74,78,86,.5)); }
-.ol-caret { font-family: var(--fell); color: var(--ink-soft); width: 13px; display: inline-block; transition: transform .15s; }
+.ol-caret { font-family: var(--fell); color: var(--text-muted); width: 13px; display: inline-block; transition: transform .15s; }
 .collapsed .ol-caret { transform: rotate(-90deg); }
 .collapsed .ol-children { display: none; }
-.ol-sub-label { font-family: var(--fell-sc); font-size: 14px; letter-spacing: .08em; color: var(--ink-red); padding: 12px 18px 5px 44px; }
+.ol-sub-label { font-family: var(--fell-sc); font-size: 14px; letter-spacing: .08em; color: var(--alert); padding: 12px 18px 5px 44px; }
 /* Orphan groups reuse the epic-card chrome (.ol-epic). Their rows are top-level. */
-.ol-orphans > .ol-sub-label { padding: 13px 18px 6px; border-bottom: 1px solid var(--parch-edge); background: var(--panel-head-wash, linear-gradient(90deg, rgba(138,90,43,.14), transparent 45%)); }
+.ol-orphans > .ol-sub-label { padding: 13px 18px 6px; border-bottom: 1px solid var(--border); background: var(--panel-head-wash, linear-gradient(90deg, rgba(138,90,43,.14), transparent 45%)); }
 .ol-orphans .ol-story > .ol-row { padding-left: 18px; }
 .ol-orphans > .ol-children > .ol-task-row { padding-left: 18px; }
 .ol-read {
   font-family: var(--fell); font-style: italic; font-size: 17px; letter-spacing: .02em;
-  color: var(--ink-soft); border: 1px solid var(--parch-edge); border-radius: 2px;
+  color: var(--text-muted); border: 1px solid var(--border); border-radius: 2px;
   padding: 0 9px; cursor: pointer; transition: .12s; background: var(--onlight-btn-bg, rgba(243,234,208,.7)); line-height: 1.4;
 }
-.ol-read:hover { background: var(--ink-red); color: var(--parch-hi); border-color: transparent; }
+.ol-read:hover { background: var(--alert); color: var(--chip-fg); border-color: transparent; }
 /* Per-row add affordance, revealed on hover/focus of the row. */
 .ol-add {
   font-family: var(--fell); font-style: italic; font-size: 16px; letter-spacing: .02em;
-  color: var(--brass-hi); background: linear-gradient(180deg, var(--leather), var(--leather-2));
-  border: 1px solid var(--brass-lo); border-radius: 2px; padding: 0 9px; cursor: pointer;
+  color: var(--metal-bright); background: linear-gradient(180deg, var(--frame), var(--frame-raised));
+  border: 1px solid var(--metal-dim); border-radius: 2px; padding: 0 9px; cursor: pointer;
   line-height: 1.4; transition: .12s; opacity: 0;
 }
 .ol-row:hover .ol-add, .ol-add:focus-visible { opacity: 1; }
-.ol-add:hover { color: var(--btn-hover-fg, #fff); border-color: var(--brass); }
+.ol-add:hover { color: var(--btn-hover-fg, #fff); border-color: var(--metal); }
 
 /* ===== READING DRAWER ================================================
    The drawer is the <ledger-drawer> custom element — its panel, scrim, fields,
@@ -590,12 +600,12 @@ ledger-card.deemph:hover {
 /* ---- Toast — a sealed note ------------------------------------------ */
 .toast {
   position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%) translateY(20px);
-  color: var(--ink); font-family: var(--gara); font-size: 15px;
-  background: var(--panel-surface, linear-gradient(180deg, var(--parch-hi), var(--parch)));
-  border: 1px solid var(--parch-edge); border-left: 5px solid var(--seal-story);
+  color: var(--text); font-family: var(--gara); font-size: 15px;
+  background: var(--panel-surface, linear-gradient(180deg, var(--surface-bright), var(--surface)));
+  border: 1px solid var(--border); border-left: 5px solid var(--seal-story);
   padding: 12px 20px; border-radius: 2px;
   box-shadow: 3px 6px 20px rgba(0,0,0,.55); opacity: 0; pointer-events: none;
   transition: .28s; z-index: 800;
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-.toast.err { border-left-color: var(--ink-red); color: var(--ink-red); }
+.toast.err { border-left-color: var(--alert); color: var(--alert); }

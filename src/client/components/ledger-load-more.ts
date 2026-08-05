@@ -19,16 +19,16 @@ sheet.replaceSync(`
   .bar {
     display: flex; align-items: center; justify-content: center; gap: 14px;
     padding: 12px 20px; border-top: 1px solid rgba(160,120,60,.18);
-    font-family: var(--fell, serif); color: var(--brass-hi, #cbb07a);
+    font-family: var(--fell, serif); color: var(--metal-bright, #cbb07a);
   }
   .count { font-style: italic; font-size: 14px; opacity: .85; }
   button {
     font-family: var(--fell, serif); font-size: 15px; letter-spacing: .02em;
-    color: var(--parch-hi, #f3ead0); background: rgba(80,60,32,.55);
-    border: 1px solid var(--parch-edge, #c4ac7c); border-radius: 3px;
+    color: var(--frame-text-strong, #f3ead0); background: rgba(80,60,32,.55);
+    border: 1px solid var(--border, #c4ac7c); border-radius: 3px;
     padding: 5px 16px; cursor: pointer; transition: background .12s, opacity .12s;
   }
-  button:hover:not(:disabled) { background: var(--seal, var(--ink-red, #8f2f22)); border-color: transparent; }
+  button:hover:not(:disabled) { background: var(--seal, var(--alert, #8f2f22)); border-color: transparent; }
   button:disabled { opacity: .6; cursor: default; }
   .spin {
     display: inline-block; width: 11px; height: 11px; margin-right: 7px; vertical-align: -1px;

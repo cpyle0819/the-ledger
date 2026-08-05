@@ -28,7 +28,7 @@ cardSheet.replaceSync(`
        this the padding inflates the card box past the column edge. */
     box-sizing: border-box;
     position: relative; display: block; width: 100%; text-align: left;
-    color: var(--ink, #33291a); background: transparent; border: 0;
+    color: var(--text, #33291a); background: transparent; border: 0;
     /* Padding tuned so content sits an even ~16px inside the visible parchment
        on both sides (the paper's inset is near-symmetric with the card box). */
     padding: 14px 15px 13px 12px; cursor: pointer; font: inherit;
@@ -77,8 +77,8 @@ cardSheet.replaceSync(`
        outer gold gild (4px), a dark keyline seating it (1px inset), then the
        original selected shadow beneath. A theme overrides via --card-frame-shadow. */
     box-shadow: var(--card-frame-shadow,
-      inset 0 0 0 4px #cfa544,
-      inset 0 0 0 5px rgba(74,52,12,.5)),
+      inset 0 0 0 4px var(--metal, #8a8f98),
+      inset 0 0 0 5px rgba(0,0,0,.25)),
       var(--card-shadow-selected, 0 2px 10px rgba(0,0,0,.28));
     background: var(--card-surface-selected, #f6f6f8);
     background-size: var(--card-surface-size, auto);
@@ -88,18 +88,18 @@ cardSheet.replaceSync(`
 
   .card-top { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; }
   .card-top > .id-tag { margin-left: auto; margin-right: 12px; }
-  .card-title { font-family: var(--fell, serif); font-size: 16.5px; line-height: 1.3; margin: 0; color: var(--ink, #33291a); }
+  .card-title { font-family: var(--fell, serif); font-size: 16.5px; line-height: 1.3; margin: 0; color: var(--text, #33291a); }
   .card-meta { display: flex; align-items: center; gap: 12px; margin-top: 9px; flex-wrap: wrap; padding-top: 8px; border-top: 1px dotted rgba(91,74,48,.35); }
 
   .card-acts { position: absolute; right: 10px; bottom: 10px; display: flex; gap: 6px; opacity: 0; transition: opacity .15s; }
   .card:hover .card-acts { opacity: 1; }
   .card-act {
     font-family: var(--fell, serif); font-style: italic; font-size: 15px; letter-spacing: .02em;
-    color: var(--ink-soft, #5b4a30); background: var(--onlight-chip-bg, rgba(243,234,208,.85)); border: 1px solid var(--field-edge, var(--parch-edge, #c4ac7c));
+    color: var(--text-muted, #5b4a30); background: var(--onlight-chip-bg, rgba(243,234,208,.85)); border: 1px solid var(--field-edge, var(--border, #c4ac7c));
     border-radius: 2px; padding: 1px 9px; cursor: pointer; transition: .12s; line-height: 1.3;
   }
-  .card-act:hover { background: var(--seal, var(--ink-red, #8f2f22)); color: #f3ead0; border-color: transparent; }
-  .drill-hint { position: absolute; right: 12px; top: 14px; color: var(--seal, var(--ink-faint, #6f5c3e)); font-size: 15px; opacity: .55; transition: .15s; }
+  .card-act:hover { background: var(--seal, var(--alert, #8f2f22)); color: #f3ead0; border-color: transparent; }
+  .drill-hint { position: absolute; right: 12px; top: 14px; color: var(--seal, var(--text-faint, #6f5c3e)); font-size: 15px; opacity: .55; transition: .15s; }
   .card:hover .drill-hint, :host([selected]) .drill-hint { opacity: 1; transform: translateX(2px); }
 
   /* Closed item: a small rotated wax "CLOSED" stamp in the bottom-right corner.

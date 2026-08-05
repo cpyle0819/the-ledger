@@ -23,11 +23,11 @@ sheet.replaceSync(`
     position: absolute; top: 50%; left: 50%; width: min(640px, 92vw); max-height: 88vh;
     transform: translate(-50%, -46%); opacity: 0;
     transition: transform .3s cubic-bezier(.2,.8,.2,1), opacity .3s;
-    display: flex; flex-direction: column; color: var(--ink, #33291a);
+    display: flex; flex-direction: column; color: var(--text, #33291a);
     background: var(--sheet-surface-tl,
       radial-gradient(120% 55% at 0% 0%, rgba(196,172,124,.35), transparent 60%),
-      linear-gradient(180deg, var(--parch-hi, #f3ead0), var(--parch, #e8dbba) 70%, var(--parch-lo, #d8c69c)));
-    border: 1px solid var(--sheet-edge, var(--brass-lo, #7a5f30)); border-top: 6px solid var(--sheet-edge, var(--brass-lo, #7a5f30));
+      linear-gradient(180deg, var(--surface-bright, #f3ead0), var(--surface, #e8dbba) 70%, var(--surface-dim, #d8c69c)));
+    border: 1px solid var(--sheet-edge, var(--metal-dim, #7a5f30)); border-top: 6px solid var(--sheet-edge, var(--metal-dim, #7a5f30));
     border-radius: 3px; box-shadow: 0 28px 60px rgba(0,0,0,.5);
     padding: 26px 34px 0;
   }
@@ -37,31 +37,31 @@ sheet.replaceSync(`
   }
 
   .a-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-  .a-kicker { font-family: var(--fell-sc, serif); font-size: 13px; letter-spacing: .1em; color: var(--ink-red, #8f2f22); }
+  .a-kicker { font-family: var(--fell-sc, serif); font-size: 13px; letter-spacing: .1em; color: var(--alert, #8f2f22); }
   .ghost-btn {
-    font-family: var(--fell, serif); font-style: italic; font-size: 16px; color: var(--brass-hi, #d8b878);
-    background: linear-gradient(180deg, var(--leather, #2a1c10), var(--leather-2, #33230f));
-    border: 1px solid var(--brass-lo, #7a5f30); border-radius: 2px; padding: 7px 14px; cursor: pointer; transition: .15s;
+    font-family: var(--fell, serif); font-style: italic; font-size: 16px; color: var(--metal-bright, #d8b878);
+    background: linear-gradient(180deg, var(--frame, #2a1c10), var(--frame-raised, #33230f));
+    border: 1px solid var(--metal-dim, #7a5f30); border-radius: 2px; padding: 7px 14px; cursor: pointer; transition: .15s;
     box-shadow: 0 1px 2px rgba(0,0,0,.4), inset 0 1px 0 rgba(216,184,120,.15);
   }
-  .ghost-btn:hover { color: #fff; border-color: var(--brass, #b08d4f); background: linear-gradient(180deg, var(--leather-2, #33230f), var(--leather, #2a1c10)); }
+  .ghost-btn:hover { color: #fff; border-color: var(--metal, #b08d4f); background: linear-gradient(180deg, var(--frame-raised, #33230f), var(--frame, #2a1c10)); }
 
-  .a-title { font-family: var(--fell, serif); font-weight: 400; font-size: 30px; line-height: 1.2; margin: 12px 0 6px; color: var(--ink, #33291a); }
-  .a-lede { font-family: var(--gara, serif); font-size: 16px; line-height: 1.6; color: var(--ink-soft, #5b4a30); font-style: italic; margin: 0 0 4px; }
-  .a-rule { height: 2px; background: linear-gradient(90deg, var(--brass-lo, #7a5f30), transparent); margin: 16px 0 4px; }
+  .a-title { font-family: var(--fell, serif); font-weight: 400; font-size: 30px; line-height: 1.2; margin: 12px 0 6px; color: var(--text, #33291a); }
+  .a-lede { font-family: var(--gara, serif); font-size: 16px; line-height: 1.6; color: var(--text-muted, #5b4a30); font-style: italic; margin: 0 0 4px; }
+  .a-rule { height: 2px; background: linear-gradient(90deg, var(--metal-dim, #7a5f30), transparent); margin: 16px 0 4px; }
 
   /* The scrolling body holds the prose; the head + rule stay pinned above it. */
   .a-body { overflow-y: auto; padding: 14px 0 0; }
   .a-body h3 {
     font-family: var(--fell-sc, serif); font-weight: 400; font-size: 15px; letter-spacing: .06em;
-    color: var(--ink-red, #8f2f22); margin: 22px 0 8px;
+    color: var(--alert, #8f2f22); margin: 22px 0 8px;
   }
   .a-body h3:first-child { margin-top: 0; }
-  .a-body p { font-family: var(--gara, serif); font-size: 16px; line-height: 1.7; color: var(--ink, #33291a); margin: 0 0 12px; }
-  .a-body em { font-style: italic; color: var(--ink-soft, #5b4a30); }
+  .a-body p { font-family: var(--gara, serif); font-size: 16px; line-height: 1.7; color: var(--text, #33291a); margin: 0 0 12px; }
+  .a-body em { font-style: italic; color: var(--text-muted, #5b4a30); }
   .a-tail { height: 30px; flex: 0 0 auto; }
 
-  :focus-visible { outline: 2px solid var(--brass-hi, #d8b878); outline-offset: 3px; }
+  :focus-visible { outline: 2px solid var(--metal-bright, #d8b878); outline-offset: 3px; }
 `);
 
 // The doc content, as a flat list of blocks. Each entry is a heading (h3) or a

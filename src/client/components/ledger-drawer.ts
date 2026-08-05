@@ -68,11 +68,11 @@ sheet.replaceSync(`
   .scrim { position: absolute; inset: 0; background: rgba(12,8,3,.6); opacity: 0; transition: opacity .3s; }
   :host([open]) .scrim { opacity: 1; }
   .panel {
-    position: absolute; top: 0; right: 0; height: 100%; width: min(660px, 94vw); color: var(--ink, #33291a);
+    position: absolute; top: 0; right: 0; height: 100%; width: min(660px, 94vw); color: var(--text, #33291a);
     background: var(--sheet-surface,
       radial-gradient(120% 60% at 100% 0%, rgba(196,172,124,.35), transparent 60%),
-      linear-gradient(180deg, var(--parch-hi, #f3ead0), var(--parch, #e8dbba) 70%, var(--parch-lo, #d8c69c)));
-    border-left: 6px solid var(--sheet-edge, var(--brass-lo, #7a5f30)); box-shadow: -24px 0 48px rgba(0,0,0,.4);
+      linear-gradient(180deg, var(--surface-bright, #f3ead0), var(--surface, #e8dbba) 70%, var(--surface-dim, #d8c69c)));
+    border-left: 6px solid var(--sheet-edge, var(--metal-dim, #7a5f30)); box-shadow: -24px 0 48px rgba(0,0,0,.4);
     transform: translateX(100%); transition: transform .3s cubic-bezier(.2,.8,.2,1);
     display: flex; flex-direction: column; padding: 26px 32px 0; overflow-y: auto;
   }
@@ -80,7 +80,7 @@ sheet.replaceSync(`
      and inflates scrollHeight with phantom space. */
   .panel > * { flex-shrink: 0; }
   .panel::before { content: ""; position: absolute; left: -6px; top: 0; bottom: 0; width: 6px;
-    background: repeating-linear-gradient(180deg, var(--brass-lo, #7a5f30) 0 8px, var(--wood, #1c1409) 8px 16px); opacity: .6; }
+    background: repeating-linear-gradient(180deg, var(--metal-dim, #7a5f30) 0 8px, var(--frame-deep, #1c1409) 8px 16px); opacity: .6; }
   :host([open]) .panel { transform: translateX(0); }
   /* Bottom breathing room: a real block in the scroll flow (Blink drops container
      padding-bottom and trailing margins at a flex-column scroll end). */
@@ -92,7 +92,7 @@ sheet.replaceSync(`
   .d-back {
     align-self: flex-start; display: inline-flex; align-items: baseline; gap: 6px; max-width: 100%;
     margin: -6px 0 6px; padding: 2px 2px; border: 0; background: none; cursor: pointer;
-    font-family: var(--fell, serif); font-style: italic; font-size: 17px; color: var(--ink-red, #8f2f22);
+    font-family: var(--fell, serif); font-style: italic; font-size: 17px; color: var(--alert, #8f2f22);
   }
   .d-back:hover { color: var(--wax, #7c2b22); }
   /* An explicit display overrides the UA [hidden] rule, so hide must be explicit
@@ -103,63 +103,63 @@ sheet.replaceSync(`
 
   .head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
   .dh-left { display: flex; align-items: center; gap: 12px; }
-  .d-short { font-family: var(--fell, serif); font-style: italic; font-size: 16px; color: var(--ink-red, #8f2f22); text-decoration: none; border-bottom: 1px dotted var(--ink-red, #8f2f22); }
+  .d-short { font-family: var(--fell, serif); font-style: italic; font-size: 16px; color: var(--alert, #8f2f22); text-decoration: none; border-bottom: 1px dotted var(--alert, #8f2f22); }
   .d-short:hover { color: var(--wax, #7c2b22); }
   /* No source link: plain id text, not a dead link. */
-  .d-short.no-link { color: var(--ink-soft, #5b4a30); border-bottom: 0; cursor: default; pointer-events: none; }
-  .save-state { font-family: var(--fell, serif); font-style: italic; font-size: 16px; margin-left: 10px; color: var(--ink-faint, #6f5c3e); opacity: 0; transition: opacity .18s ease; }
+  .d-short.no-link { color: var(--text-muted, #5b4a30); border-bottom: 0; cursor: default; pointer-events: none; }
+  .save-state { font-family: var(--fell, serif); font-style: italic; font-size: 16px; margin-left: 10px; color: var(--text-faint, #6f5c3e); opacity: 0; transition: opacity .18s ease; }
   .save-state.saved { color: var(--seal-story, #3f5e4e); opacity: 1; }
   .ghost-btn {
-    font-family: var(--fell, serif); font-style: italic; font-size: 16px; color: var(--brass-hi, #d8b878);
-    background: linear-gradient(180deg, var(--leather, #2a1c10), var(--leather-2, #33230f));
-    border: 1px solid var(--brass-lo, #7a5f30); border-radius: 2px; padding: 7px 14px; cursor: pointer; transition: .15s;
+    font-family: var(--fell, serif); font-style: italic; font-size: 16px; color: var(--metal-bright, #d8b878);
+    background: linear-gradient(180deg, var(--frame, #2a1c10), var(--frame-raised, #33230f));
+    border: 1px solid var(--metal-dim, #7a5f30); border-radius: 2px; padding: 7px 14px; cursor: pointer; transition: .15s;
     box-shadow: 0 1px 2px rgba(0,0,0,.4), inset 0 1px 0 rgba(216,184,120,.15);
   }
-  .ghost-btn:hover { color: #fff; border-color: var(--brass, #b08d4f); background: linear-gradient(180deg, var(--leather-2, #33230f), var(--leather, #2a1c10)); }
+  .ghost-btn:hover { color: #fff; border-color: var(--metal, #b08d4f); background: linear-gradient(180deg, var(--frame-raised, #33230f), var(--frame, #2a1c10)); }
 
-  .d-title { font-family: var(--fell, serif); font-weight: 400; font-size: 30px; line-height: 1.2; margin: 18px 0 12px; color: var(--ink, #33291a); }
+  .d-title { font-family: var(--fell, serif); font-weight: 400; font-size: 30px; line-height: 1.2; margin: 18px 0 12px; color: var(--text, #33291a); }
   /* When the title is editable, the heading reads as an affordance: a dotted
      underline on hover/focus that echoes the description edit target. */
   .d-title.editable { cursor: text; border-radius: 2px; }
-  .d-title.editable:hover, .d-title.editable:focus-visible { text-decoration: underline dotted var(--brass-lo, #7a5f30); text-underline-offset: 5px; }
+  .d-title.editable:hover, .d-title.editable:focus-visible { text-decoration: underline dotted var(--metal-dim, #7a5f30); text-underline-offset: 5px; }
   /* The in-place title input mirrors the heading's type so the swap is seamless;
      just enough box to read as an editable field. */
   .d-title-edit {
     box-sizing: border-box; width: 100%; margin: 18px 0 12px; padding: 2px 6px;
-    font-family: var(--fell, serif); font-weight: 400; font-size: 30px; line-height: 1.2; color: var(--ink, #33291a);
-    background: var(--field-bg, rgba(255,250,235,.7)); border: 1px solid var(--field-edge, var(--parch-edge, #c4ac7c)); border-radius: 2px; outline: none;
+    font-family: var(--fell, serif); font-weight: 400; font-size: 30px; line-height: 1.2; color: var(--text, #33291a);
+    background: var(--field-bg, rgba(255,250,235,.7)); border: 1px solid var(--field-edge, var(--border, #c4ac7c)); border-radius: 2px; outline: none;
   }
-  .d-title-edit:focus { border-color: var(--brass-lo, #7a5f30); background: var(--field-bg-focus, #fffaeb); }
-  .d-rule { height: 2px; background: linear-gradient(90deg, var(--brass-lo, #7a5f30), transparent); margin-bottom: 20px; }
+  .d-title-edit:focus { border-color: var(--metal-dim, #7a5f30); background: var(--field-bg-focus, #fffaeb); }
+  .d-rule { height: 2px; background: linear-gradient(90deg, var(--metal-dim, #7a5f30), transparent); margin-bottom: 20px; }
   .d-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 22px; margin-bottom: 20px; }
-  .d-field label { display: block; font-family: var(--fell, serif); font-style: italic; font-size: 17px; color: var(--ink-soft, #5b4a30); margin-bottom: 5px; }
+  .d-field label { display: block; font-family: var(--fell, serif); font-style: italic; font-size: 17px; color: var(--text-muted, #5b4a30); margin-bottom: 5px; }
   /* A missing-estimate warning glyph beside the estimate label (the drawer's own
      item — just the icon, per the flag's window treatment). */
   .est-warn { margin-left: 7px; font-style: normal; font-size: 13px; color: var(--risk-under, #b8842a); }
   /* Confidence note under the estimate input: what this tier's estimate is for
      (a rough guess vs. a committed, velocity-feeding figure). A quiet italic
      footnote so it informs without competing with the field. */
-  .d-conf-note { margin: 6px 0 0; font-family: var(--fell, serif); font-style: italic; font-size: 15px; line-height: 1.4; color: var(--ink-faint, #6f5c3e); }
+  .d-conf-note { margin: 6px 0 0; font-family: var(--fell, serif); font-style: italic; font-size: 15px; line-height: 1.4; color: var(--text-faint, #6f5c3e); }
   .d-conf-note:empty { display: none; }
   .d-field select, .d-field input, .d-typeahead input {
-    box-sizing: border-box; width: 100%; background: var(--field-bg, rgba(255,250,235,.7)); color: var(--ink, #33291a); border: 1px solid var(--field-edge, var(--parch-edge, #c4ac7c));
+    box-sizing: border-box; width: 100%; background: var(--field-bg, rgba(255,250,235,.7)); color: var(--text, #33291a); border: 1px solid var(--field-edge, var(--border, #c4ac7c));
     border-radius: 2px; padding: 8px 10px; font-family: var(--gara, serif); font-size: 15px; outline: none;
   }
-  .d-field select:focus, .d-field input:focus, .d-typeahead input:focus { border-color: var(--brass-lo, #7a5f30); background: var(--field-bg-focus, #fffaeb); }
+  .d-field select:focus, .d-field input:focus, .d-typeahead input:focus { border-color: var(--metal-dim, #7a5f30); background: var(--field-bg-focus, #fffaeb); }
   /* A read-only field value (the completion date, written by the source on close,
      never edited here): the field-box metrics without an input's affordances. */
-  .d-readonly { box-sizing: border-box; padding: 8px 10px; font-family: var(--gara, serif); font-size: 15px; color: var(--ink, #33291a); }
-  .d-readonly.empty { color: var(--ink-faint, #6f5c3e); font-style: italic; }
+  .d-readonly { box-sizing: border-box; padding: 8px 10px; font-family: var(--gara, serif); font-size: 15px; color: var(--text, #33291a); }
+  .d-readonly.empty { color: var(--text-faint, #6f5c3e); font-style: italic; }
 
   .d-typeahead { position: relative; }
   .typeahead-list { position: absolute; z-index: 5; left: 0; right: 0; top: calc(100% + 2px); margin: 0; padding: 4px; list-style: none;
-    background: var(--parch-hi, #f3ead0); border: 1px solid var(--brass-lo, #7a5f30); border-radius: 2px;
+    background: var(--surface-bright, #f3ead0); border: 1px solid var(--metal-dim, #7a5f30); border-radius: 2px;
     box-shadow: 0 8px 20px rgba(0,0,0,.35); max-height: 260px; overflow-y: auto; }
   .typeahead-item { display: grid; grid-template-columns: 1fr auto; gap: 0 10px; align-items: baseline; padding: 6px 8px; cursor: pointer; border-radius: 2px; }
   .typeahead-item.active, .typeahead-item:hover { background: rgba(196,172,124,.35); }
-  .ta-name { font-family: var(--gara, serif); font-size: 15px; color: var(--ink, #33291a); }
-  .ta-alias { font-family: var(--mono, monospace); font-size: 12px; color: var(--ink-red, #8f2f22); }
-  .ta-title { grid-column: 1 / -1; font-family: var(--fell, serif); font-style: italic; font-size: 12.5px; color: var(--ink-faint, #6f5c3e); }
+  .ta-name { font-family: var(--gara, serif); font-size: 15px; color: var(--text, #33291a); }
+  .ta-alias { font-family: var(--mono, monospace); font-size: 12px; color: var(--alert, #8f2f22); }
+  .ta-title { grid-column: 1 / -1; font-family: var(--fell, serif); font-style: italic; font-size: 12.5px; color: var(--text-faint, #6f5c3e); }
 
   /* The risk line under the title: a budget meter contrasting the item's own
      estimate (the baseline) against the summed effort of its direct children.
@@ -176,7 +176,7 @@ sheet.replaceSync(`
   /* Why the meter reads over/under: what the delta says about the plan, in plain
      words. A quiet italic line so it explains without competing with the verdict
      label's tone above it. */
-  .d-risk .rwhy { margin: 0; font-style: italic; font-size: 15px; line-height: 1.45; color: var(--ink-soft, #5b4a30); }
+  .d-risk .rwhy { margin: 0; font-style: italic; font-size: 15px; line-height: 1.45; color: var(--text-muted, #5b4a30); }
   .d-risk .rmeter {
     position: relative; flex: 0 0 132px; height: 9px; border-radius: 5px; overflow: hidden;
     background: rgba(91,74,48,.18); box-shadow: inset 0 0 0 1px rgba(91,74,48,.25);
@@ -187,17 +187,17 @@ sheet.replaceSync(`
   .d-risk .rover { position: absolute; inset: 0 0 0 auto; width: 12px; background: repeating-linear-gradient(135deg, var(--risk-over, #a8321f) 0 4px, rgba(168,50,31,.55) 4px 8px); }
   .d-risk .rlabel { display: inline-flex; align-items: baseline; gap: 6px; }
   .d-risk .rarrow { font-size: 15px; font-style: normal; }
-  .d-risk .rnums { font-style: italic; color: var(--ink-soft, #5b4a30); }
+  .d-risk .rnums { font-style: italic; color: var(--text-muted, #5b4a30); }
   /* Balanced: calm brass fill, quiet ink label. Over: hot red. Under: cooler
      amber (ambiguous — may just mean more work is planned than was booked). */
-  .d-risk.balanced .rfill { background: var(--brass-lo, #7a5f30); }
+  .d-risk.balanced .rfill { background: var(--metal-dim, #7a5f30); }
   .d-risk.balanced .rlabel { color: var(--seal-story, #3f5e4e); }
   .d-risk.over .rfill { background: var(--risk-over, #a8321f); }
   .d-risk.over .rlabel { color: var(--risk-over, #a8321f); }
   .d-risk.under .rfill { background: var(--risk-under, #b8842a); }
   .d-risk.under .rlabel { color: var(--risk-under, #b8842a); }
   /* No estimate to budget against, or a leaf: no meter, just a muted note. */
-  .d-risk.none { color: var(--ink-faint, #6f5c3e); font-style: italic; }
+  .d-risk.none { color: var(--text-faint, #6f5c3e); font-style: italic; }
   /* Reserve the meter's height while the children load. It sits high (right under
      the title), so its late arrival otherwise shoves the fields + description down.
      72px matches the dominant filled case (an over/under imbalance with its
@@ -222,11 +222,11 @@ sheet.replaceSync(`
 
   /* Planning section (was "Contents"): each group header carries the child count
      and their summed effort. Same dot separator the group labels already use. */
-  .cgroup-effort { margin-left: 14px; font-family: var(--fell, serif); font-style: italic; font-size: 17px; color: var(--ink-soft, #5b4a30); }
-  .cgroup-effort::before { content: "· "; color: var(--ink-faint, #6f5c3e); }
+  .cgroup-effort { margin-left: 14px; font-family: var(--fell, serif); font-style: italic; font-size: 17px; color: var(--text-muted, #5b4a30); }
+  .cgroup-effort::before { content: "· "; color: var(--text-faint, #6f5c3e); }
 
-  .d-contains { margin-bottom: 22px; padding: 14px 16px; border: 1px solid var(--field-edge, var(--parch-edge, #c4ac7c)); border-radius: 2px; background: var(--inset-bg, rgba(255,250,235,.4)); }
-  .d-contains h4 { margin: 0 0 10px; font-family: var(--fell-sc, serif); font-size: 15px; letter-spacing: .08em; color: var(--ink-red, #8f2f22); font-weight: 400; }
+  .d-contains { margin-bottom: 22px; padding: 14px 16px; border: 1px solid var(--field-edge, var(--border, #c4ac7c)); border-radius: 2px; background: var(--inset-bg, rgba(255,250,235,.4)); }
+  .d-contains h4 { margin: 0 0 10px; font-family: var(--fell-sc, serif); font-size: 15px; letter-spacing: .08em; color: var(--alert, #8f2f22); font-weight: 400; }
   .cline { display: flex; align-items: center; gap: 10px; padding: 6px 4px; cursor: pointer; border-bottom: 1px dotted rgba(91,74,48,.25); font-size: 16px; }
   .cline:last-child { border-bottom: 0; }
   .cline:hover { color: var(--wax, #7c2b22); }
@@ -236,58 +236,58 @@ sheet.replaceSync(`
   .cline.deemph { filter: brightness(.82) saturate(.72); opacity: .82; }
   .cline.deemph:hover { filter: none; opacity: 1; }
   /* The collapsed closed-children row and its caret; the revealed list is indented. */
-  .cclosed-toggle .ct { font-style: italic; color: var(--ink-soft, #5b4a30); }
-  .cclosed-caret { display: inline-block; width: 1em; color: var(--ink-faint, #6f5c3e); font-size: 14px; }
+  .cclosed-toggle .ct { font-style: italic; color: var(--text-muted, #5b4a30); }
+  .cclosed-caret { display: inline-block; width: 1em; color: var(--text-faint, #6f5c3e); font-size: 14px; }
   .cclosed-list { padding-left: 16px; }
   .cgroup { margin-top: 8px; }
   /* Velocity line: a calm italic footnote under the Planning groups. A top
      rule sets it apart as a summary of the tree above, not another group. */
   .cvelocity { margin-top: 12px; padding-top: 10px; border-top: 1px dotted rgba(91,74,48,.35);
-    font-family: var(--fell, serif); font-style: italic; font-size: 16px; color: var(--ink-soft, #5b4a30); }
+    font-family: var(--fell, serif); font-style: italic; font-size: 16px; color: var(--text-muted, #5b4a30); }
   .cgroup-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 10px 0 4px; }
-  .cgroup-label { font-family: var(--fell, serif); font-style: italic; font-size: 17px; color: var(--ink-soft, #5b4a30); }
+  .cgroup-label { font-family: var(--fell, serif); font-style: italic; font-size: 17px; color: var(--text-muted, #5b4a30); }
   /* The per-section add button is revealed on hover/focus of its group, so the
      contents list stays calm until you reach for it. It stays visible while
      keyboard-focused so it's reachable without a pointer. */
   .cgroup-add {
-    font-family: var(--fell, serif); font-style: italic; font-size: 15px; color: var(--brass-hi, #d8b878);
-    background: linear-gradient(180deg, var(--leather, #2a1c10), var(--leather-2, #33230f));
-    border: 1px solid var(--brass-lo, #7a5f30); border-radius: 2px; padding: 3px 10px; cursor: pointer;
+    font-family: var(--fell, serif); font-style: italic; font-size: 15px; color: var(--metal-bright, #d8b878);
+    background: linear-gradient(180deg, var(--frame, #2a1c10), var(--frame-raised, #33230f));
+    border: 1px solid var(--metal-dim, #7a5f30); border-radius: 2px; padding: 3px 10px; cursor: pointer;
     opacity: 0; transition: opacity .12s, color .12s, border-color .12s;
   }
   .cgroup:hover .cgroup-add, .cgroup-add:focus-visible { opacity: 1; }
-  .cgroup-add:hover { color: #fff; border-color: var(--brass, #b08d4f); }
+  .cgroup-add:hover { color: #fff; border-color: var(--metal, #b08d4f); }
 
   .d-desc-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-  .d-desc-label { font-family: var(--fell-sc, serif); font-size: 17px; letter-spacing: .08em; color: var(--ink-red, #8f2f22); }
-  .d-desc-render { font-family: var(--gara, serif); font-size: 18px; line-height: 1.7; color: var(--ink, #33291a); min-height: 120px; cursor: text; border-radius: 2px; transition: background .12s; }
+  .d-desc-label { font-family: var(--fell-sc, serif); font-size: 17px; letter-spacing: .08em; color: var(--alert, #8f2f22); }
+  .d-desc-render { font-family: var(--gara, serif); font-size: 18px; line-height: 1.7; color: var(--text, #33291a); min-height: 120px; cursor: text; border-radius: 2px; transition: background .12s; }
   .d-desc-render:hover { background: rgba(196,172,124,.12); }
-  .d-desc-render.empty { font-style: italic; color: var(--ink-faint, #6f5c3e); }
-  .d-desc-render h1, .d-desc-render h2, .d-desc-render h3 { font-family: var(--fell, serif); font-weight: 400; color: var(--ink, #33291a); line-height: 1.25; margin: 20px 0 8px; }
+  .d-desc-render.empty { font-style: italic; color: var(--text-faint, #6f5c3e); }
+  .d-desc-render h1, .d-desc-render h2, .d-desc-render h3 { font-family: var(--fell, serif); font-weight: 400; color: var(--text, #33291a); line-height: 1.25; margin: 20px 0 8px; }
   .d-desc-render h1 { font-size: 24px; } .d-desc-render h2 { font-size: 21px; } .d-desc-render h3 { font-size: 18px; }
   .d-desc-render p { margin: 0 0 12px; }
-  .d-desc-render a { color: var(--ink-red, #8f2f22); text-decoration: underline; text-decoration-style: dotted; }
+  .d-desc-render a { color: var(--alert, #8f2f22); text-decoration: underline; text-decoration-style: dotted; }
   .d-desc-render a:hover { color: var(--wax, #7c2b22); }
   .d-desc-render code { font-family: var(--mono, monospace); font-size: 13px; background: rgba(120,80,40,.12); padding: 1px 5px; border-radius: 2px; }
-  .d-desc-render pre { background: rgba(40,28,14,.08); border: 1px solid var(--parch-edge, #c4ac7c); border-left: 3px solid var(--brass-lo, #7a5f30); border-radius: 2px; padding: 12px 14px; overflow-x: auto; }
+  .d-desc-render pre { background: rgba(40,28,14,.08); border: 1px solid var(--border, #c4ac7c); border-left: 3px solid var(--metal-dim, #7a5f30); border-radius: 2px; padding: 12px 14px; overflow-x: auto; }
   .d-desc-render pre code { background: none; padding: 0; font-size: 12.5px; line-height: 1.5; }
   .d-desc-render ul, .d-desc-render ol { margin: 0 0 12px; padding-left: 24px; }
   .d-desc-render li { margin: 3px 0; }
-  .d-desc-render blockquote { margin: 0 0 12px; padding: 4px 16px; border-left: 3px solid var(--brass-lo, #7a5f30); color: var(--ink-soft, #5b4a30); font-style: italic; }
-  .d-desc-render hr { border: 0; height: 1px; background: linear-gradient(90deg, var(--brass-lo, #7a5f30), transparent); margin: 18px 0; }
+  .d-desc-render blockquote { margin: 0 0 12px; padding: 4px 16px; border-left: 3px solid var(--metal-dim, #7a5f30); color: var(--text-muted, #5b4a30); font-style: italic; }
+  .d-desc-render hr { border: 0; height: 1px; background: linear-gradient(90deg, var(--metal-dim, #7a5f30), transparent); margin: 18px 0; }
   .d-desc-render table { border-collapse: collapse; width: 100%; margin: 0 0 12px; font-size: 16px; }
-  .d-desc-render th, .d-desc-render td { border: 1px solid var(--parch-edge, #c4ac7c); padding: 6px 10px; text-align: left; vertical-align: top; }
-  .d-desc-render th { font-family: var(--fell, serif); font-weight: 600; background: rgba(196,172,124,.18); color: var(--ink, #33291a); }
+  .d-desc-render th, .d-desc-render td { border: 1px solid var(--border, #c4ac7c); padding: 6px 10px; text-align: left; vertical-align: top; }
+  .d-desc-render th { font-family: var(--fell, serif); font-weight: 600; background: rgba(196,172,124,.18); color: var(--text, #33291a); }
   .d-desc-render tbody tr:nth-child(even) { background: rgba(196,172,124,.08); }
   .d-desc {
-    width: 100%; min-height: 300px; resize: vertical; color: var(--ink, #33291a); background: var(--field-bg, rgba(255,250,235,.7));
-    border: 1px solid var(--parch-edge, #c4ac7c); border-radius: 2px; padding: 16px; font-family: var(--gara, serif);
+    width: 100%; min-height: 300px; resize: vertical; color: var(--text, #33291a); background: var(--field-bg, rgba(255,250,235,.7));
+    border: 1px solid var(--border, #c4ac7c); border-radius: 2px; padding: 16px; font-family: var(--gara, serif);
     font-size: 15px; line-height: 1.65; outline: none;
     background-image: repeating-linear-gradient(180deg, transparent 0 27px, rgba(91,74,48,.12) 27px 28px);
   }
-  .d-desc:focus { border-color: var(--brass-lo, #7a5f30); }
+  .d-desc:focus { border-color: var(--metal-dim, #7a5f30); }
   .d-comments { margin-top: 26px; }
-  :focus-visible { outline: 2px solid var(--brass-hi, #d8b878); outline-offset: 3px; }
+  :focus-visible { outline: 2px solid var(--metal-bright, #d8b878); outline-offset: 3px; }
 `);
 
 interface TypeaheadState { items: User[]; active: number; seq: number; debounce: number | null }

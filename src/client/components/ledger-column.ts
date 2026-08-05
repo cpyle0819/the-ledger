@@ -20,23 +20,23 @@ sheet.replaceSync(`
   :host(:last-of-type) { border-right: 0; }
   .col-head {
     display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
-    padding: 16px 20px 12px; border-bottom: 1px solid var(--brass-lo, #7a5f30); position: relative;
+    padding: 16px 20px 12px; border-bottom: 1px solid var(--metal-dim, #7a5f30); position: relative;
   }
   h3 {
     margin: 0; font-family: var(--fell-sc, Georgia, serif); font-weight: 400; font-size: 21px;
-    letter-spacing: .06em; color: var(--brass-hi, #d8b878); text-shadow: 0 1px 0 rgba(0,0,0,.5);
+    letter-spacing: .06em; color: var(--metal-bright, #d8b878); text-shadow: 0 1px 0 rgba(0,0,0,.5);
   }
   h3::before { content: "§ "; opacity: .5; }
   .head-right { display: flex; align-items: baseline; gap: 12px; }
-  .count { font-family: var(--fell, serif); font-style: italic; font-size: 17px; color: var(--brass-hi, #d8b878); }
+  .count { font-family: var(--fell, serif); font-style: italic; font-size: 17px; color: var(--metal-bright, #d8b878); }
   /* The add "+" sits by the count; a small brass roundel that brightens on hover. */
   .col-add {
     align-self: center; width: 24px; height: 24px; padding: 0; cursor: pointer;
-    font-size: 18px; line-height: 1; color: var(--brass-hi, #d8b878);
-    background: linear-gradient(180deg, var(--leather, #2a1c10), var(--leather-2, #33230f));
-    border: 1px solid var(--brass-lo, #7a5f30); border-radius: 50%; transition: .15s;
+    font-size: 18px; line-height: 1; color: var(--metal-bright, #d8b878);
+    background: linear-gradient(180deg, var(--frame, #2a1c10), var(--frame-raised, #33230f));
+    border: 1px solid var(--metal-dim, #7a5f30); border-radius: 50%; transition: .15s;
   }
-  .col-add:hover { color: #fff; border-color: var(--brass, #b08d4f); }
+  .col-add:hover { color: #fff; border-color: var(--metal, #b08d4f); }
   .col-add[hidden] { display: none; }
   /* Generous horizontal padding leaves clear space between the cards' torn
      (deckle-displaced) edges and the column divider / scrollbar gutter.

@@ -23,44 +23,44 @@ const sheet = new CSSStyleSheet();
 sheet.replaceSync(`
   :host { display: block; }
   .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-  .label { font-family: var(--fell-sc, Georgia, serif); font-size: 17px; letter-spacing: .08em; color: var(--ink-red, #8f2f22); }
+  .label { font-family: var(--fell-sc, Georgia, serif); font-size: 17px; letter-spacing: .08em; color: var(--alert, #8f2f22); }
 
   .compose { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
   .compose textarea, .c-edit {
-    width: 100%; resize: vertical; color: var(--ink, #33291a); font-family: var(--gara, serif);
+    width: 100%; resize: vertical; color: var(--text, #33291a); font-family: var(--gara, serif);
     font-size: 16.5px; line-height: 1.6; background: var(--field-bg, rgba(255,250,235,.7));
-    border: 1px solid var(--parch-edge, #c4ac7c); border-radius: 2px; padding: 8px 10px; outline: none;
+    border: 1px solid var(--border, #c4ac7c); border-radius: 2px; padding: 8px 10px; outline: none;
   }
-  .compose textarea:focus, .c-edit:focus { border-color: var(--brass-lo, #7a5f30); background: var(--field-bg-focus, #fffaeb); }
+  .compose textarea:focus, .c-edit:focus { border-color: var(--metal-dim, #7a5f30); background: var(--field-bg-focus, #fffaeb); }
   .mini-btn, .ghost-btn {
     font-family: var(--fell, serif); font-style: italic; font-size: 16px; cursor: pointer; border-radius: 2px;
     padding: 6px 13px; transition: .13s; line-height: 1.3;
   }
   .mini-btn {
-    border: 1px solid var(--brass-lo, #7a5f30); color: var(--wood, #1c1409); font-weight: 700;
-    background: linear-gradient(180deg, var(--brass-hi, #d8b878), var(--brass, #b08d4f));
+    border: 1px solid var(--metal-dim, #7a5f30); color: var(--frame-deep, #1c1409); font-weight: 700;
+    background: linear-gradient(180deg, var(--metal-bright, #d8b878), var(--metal, #b08d4f));
     box-shadow: 0 1px 2px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.25);
   }
-  .mini-btn:hover { background: linear-gradient(180deg, var(--brass, #b08d4f), var(--brass-lo, #7a5f30)); color: var(--parch-hi, #f3ead0); }
+  .mini-btn:hover { background: linear-gradient(180deg, var(--metal, #b08d4f), var(--metal-dim, #7a5f30)); color: var(--frame-text-strong, #f3ead0); }
   .mini-btn:disabled { opacity: .45; cursor: default; }
-  .ghost-btn { background: transparent; border: 1px solid var(--parch-edge, #c4ac7c); color: var(--ink-soft, #5b4a30); }
+  .ghost-btn { background: transparent; border: 1px solid var(--border, #c4ac7c); color: var(--text-muted, #5b4a30); }
   .compose .mini-btn { align-self: flex-start; }
 
-  .c-empty { font-family: var(--fell, serif); font-style: italic; color: var(--ink-faint, #6f5c3e); font-size: 15px; padding: 4px 0 12px; }
+  .c-empty { font-family: var(--fell, serif); font-style: italic; color: var(--text-faint, #6f5c3e); font-size: 15px; padding: 4px 0 12px; }
   .c-list { display: flex; flex-direction: column; gap: 12px; }
-  .c-item { border-left: 2px solid var(--brass-lo, #7a5f30); padding: 6px 0 6px 12px; background: linear-gradient(90deg, rgba(196,172,124,.14), transparent 60%); }
+  .c-item { border-left: 2px solid var(--metal-dim, #7a5f30); padding: 6px 0 6px 12px; background: linear-gradient(90deg, rgba(196,172,124,.14), transparent 60%); }
   .c-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 3px; }
-  .c-author { font-family: var(--fell, serif); font-style: italic; font-weight: 600; font-size: 16px; color: var(--ink, #33291a); }
-  .c-when { font-family: var(--fell, serif); font-style: italic; font-size: 14.5px; color: var(--ink-faint, #6f5c3e); }
+  .c-author { font-family: var(--fell, serif); font-style: italic; font-weight: 600; font-size: 16px; color: var(--text, #33291a); }
+  .c-when { font-family: var(--fell, serif); font-style: italic; font-size: 14.5px; color: var(--text-faint, #6f5c3e); }
   .c-acts { margin-left: auto; display: flex; gap: 8px; }
-  .c-act { font-family: var(--fell, serif); font-style: italic; font-size: 15px; color: var(--ink-soft, #5b4a30); background: transparent; border: 0; padding: 0; cursor: pointer; text-decoration: underline dotted; }
+  .c-act { font-family: var(--fell, serif); font-style: italic; font-size: 15px; color: var(--text-muted, #5b4a30); background: transparent; border: 0; padding: 0; cursor: pointer; text-decoration: underline dotted; }
   .c-act:hover { color: var(--wax, #7c2b22); }
-  .c-body { font-family: var(--gara, serif); font-size: 16.5px; line-height: 1.6; color: var(--ink, #33291a); }
+  .c-body { font-family: var(--gara, serif); font-size: 16.5px; line-height: 1.6; color: var(--text, #33291a); }
   .c-body p { margin: 0 0 6px; } .c-body p:last-child { margin-bottom: 0; }
   .c-body code { font-family: var(--mono, monospace); font-size: 12.5px; background: rgba(120,80,40,.12); padding: 1px 4px; border-radius: 2px; }
-  .c-body a { color: var(--ink-red, #8f2f22); text-decoration: underline dotted; }
+  .c-body a { color: var(--alert, #8f2f22); text-decoration: underline dotted; }
   .c-body table { border-collapse: collapse; width: 100%; margin: 0 0 6px; font-size: 15px; }
-  .c-body th, .c-body td { border: 1px solid var(--parch-edge, #c4ac7c); padding: 4px 8px; text-align: left; vertical-align: top; }
+  .c-body th, .c-body td { border: 1px solid var(--border, #c4ac7c); padding: 4px 8px; text-align: left; vertical-align: top; }
   .c-body th { font-family: var(--fell, serif); font-weight: 600; background: rgba(196,172,124,.18); }
   .c-body tbody tr:nth-child(even) { background: rgba(196,172,124,.08); }
   .c-edit { margin-top: 4px; }

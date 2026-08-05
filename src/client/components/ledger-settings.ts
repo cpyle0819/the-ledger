@@ -29,11 +29,11 @@ sheet.replaceSync(`
     position: absolute; top: 50%; left: 50%; width: min(520px, 92vw); max-height: 88vh;
     transform: translate(-50%, -46%); opacity: 0;
     transition: transform .3s cubic-bezier(.2,.8,.2,1), opacity .3s;
-    display: flex; flex-direction: column; color: var(--ink, #33291a);
+    display: flex; flex-direction: column; color: var(--text, #33291a);
     background: var(--sheet-surface-tl,
       radial-gradient(120% 55% at 0% 0%, rgba(196,172,124,.35), transparent 60%),
-      linear-gradient(180deg, var(--parch-hi, #f3ead0), var(--parch, #e8dbba) 70%, var(--parch-lo, #d8c69c)));
-    border: 1px solid var(--sheet-edge, var(--brass-lo, #7a5f30)); border-top: 6px solid var(--sheet-edge, var(--brass-lo, #7a5f30));
+      linear-gradient(180deg, var(--surface-bright, #f3ead0), var(--surface, #e8dbba) 70%, var(--surface-dim, #d8c69c)));
+    border: 1px solid var(--sheet-edge, var(--metal-dim, #7a5f30)); border-top: 6px solid var(--sheet-edge, var(--metal-dim, #7a5f30));
     border-radius: 3px; box-shadow: 0 28px 60px rgba(0,0,0,.5);
     padding: 26px 34px 0;
   }
@@ -41,63 +41,63 @@ sheet.replaceSync(`
   @media (prefers-reduced-motion: reduce) { .scrim, .panel { transition: none; } }
 
   .s-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-  .s-kicker { font-family: var(--fell-sc, serif); font-size: 13px; letter-spacing: .1em; color: var(--ink-red, #8f2f22); }
+  .s-kicker { font-family: var(--fell-sc, serif); font-size: 13px; letter-spacing: .1em; color: var(--alert, #8f2f22); }
   .ghost-btn {
-    font-family: var(--fell, serif); font-style: italic; font-size: 16px; color: var(--brass-hi, #d8b878);
-    background: linear-gradient(180deg, var(--leather, #2a1c10), var(--leather-2, #33230f));
-    border: 1px solid var(--brass-lo, #7a5f30); border-radius: 2px; padding: 7px 14px; cursor: pointer; transition: .15s;
+    font-family: var(--fell, serif); font-style: italic; font-size: 16px; color: var(--metal-bright, #d8b878);
+    background: linear-gradient(180deg, var(--frame, #2a1c10), var(--frame-raised, #33230f));
+    border: 1px solid var(--metal-dim, #7a5f30); border-radius: 2px; padding: 7px 14px; cursor: pointer; transition: .15s;
     box-shadow: 0 1px 2px rgba(0,0,0,.4), inset 0 1px 0 rgba(216,184,120,.15);
   }
-  .ghost-btn:hover { color: #fff; border-color: var(--brass, #b08d4f); background: linear-gradient(180deg, var(--leather-2, #33230f), var(--leather, #2a1c10)); }
+  .ghost-btn:hover { color: #fff; border-color: var(--metal, #b08d4f); background: linear-gradient(180deg, var(--frame-raised, #33230f), var(--frame, #2a1c10)); }
 
-  .s-title { font-family: var(--fell, serif); font-weight: 400; font-size: 28px; line-height: 1.2; margin: 12px 0 6px; color: var(--ink, #33291a); }
-  .s-lede { font-family: var(--gara, serif); font-size: 15px; line-height: 1.6; color: var(--ink-soft, #5b4a30); font-style: italic; margin: 0 0 4px; }
-  .s-rule { height: 2px; background: linear-gradient(90deg, var(--brass-lo, #7a5f30), transparent); margin: 16px 0 4px; }
+  .s-title { font-family: var(--fell, serif); font-weight: 400; font-size: 28px; line-height: 1.2; margin: 12px 0 6px; color: var(--text, #33291a); }
+  .s-lede { font-family: var(--gara, serif); font-size: 15px; line-height: 1.6; color: var(--text-muted, #5b4a30); font-style: italic; margin: 0 0 4px; }
+  .s-rule { height: 2px; background: linear-gradient(90deg, var(--metal-dim, #7a5f30), transparent); margin: 16px 0 4px; }
 
   .s-body { overflow-y: auto; padding: 8px 0 0; }
   /* One knob per row: label at the left, its control at the right. */
   .row { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 13px 0; border-bottom: 1px solid var(--hairline-soft, rgba(122,95,48,.4)); }
   .row:last-child { border-bottom: 0; }
-  .row-label { font-family: var(--gara, serif); font-size: 16px; color: var(--ink, #33291a); }
+  .row-label { font-family: var(--gara, serif); font-size: 16px; color: var(--text, #33291a); }
 
   /* Toggle switch — a brass-tracked pill echoing the board's "show closed". */
   .switch { position: relative; width: 46px; height: 24px; flex: 0 0 auto; cursor: pointer; }
   .switch input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
-  .track { position: absolute; inset: 0; border-radius: 999px; background: var(--well, rgba(20,14,7,.6)); border: 1px solid var(--brass-lo, #7a5f30); transition: .18s; }
-  .thumb { position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--brass, #b08d4f); transition: .18s; box-shadow: 0 1px 2px rgba(0,0,0,.5); }
-  .switch input:checked + .track { background: var(--seg-on-bg, linear-gradient(180deg, var(--brass-hi, #d8b878), var(--brass, #b08d4f))); }
-  .switch input:checked + .track + .thumb { left: 24px; background: var(--wood, #1c1409); }
-  .switch input:focus-visible + .track { outline: 2px solid var(--brass-hi, #d8b878); outline-offset: 2px; }
+  .track { position: absolute; inset: 0; border-radius: 999px; background: var(--well, rgba(20,14,7,.6)); border: 1px solid var(--metal-dim, #7a5f30); transition: .18s; }
+  .thumb { position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--metal, #b08d4f); transition: .18s; box-shadow: 0 1px 2px rgba(0,0,0,.5); }
+  .switch input:checked + .track { background: var(--seg-on-bg, linear-gradient(180deg, var(--metal-bright, #d8b878), var(--metal, #b08d4f))); }
+  .switch input:checked + .track + .thumb { left: 24px; background: var(--frame-deep, #1c1409); }
+  .switch input:focus-visible + .track { outline: 2px solid var(--metal-bright, #d8b878); outline-offset: 2px; }
 
   /* Range slider + its live numeric read-out. */
   .range { display: flex; align-items: center; gap: 10px; }
-  .range input { width: 150px; accent-color: var(--brass, #b08d4f); cursor: pointer; }
-  .range-val { font-family: var(--mono, monospace); font-size: 13px; color: var(--ink-soft, #5b4a30); min-width: 3ch; text-align: right; }
+  .range input { width: 150px; accent-color: var(--metal, #b08d4f); cursor: pointer; }
+  .range-val { font-family: var(--mono, monospace); font-size: 13px; color: var(--text-muted, #5b4a30); min-width: 3ch; text-align: right; }
 
   /* Segmented mode control (e.g. Light / Dark) — a brass-framed pill group; the
      active segment fills with the theme's on-gradient, matching the board's segs. */
-  .segmode { display: inline-flex; border: 1px solid var(--brass-lo, #7a5f30); border-radius: 999px; overflow: hidden; background: var(--well, rgba(20,14,7,.6)); }
+  .segmode { display: inline-flex; border: 1px solid var(--metal-dim, #7a5f30); border-radius: 999px; overflow: hidden; background: var(--well, rgba(20,14,7,.6)); }
   .segmode button {
-    font-family: var(--gara, serif); font-size: 14px; color: var(--ink-soft, #5b4a30);
+    font-family: var(--gara, serif); font-size: 14px; color: var(--text-muted, #5b4a30);
     background: transparent; border: 0; padding: 6px 16px; cursor: pointer; transition: .15s; line-height: 1.3;
   }
   .segmode button + button { border-left: 1px solid var(--hairline-soft, rgba(122,95,48,.4)); }
-  .segmode button:hover { color: var(--ink, #33291a); }
+  .segmode button:hover { color: var(--text, #33291a); }
   .segmode button[aria-pressed="true"] {
-    color: var(--seg-on-fg, var(--wood, #1c1409)); font-weight: 600;
-    background: var(--seg-on-bg, linear-gradient(180deg, var(--brass-hi, #d8b878), var(--brass, #b08d4f)));
+    color: var(--seg-on-fg, var(--frame-deep, #1c1409)); font-weight: 600;
+    background: var(--seg-on-bg, linear-gradient(180deg, var(--metal-bright, #d8b878), var(--metal, #b08d4f)));
   }
-  .segmode button:focus-visible { outline: 2px solid var(--focus-ring-onlight, var(--brass-hi, #d8b878)); outline-offset: -2px; }
+  .segmode button:focus-visible { outline: 2px solid var(--focus-ring-onlight, var(--metal-bright, #d8b878)); outline-offset: -2px; }
 
   .s-foot { display: flex; justify-content: flex-end; padding: 14px 0 22px; }
   .s-reset {
-    font-family: var(--fell, serif); font-style: italic; font-size: 14px; color: var(--ink-soft, #5b4a30);
+    font-family: var(--fell, serif); font-style: italic; font-size: 14px; color: var(--text-muted, #5b4a30);
     background: none; border: 0; padding: 4px 2px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px;
   }
-  .s-reset:hover { color: var(--ink-red, #8f2f22); }
-  .s-empty { font-family: var(--gara, serif); font-style: italic; color: var(--ink-soft, #5b4a30); padding: 8px 0 24px; }
+  .s-reset:hover { color: var(--alert, #8f2f22); }
+  .s-empty { font-family: var(--gara, serif); font-style: italic; color: var(--text-muted, #5b4a30); padding: 8px 0 24px; }
 
-  :focus-visible { outline: 2px solid var(--brass-hi, #d8b878); outline-offset: 3px; }
+  :focus-visible { outline: 2px solid var(--metal-bright, #d8b878); outline-offset: 3px; }
 `);
 
 export class LedgerSettings extends HTMLElement {
