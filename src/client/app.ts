@@ -72,6 +72,7 @@ function syncLensSeg(): void {
 function syncControls(): void {
   syncLensSeg();
   need<HTMLInputElement>('#show-closed').checked = state.status !== 'Open';
+  need<HTMLInputElement>('#search-input').value = state.search;
   const aSeg = need('#assignee-seg'); const aInput = need<HTMLInputElement>('#assignee-input');
   const preset = [...aSeg.querySelectorAll('button')].find((b) => (b.dataset.assignee || '') === state.assignee);
   aSeg.querySelectorAll('button').forEach((x) => { const on = x === preset; x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on)); });
@@ -128,6 +129,19 @@ function wire(): void {
 
   // Project scope: null (all) or a source project id. Reloads the tree scoped.
   need<HTMLSelectElement>('#project-select').onchange = (e) => { state.project = (e.target as HTMLSelectElement).value || null; reloadForFilterChange(); };
+
+  // Free-text search. Debounced so a reload fires once typing settles rather than
+  // per keystroke; Enter reloads at once. A no-op when the trimmed value is
+  // unchanged, so blur/Enter after the debounce already ran doesn't refetch.
+  const sInput = need<HTMLInputElement>('#search-input');
+  let searchTimer = 0;
+  const applySearch = (): void => {
+    const next = sInput.value.trim();
+    if (next === state.search) return;
+    state.search = next; reloadForFilterChange();
+  };
+  sInput.oninput = () => { clearTimeout(searchTimer); searchTimer = window.setTimeout(applySearch, 350); };
+  sInput.onkeydown = (e) => { if (e.key === 'Enter') { clearTimeout(searchTimer); applySearch(); } };
 
   need('#refresh').onclick = () => loadTree();
   need('#about-btn').onclick = () => need<LedgerAbout>('#about').open();

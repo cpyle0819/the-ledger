@@ -21,6 +21,7 @@ export interface BoardState {
   assignee: string;          // '' = the default (me), 'anyone', or an alias
   status: StatusFilter;
   project: string | null;    // null = every project; else a source project id
+  search: string;            // '' = no query; else the free text the source matches on
   lens: 'columns' | 'outline';
   me: string | null;
   caps: Partial<Capabilities>;
@@ -42,6 +43,7 @@ export const state: BoardState = {
   assignee: '',
   status: 'Open',
   project: null,
+  search: '',
   lens: 'columns',
   me: null,
   caps: {},

@@ -237,6 +237,7 @@ export function hydrateStateFromUrl(): UrlState {
   state.assignee = u.assignee ?? '';
   if (u.status) state.status = u.status;
   state.project = u.project ?? null;
+  state.search = u.search ?? '';
   state.selEpic = u.epic ?? null;
   state.selStory = u.story ?? null;
   state.expanded = new Set(u.expanded ?? []);
@@ -301,7 +302,8 @@ export function wireDeepLinkNav(): void {
     const filtersDiffer = (u.lens ?? 'columns') !== state.lens
       || (u.assignee ?? '') !== state.assignee
       || (u.status ?? 'Open') !== state.status
-      || (u.project ?? null) !== state.project;
+      || (u.project ?? null) !== state.project
+      || (u.search ?? '') !== state.search;
     if (filtersDiffer) {
       hydrateStateFromUrl();
       loadTree().then(() => restoreFromUrl(u));

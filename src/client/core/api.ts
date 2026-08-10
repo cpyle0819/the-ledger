@@ -34,6 +34,7 @@ export async function fetchNodesRaw(parentId: string | null): Promise<CachedNode
   const q = new URLSearchParams({ status: state.status });
   if (state.assignee) q.set('assignee', state.assignee);
   if (state.project) q.set('project', state.project);
+  if (state.search) q.set('search', state.search);
   if (parentId) q.set('parent', parentId);
   const { nodes } = await api<ChildrenResponse>(`/api/children?${q}`);
   return nodes;
@@ -59,6 +60,7 @@ export async function fetchRootsPage(cursor: string | null): Promise<RootsPage> 
   const q = new URLSearchParams({ status: state.status });
   if (state.assignee) q.set('assignee', state.assignee);
   if (state.project) q.set('project', state.project);
+  if (state.search) q.set('search', state.search);
   if (cursor) q.set('cursor', cursor);
   const page = await api<RootsPage>(`/api/children?${q}`);
   indexNodes(page.nodes);
@@ -100,6 +102,7 @@ export async function fetchEpicCounts(epicIds: string[]): Promise<Record<string,
   const q = new URLSearchParams({ status: state.status, epics: epicIds.join(',') });
   if (state.assignee) q.set('assignee', state.assignee);
   if (state.project) q.set('project', state.project);
+  if (state.search) q.set('search', state.search);
   const { counts } = await api<{ counts: Record<string, EpicCounts> }>(`/api/counts?${q}`);
   return counts || {};
 }

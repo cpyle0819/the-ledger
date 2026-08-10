@@ -345,6 +345,17 @@ ledger-board {
 .ctl-select:focus { border-color: var(--metal-bright); }
 .ctl-select option { color: var(--text); }  /* native menu renders on light bg */
 
+/* Search box — free text the source matches on. Shares the well/metal vocabulary
+   of the project picker so the rail reads as one set of controls. */
+.ctl-search {
+  width: 200px; background: var(--well, rgba(20,14,7,.6)); color: var(--frame-text-strong);
+  border: 1px solid var(--metal-dim); border-radius: 2px;
+  font-family: var(--gara); font-style: italic; font-size: 16px; padding: 7px 11px; outline: none;
+}
+.ctl-search::placeholder { color: var(--metal); opacity: .75; }
+.ctl-search:hover { border-color: var(--metal); }
+.ctl-search:focus { border-color: var(--metal-bright); }
+
 /* metal toggle — "show closed" */
 .switch { display: inline-flex; align-items: center; gap: 9px; cursor: pointer; user-select: none; }
 .switch input { position: absolute; opacity: 0; width: 0; height: 0; }

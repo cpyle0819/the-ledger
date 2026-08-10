@@ -137,6 +137,10 @@ const server = http.createServer(async (req, res) => {
         status: (q.get('status') as Filters['status']) || 'Open',
       };
       if (source.capabilities.projects && q.get('project')) filters.project = q.get('project');
+      // Free-text search rides through as one more filter dimension. Opaque to the
+      // host — the active source decides what matching it means — so it's passed
+      // through with no capability gate.
+      if (q.get('search')) filters.search = q.get('search')!;
       // A drill can ask for source-accurate node fields (the drawer's Planning
       // rollup does), trading extra reads for estimates that match the source rather
       // than a lagging list projection. Roots never set it (a whole-board re-read).
@@ -162,6 +166,7 @@ const server = http.createServer(async (req, res) => {
         status: (q.get('status') as Filters['status']) || 'Open',
       };
       if (source.capabilities.projects && q.get('project')) filters.project = q.get('project');
+      if (q.get('search')) filters.search = q.get('search')!;
       const epicIds = (q.get('epics') || '').split(',').filter(Boolean);
       const counts = epicIds.length ? await call('countEpicTasks', epicIds, filters) : {};
       return sendJSON(res, 200, { counts });

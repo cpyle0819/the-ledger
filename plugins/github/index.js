@@ -201,10 +201,15 @@ async function buildForest() {
 // containers with no assignee/status of their own); every matching issue pulls
 // its milestone and project in as context ancestors, so a match always has a
 // place in the tree and a container with no matching descendant never shows.
-function computeVisible(forest, { status, assignee }) {
+function computeVisible(forest, { status, assignee, search }) {
   const anyone = !assignee || assignee === 'anyone';
   const assigneeOk = (it) => anyone || it.assignees.includes(assignee);
-  const matches = forest.issues.filter((it) => passesStatus(it.status, status) && assigneeOk(it));
+  // The forest is one GraphQL pull with no server-side search, so a query narrows
+  // on title: a case-insensitive substring over the issue title. Only issues
+  // match; their milestone/project ride in as context ancestors as always.
+  const q = (search || '').trim().toLowerCase();
+  const titleOk = (it) => !q || String(it.title || '').toLowerCase().includes(q);
+  const matches = forest.issues.filter((it) => passesStatus(it.status, status) && assigneeOk(it) && titleOk(it));
 
   const matchNums = new Set(matches.map((it) => it.number));
   const visMilestones = new Set();
@@ -298,10 +303,11 @@ module.exports = function createGithubPlugin() {
     async getChildren(parentId, filters = {}) {
       const status = filters.status || 'Open';
       const assignee = filters.assignee;
-      const sig = JSON.stringify({ status, assignee: assignee || null });
+      const search = filters.search || '';
+      const sig = JSON.stringify({ status, assignee: assignee || null, search });
       const f = await ensureForest(!parentId ? null : sig); // rebuild on root load
       forestSig = sig;
-      const { matches, matchNums, visMilestones, visProjects, anyone } = computeVisible(f, { status, assignee });
+      const { matches, matchNums, visMilestones, visProjects, anyone } = computeVisible(f, { status, assignee, search });
       const ctx = (isMatch) => !anyone && !isMatch;
 
       if (!parentId) {

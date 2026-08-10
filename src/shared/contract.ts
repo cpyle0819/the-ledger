@@ -43,9 +43,16 @@ export interface Filters {
   status: StatusFilter;
   assignee?: string;
   project?: string | null;
+  /** A free-text query the viewer typed. The board passes it through verbatim and
+   *  ascribes no meaning to it — each source decides what matching a string means
+   *  against its own items (a backing search API, or a narrowing on one field). An
+   *  empty/absent value is no query (every item passes). Like the assignee filter,
+   *  it matches at every level: a matching item deep in a tree pulls its ancestors
+   *  in as context, so a deep match isn't lost. */
+  search?: string;
   /** Request source-accurate node fields even when that costs extra reads. A
    *  source whose LIST query returns a lagging/eventually-consistent projection
-   *  (e.g. a Solr index behind the authoritative by-id read) can, when this is set,
+   *  (e.g. a search index behind the authoritative by-id read) can, when this is set,
    *  re-read each returned node from the consistent store so estimates and other
    *  fields are exact. The drawer's Planning rollup sets it — capacity math must be
    *  source-accurate — accepting the extra per-node reads. A source whose list read

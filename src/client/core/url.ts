@@ -21,6 +21,7 @@ export interface UrlState {
   assignee?: string;
   status?: StatusFilter;
   project?: string | null;
+  search?: string;
   epic?: string | null;
   story?: string | null;
   expanded?: string[];
@@ -44,6 +45,7 @@ export function parseHash(): UrlState {
   const status = HASH_TO_STATUS[p.get('status') || ''];
   if (status) u.status = status;
   if (p.get('project')) u.project = p.get('project');
+  if (p.get('search')) u.search = p.get('search')!;
   if (p.get('epic')) u.epic = p.get('epic');
   if (p.get('story')) u.story = p.get('story');
   const exp = p.get('exp');
@@ -61,6 +63,7 @@ function buildHash(openItem: string | null): string {
   if (state.assignee) p.set('assignee', state.assignee);
   if (STATUS_TO_HASH[state.status]) p.set('status', STATUS_TO_HASH[state.status]);
   if (state.project) p.set('project', state.project);
+  if (state.search) p.set('search', state.search);
   if (state.lens === 'outline') {
     if (state.expanded.size) p.set('exp', [...state.expanded].join(','));
   } else {

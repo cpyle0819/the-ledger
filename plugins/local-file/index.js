@@ -78,11 +78,16 @@ function rootOf(item, byId) {
 // non-matching item with no matching descendant never shows. Ancestors are
 // included regardless of their own status/assignee; they share the match's
 // project (project lives on the shared root), so they stay in scope.
-function computeVisible(items, { status, assignee, project }) {
+function computeVisible(items, { status, assignee, project, search }) {
   const byId = new Map(items.map((it) => [it.id, it]));
   const inProject = (it) => !project || (rootOf(it, byId).project || it.project || null) === project;
   const assigneeOk = (it) => !assignee || assignee === 'anyone' || (it.assignee || null) === assignee;
-  const isMatch = (it) => passesStatus(it.status, status) && inProject(it) && assigneeOk(it);
+  // No backing search API here, so a query narrows on title: a case-insensitive
+  // substring match. An ancestor of a match still rides in as context below, so a
+  // matching task surfaces under a parent whose title doesn't match.
+  const q = (search || '').trim().toLowerCase();
+  const titleOk = (it) => !q || String(it.title || '').toLowerCase().includes(q);
+  const isMatch = (it) => passesStatus(it.status, status) && inProject(it) && assigneeOk(it) && titleOk(it);
 
   const matchIds = new Set(items.filter(isMatch).map((it) => it.id));
   const visible = new Set(matchIds);
@@ -225,6 +230,7 @@ module.exports = function createLocalFilePlugin() {
         status: filters.status || 'Open',
         assignee: filters.assignee,
         project: filters.project || null,
+        search: filters.search || '',
       });
       // Direct children of parentId (parentId null => roots, i.e. no parent) that
       // are visible. A visible-but-non-matching node is context (ancestor of a
