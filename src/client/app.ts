@@ -123,6 +123,10 @@ async function wireTerminal(): Promise<void> {
   if (!btn || !(panel instanceof LedgerTerminal)) return;
   btn.hidden = false;
   btn.onclick = () => { void panel.open(); };
+  // A command in the terminal may have edited the source; when its output settles
+  // the panel emits terminal-activity, so reconcile the board (an incremental
+  // re-read) to reflect the change without a full reload.
+  panel.addEventListener('terminal-activity', () => reconcile());
 }
 
 function wire(): void {

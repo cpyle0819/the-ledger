@@ -80,6 +80,7 @@ export class LedgerTerminal extends HTMLElement {
   #connected = false;
   #lastFocus: HTMLElement | null = null;
   #ro: ResizeObserver | null = null;
+  #activityTimer = 0;
 
   connectedCallback(): void {
     if (this.shadowRoot) return;
@@ -176,7 +177,10 @@ export class LedgerTerminal extends HTMLElement {
     // The token rides as the WS subprotocol; the server rejects the upgrade
     // without it (see server/terminal.ts).
     const ws = new WebSocket(`ws://${location.host}`, token);
-    ws.onmessage = (e) => this.#term?.write(typeof e.data === 'string' ? e.data : '');
+    ws.onmessage = (e) => {
+      this.#term?.write(typeof e.data === 'string' ? e.data : '');
+      this.#signalActivity();
+    };
     ws.onclose = () => { this.#connected = false; this.#term?.write('\r\n\x1b[31m[connection closed]\x1b[0m\r\n'); };
     ws.onerror = () => { this.#connected = false; };
     await new Promise<void>((resolve) => { ws.onopen = () => { this.#connected = true; resolve(); }; });
@@ -187,6 +191,19 @@ export class LedgerTerminal extends HTMLElement {
     if (this.#ws?.readyState === WebSocket.OPEN && this.#term) {
       this.#ws.send(JSON.stringify({ type: 'resize', cols: this.#term.cols, rows: this.#term.rows }));
     }
+  }
+
+  // A command run in the terminal may have changed the source (moved a task,
+  // added a comment). The host can't tell which output means a mutation, so it
+  // treats a lull after output as "a command probably finished" and emits one
+  // `terminal-activity` event, which the board maps to a reconcile (an
+  // incremental re-read of what's on screen). Debounced so a burst of output
+  // fires once when it settles, not per chunk.
+  #signalActivity(): void {
+    clearTimeout(this.#activityTimer);
+    this.#activityTimer = window.setTimeout(() => {
+      this.dispatchEvent(new CustomEvent('terminal-activity', { bubbles: true, composed: true }));
+    }, 1200);
   }
 }
 

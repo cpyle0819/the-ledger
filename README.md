@@ -24,6 +24,9 @@ lens on work that lives elsewhere.
   unauthenticated the app just surfaces the plugin's own message.
 - The UI is a composition of Web Components (board, column, card, drawer, comment
   thread, title), each self-contained with its own styles and usable on its own.
+- **Optional embedded terminal**: a real shell on the host, overlaid at the bottom
+  of the board, for running your own local tooling (an agent CLI, git, a shell)
+  beside the work. Off by default; see [Terminal](#terminal).
 
 ## Setup
 
@@ -47,6 +50,21 @@ npm run register       # systemd (Linux) / launchd (macOS) / Task Scheduler (Win
 `register` is idempotent — re-run it after a Node upgrade to refresh the service's
 baked-in interpreter path. When the background service is up, `npm run serve`
 detects it and declines to start a second instance.
+
+Every configuration setting — the `ledger.config.json` fields (`source`, `theme`,
+`terminal`) and the environment variables — is documented in **[CONFIG.md](CONFIG.md)**.
+
+## Terminal
+
+An optional embedded terminal runs a shell on the host machine, overlaid at the
+bottom of the board and translucent so the board shows through. It runs your own
+local tooling — an agent CLI, git, a shell — beside the board without leaving it.
+The board reflects changes a command makes to the source: when the terminal's
+output settles, the board re-reads what's on screen and folds in any edits.
+
+Enable it with `"terminal": true` in `ledger.config.json`; it's off by default.
+The shell, security model, and the Linux build requirement (`node-pty` compiles
+from source there) are documented in **[CONFIG.md](CONFIG.md#terminal)**.
 
 ## Plugins
 
