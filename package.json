@@ -18,13 +18,21 @@
     "@cpyle0819/ledger-theme-professional": "^1.1.1",
     "@cpyle0819/ledger-theme-space-opera": "^1.3.0",
     "@cpyle0819/ledger-theme-the-ledger": "^1.4.0",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
+    "node-pty": "^1.1.0",
     "the-ledger-github": "file:plugins/github",
-    "the-ledger-local-file": "file:plugins/local-file"
+    "the-ledger-local-file": "file:plugins/local-file",
+    "ws": "^8.21.3"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",
+    "@types/ws": "^8.18.1",
     "typescript": "^7.0.2"
   },
   "author": "Corey Pyle",
-  "license": "MIT"
+  "license": "MIT",
+  "allowScripts": {
+    "node-pty@1.1.0": true
+  }
 }
