@@ -84,6 +84,9 @@
       <!-- Theme settings gear — shown only when the active theme declares tunable
            knobs (app.ts toggles [hidden] on theme change). Opens <ledger-settings>. -->
       <button class="ghost-btn icon-btn" id="settings-btn" title="Theme settings" aria-label="Theme settings" hidden>⚙</button>
+      <!-- Terminal — shown only when the host reports terminal:true (app.ts
+           reveals it on the source handshake). Opens <ledger-terminal>. -->
+      <button class="ghost-btn icon-btn" id="terminal-btn" title="Terminal" aria-label="Open terminal" hidden>▶_</button>
       <button class="ghost-btn icon-btn" id="about-btn" title="About" aria-label="About the Ledger">?</button>
     </div>
   </header>
@@ -136,6 +139,13 @@
   </main>
   </ledger-board>
 
+  <!-- Terminal dock — an embedded shell (xterm.js over a host pseudo-terminal),
+       present only when the terminal feature is enabled. A bottom dock in the
+       body's flex column: opening it takes height below the board, which reflows
+       into the space above rather than being covered. Opened from the masthead
+       terminal button. -->
+  <ledger-terminal id="terminal"></ledger-terminal>
+
   <!-- Reading drawer — the manuscript page. The <ledger-drawer> element renders
        the whole overlay (fields, description editor, contains list, comment
        thread, focus trap) in its own shadow DOM; app.js injects the api/fetch
@@ -158,6 +168,19 @@
   <ledger-settings id="settings"></ledger-settings>
 
   <div class="toast" id="toast" role="status" aria-live="assertive"></div>
+
+  <!-- Import map: the no-bundler client imports xterm by its bare package
+       specifier; these point that specifier at the server's /vendor route, which
+       serves the ESM build straight from node_modules. Present unconditionally —
+       harmless when the terminal is off (nothing imports these). -->
+  <script type="importmap">
+  {
+    "imports": {
+      "@xterm/xterm": "/vendor/xterm/xterm.mjs",
+      "@xterm/addon-fit": "/vendor/xterm/addon-fit.mjs"
+    }
+  }
+  </script>
 
   <script type="module" src="/build/client/app.js"></script>
 </body>

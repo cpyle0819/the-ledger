@@ -113,6 +113,18 @@ function reloadForFilterChange(): void {
   loadTree();
 }
 
+// Reveal the masthead terminal button and wire it to the panel. Called only when
+// the host reports the terminal is enabled; the component module (and its xterm
+// dependency) loads lazily here so a disabled terminal costs nothing.
+async function wireTerminal(): Promise<void> {
+  const { LedgerTerminal } = await import('./components/ledger-terminal.js');
+  const btn = $('#terminal-btn');
+  const panel = $('#terminal');
+  if (!btn || !(panel instanceof LedgerTerminal)) return;
+  btn.hidden = false;
+  btn.onclick = () => { void panel.open(); };
+}
+
 function wire(): void {
   // Closed items are hidden by default (status 'Open'); the toggle reveals them.
   need<HTMLInputElement>('#show-closed').onchange = (e) => { state.status = (e.target as HTMLInputElement).checked ? 'ALL' : 'Open'; reloadForFilterChange(); };
@@ -189,9 +201,14 @@ class LedgerBoard extends HTMLElement {
     // the server-configured default theme. Apply the theme from that default
     // (the browser's stored choice, if any, overrides it inside initTheme).
     try {
-      const { me, capabilities, theme } = await api<{ me: string; capabilities: Capabilities; theme: string | null }>('/api/source');
+      const { me, capabilities, theme, terminal } = await api<{ me: string; capabilities: Capabilities; theme: string | null; terminal?: boolean }>('/api/source');
       state.me = me; state.caps = capabilities || {};
       await initTheme(theme ?? null);
+      // The terminal is optional and its client code pulls in xterm from the
+      // vendor route, which the host mounts only when the feature is on. So import
+      // and wire it lazily, gated on the handshake flag — a static import would
+      // fetch xterm even when disabled (the vendor route 404s then).
+      if (terminal) await wireTerminal();
       need<LedgerDrawer>('#drawer').caps = state.caps;   // gate the drawer's fields on capabilities
       const name = $('#ident-name'); if (name) name.textContent = me;
       const projects = await fillProjects();        // fills + reveals the project picker if supported

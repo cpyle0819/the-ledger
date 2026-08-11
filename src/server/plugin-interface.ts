@@ -126,6 +126,13 @@ function readConfig(): Record<string, unknown> | null {
   }
 }
 
+/** The parsed config object (or null when there's no config file). Exposed so the
+ *  host can read optional feature flags (e.g. `terminal`) without re-reading the
+ *  file itself. */
+export function loadConfig(): Record<string, unknown> | null {
+  return readConfig();
+}
+
 // The active source's package name, from the `source` field. Absent file or
 // absent/blank field falls back to the bundled local-file source.
 function activeSourceName(): string {

@@ -7,13 +7,20 @@
 import * as http from 'node:http';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { callPlugin, loadActiveSource, configuredTheme, REPO_ROOT } from './plugin-interface';
+import { callPlugin, loadActiveSource, configuredTheme, loadConfig, REPO_ROOT } from './plugin-interface';
 import { themeRegistry, resolveThemeAsset } from './theme-interface';
+import { terminalEnabled, terminalHandshake, attachTerminal } from './terminal';
 import type { CreatableField, CreateInput, Filters, SourcePlugin } from '../shared/contract';
 
 const PORT = Number(process.env.PORT) || 4317;
 
 const source = loadActiveSource();
+
+// The optional embedded terminal, gated by ledger.config.json's `terminal` flag.
+// When on, /api/source reports it (so the masthead shows the terminal button) and
+// the host attaches a WS+PTY bridge (see ./terminal). When off, /api/source omits
+// it (no button), no /api/terminal token route answers, and no WS handler binds.
+const TERMINAL = terminalEnabled(loadConfig());
 
 // Static assets (index.html, styles, compiled client, sounds) live under
 // public/ at the repo root — resolved from REPO_ROOT since this compiled server
@@ -25,6 +32,7 @@ const PUBLIC_DIR = path.join(REPO_ROOT, 'public');
 const MIME: Record<string, string> = {
   '.html': 'text/html',
   '.js': 'text/javascript',
+  '.mjs': 'text/javascript',
   '.css': 'text/css',
   '.svg': 'image/svg+xml',
   '.ogg': 'audio/ogg',
@@ -119,7 +127,15 @@ const server = http.createServer(async (req, res) => {
     // The frontend reads this once to learn who it's acting as and which actions
     // the active source supports, then hides the rest.
     if (p === '/api/source') {
-      return sendJSON(res, 200, { name: source.name, me: source.plugin.me, capabilities: source.capabilities, theme: configuredTheme() });
+      return sendJSON(res, 200, { name: source.name, me: source.plugin.me, capabilities: source.capabilities, theme: configuredTheme(), terminal: TERMINAL });
+    }
+
+    // Terminal handshake: the page reads this once to learn the feature is on and
+    // to get the per-boot token it presents on the WS upgrade. 404 when disabled.
+    if (p === '/api/terminal' && req.method === 'GET') {
+      const hs = terminalHandshake(TERMINAL);
+      if (!hs) return sendJSON(res, 404, { error: 'terminal disabled' });
+      return sendJSON(res, 200, hs);
     }
 
     // Lazy hierarchy: no `parent` => roots (epics); otherwise that node's children.
@@ -237,6 +253,22 @@ const server = http.createServer(async (req, res) => {
 
     if (p.startsWith('/api/')) return sendJSON(res, 404, { error: 'unknown endpoint' });
 
+    // xterm.js vendor assets, served straight from node_modules so the no-bundler
+    // client can import them as ES modules (an import map in index.html points the
+    // bare specifiers here). Only mounted when the terminal is enabled.
+    if (TERMINAL && p.startsWith('/vendor/xterm/')) {
+      const VENDOR: Record<string, string> = {
+        '/vendor/xterm/xterm.mjs': '@xterm/xterm/lib/xterm.mjs',
+        '/vendor/xterm/xterm.css': '@xterm/xterm/css/xterm.css',
+        '/vendor/xterm/addon-fit.mjs': '@xterm/addon-fit/lib/addon-fit.mjs',
+      };
+      const pkgRel = VENDOR[p];
+      if (!pkgRel) return sendJSON(res, 404, { error: 'unknown vendor asset' });
+      // Resolve from the installed package, not a hardcoded path, so it tracks
+      // wherever npm placed it.
+      return serveFile(req, res, require.resolve(pkgRel));
+    }
+
     // Theme assets: /theme/<id>/<path> serves a theme package's own file
     // (theme.css, mark.js, sounds/*); /theme/<id>/@dep/<specifier> serves a file
     // from that theme's own node_modules (e.g. the-ledger's smoke-drift ambient).
@@ -258,8 +290,14 @@ const server = http.createServer(async (req, res) => {
 // A stray plugin promise rejection must not take down the http server.
 process.on('unhandledRejection', (e) => console.error('[ledger] unhandled rejection', e));
 
+// Attach the terminal WS+PTY bridge before listening, when enabled. It shares the
+// http server (one port), gated by its own token + Origin check (see ./terminal).
+if (TERMINAL) attachTerminal(server, PORT);
+
 server.listen(PORT, '127.0.0.1', () => {
   console.log(`\n  The Ledger  ·  http://localhost:${PORT}`);
   console.log(`  source:   ${source.name} (as ${source.plugin.me})`);
-  console.log(`  supports: ${Object.entries(source.capabilities).filter(([, v]) => v && (!Array.isArray(v) || v.length)).map(([k]) => k).join(', ')}\n`);
+  console.log(`  supports: ${Object.entries(source.capabilities).filter(([, v]) => v && (!Array.isArray(v) || v.length)).map(([k]) => k).join(', ')}`);
+  if (TERMINAL) console.log('  terminal: on');
+  console.log('');
 });
