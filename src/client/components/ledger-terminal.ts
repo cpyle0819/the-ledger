@@ -1,13 +1,13 @@
-// <ledger-terminal> — an embedded shell docked at the bottom of the board. A
-// panel that grows up from the bottom edge, holding an xterm.js terminal wired to
+// <ledger-terminal> — an embedded shell overlaid at the bottom of the board. A
+// panel that slides up from the bottom edge, holding an xterm.js terminal wired to
 // a real shell on the host via a WebSocket the server bridges to a pseudo-
 // terminal. Its purpose: run the user's own local tooling — an agent CLI, git, a
 // shell — beside the board without leaving it.
 //
-// The dock reflows rather than overlays: the element is a flex sibling below
-// <ledger-board> in the body's flex column, so opening it takes height and the
-// board shrinks to the space above (its columns/outline scroll internally within
-// the reduced height).
+// A fixed bottom overlay, not a reflow dock: it floats over the lower part of the
+// board rather than pushing content up, so the board stays put and shows through
+// the terminal's 80%-opacity background. Not modal — the board above the overlay
+// stays visible and interactive (no scrim).
 //
 // Enabled only when the host reports `terminal: true` from /api/source; app.ts
 // mounts the button and this element only then. The element owns its socket
@@ -21,18 +21,21 @@ import { chromeSheet } from './shared-styles.js';
 
 const sheet = new CSSStyleSheet();
 sheet.replaceSync(`
-  /* A bottom dock in normal flow (not a fixed overlay): a flex item that is zero
-     height when closed and animates to its open height, so the board above
-     reflows into the remaining space instead of being covered. */
+  /* A bottom overlay, not a reflow dock: fixed to the viewport's bottom edge and
+     floating over the board, so the board stays put and shows through the
+     terminal's 80%-opacity background. Slides up from below on open. */
   :host {
-    display: block; flex: 0 0 auto; height: 0; overflow: hidden;
-    transition: height .3s cubic-bezier(.2,.8,.2,1);
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 520;
+    height: min(42vh, 460px); pointer-events: none;
+    transform: translateY(100%); transition: transform .3s cubic-bezier(.2,.8,.2,1);
     border-top: 1px solid var(--metal-dim, #7a5f30);
   }
-  :host([open]) { height: min(42vh, 460px); }
+  :host([open]) { transform: translateY(0); pointer-events: auto; }
   .panel {
     height: 100%; display: flex; flex-direction: column;
-    background: var(--frame, #1c130a);
+    /* Transparent so the terminal's 80%-opacity background lets the board beneath
+       the overlay show through; the header keeps its own opaque fill. */
+    background: transparent;
     box-shadow: 0 -18px 40px rgba(0,0,0,.4);
   }
   @media (prefers-reduced-motion: reduce) { :host { transition: none; } }
@@ -54,9 +57,18 @@ sheet.replaceSync(`
   }
   .ghost-btn:hover { color: #fff; border-color: var(--metal, #b08d4f); }
 
-  /* xterm mounts here; it fills the panel below the header. Black surface so a
-     terminal reads as a terminal regardless of theme palette. */
-  .t-body { flex: 1 1 auto; min-height: 0; padding: 8px; background: #000; overflow: hidden; }
+  /* xterm mounts here; it fills the panel below the header. Horizontal padding
+     insets the terminal from the panel edges; no TOP padding, so the surface meets
+     the header with no gap. */
+  .t-body { flex: 1 1 auto; min-height: 0; padding: 0 10px; background: transparent; overflow: hidden; }
+
+  /* xterm.css hardcodes an opaque #000 on .xterm and .xterm-viewport, which paints
+     over the translucent theme background — so the prompt area stays black despite
+     allowTransparency. Force those layers transparent so the terminal's own
+     80%-opacity theme background is the only fill, and drop the viewport's grey
+     scrollbar track (the bar on the right) to transparent too. */
+  .t-body .xterm, .t-body .xterm-viewport, .t-body .xterm-screen { background: transparent !important; }
+  .t-body .xterm-viewport { scrollbar-width: thin; scrollbar-color: var(--metal-dim, #7a5f30) transparent; }
 
   :focus-visible { outline: 2px solid var(--metal-bright, #d8b878); outline-offset: 2px; }
 `);
@@ -131,7 +143,16 @@ export class LedgerTerminal extends HTMLElement {
   }
 
   #initTerm(): void {
-    const term = new Terminal({ cursorBlink: true, fontSize: 13, fontFamily: 'ui-monospace, Menlo, Consolas, monospace' });
+    // allowTransparency lets the rgba background blend with what's behind the
+    // terminal (the transparent panel, and the board beneath the overlay); without
+    // it xterm paints an opaque cell layer and the alpha is ignored.
+    const term = new Terminal({
+      cursorBlink: true,
+      fontSize: 13,
+      fontFamily: 'ui-monospace, Menlo, Consolas, monospace',
+      allowTransparency: true,
+      theme: { background: 'rgba(10, 7, 3, 0.8)' },
+    });
     const fit = new FitAddon();
     term.loadAddon(fit);
     term.open(this.#$('#t-body'));
