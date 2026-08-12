@@ -6,8 +6,8 @@
 //
 // A fixed bottom overlay, not a reflow dock: it floats over the lower part of the
 // board rather than pushing content up, so the board stays put and shows through
-// the terminal's 80%-opacity background. Not modal — the board above the overlay
-// stays visible and interactive (no scrim).
+// the terminal body's 80%-opacity background. Not modal — the board above the
+// overlay stays visible and interactive (no scrim).
 //
 // Enabled only when the host reports `terminal: true` from /api/source; app.ts
 // mounts the button and this element only then. The element owns its socket
@@ -23,7 +23,7 @@ const sheet = new CSSStyleSheet();
 sheet.replaceSync(`
   /* A bottom overlay, not a reflow dock: fixed to the viewport's bottom edge and
      floating over the board, so the board stays put and shows through the
-     terminal's 80%-opacity background. Slides up from below on open. */
+     terminal body's 80%-opacity background. Slides up from below on open. */
   :host {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 520;
     height: min(42vh, 460px); pointer-events: none;
@@ -33,8 +33,8 @@ sheet.replaceSync(`
   :host([open]) { transform: translateY(0); pointer-events: auto; }
   .panel {
     height: 100%; display: flex; flex-direction: column;
-    /* Transparent so the terminal's 80%-opacity background lets the board beneath
-       the overlay show through; the header keeps its own opaque fill. */
+    /* Transparent so the .t-body's 80%-opacity fill lets the board beneath the
+       overlay show through; the header keeps its own opaque fill. */
     background: transparent;
     box-shadow: 0 -18px 40px rgba(0,0,0,.4);
   }
@@ -59,14 +59,15 @@ sheet.replaceSync(`
 
   /* xterm mounts here; it fills the panel below the header. Horizontal padding
      insets the terminal from the panel edges; no TOP padding, so the surface meets
-     the header with no gap. */
-  .t-body { flex: 1 1 auto; min-height: 0; padding: 0 10px; background: transparent; overflow: hidden; }
+     the header with no gap. This element carries the terminal's 80%-opacity fill,
+     so the board beneath the overlay shows through while the shell itself renders
+     fully transparent on top. */
+  .t-body { flex: 1 1 auto; min-height: 0; padding: 0 10px; background: rgba(10, 7, 3, 0.8); overflow: hidden; }
 
-  /* xterm.css hardcodes an opaque #000 on .xterm and .xterm-viewport, which paints
-     over the translucent theme background — so the prompt area stays black despite
-     allowTransparency. Force those layers transparent so the terminal's own
-     80%-opacity theme background is the only fill, and drop the viewport's grey
-     scrollbar track (the bar on the right) to transparent too. */
+  /* xterm.css hardcodes an opaque #000 on .xterm and .xterm-viewport, which would
+     paint over the .t-body tint and hide the board. Force those layers fully
+     transparent so the .t-body fill is the only background, and drop the viewport's
+     grey scrollbar track (the bar on the right) to transparent too. */
   .t-body .xterm, .t-body .xterm-viewport, .t-body .xterm-screen { background: transparent !important; }
   .t-body .xterm-viewport { scrollbar-width: thin; scrollbar-color: var(--metal-dim, #7a5f30) transparent; }
 
@@ -144,15 +145,15 @@ export class LedgerTerminal extends HTMLElement {
   }
 
   #initTerm(): void {
-    // allowTransparency lets the rgba background blend with what's behind the
-    // terminal (the transparent panel, and the board beneath the overlay); without
-    // it xterm paints an opaque cell layer and the alpha is ignored.
+    // allowTransparency lets the fully-transparent terminal background show what's
+    // behind it (the .t-body's 80%-opacity fill, and the board beneath the overlay);
+    // without it xterm paints an opaque cell layer and the .t-body tint is hidden.
     const term = new Terminal({
       cursorBlink: true,
       fontSize: 13,
       fontFamily: 'ui-monospace, Menlo, Consolas, monospace',
       allowTransparency: true,
-      theme: { background: 'rgba(10, 7, 3, 0.8)' },
+      theme: { background: 'rgba(0, 0, 0, 0)' },
     });
     const fit = new FitAddon();
     term.loadAddon(fit);
