@@ -61,12 +61,11 @@ cardSheet.replaceSync(`
   @keyframes unfurl { from { opacity: 0; transform: translateY(10px) rotate(-.4deg); } }
   .card:hover .paper { box-shadow: var(--card-shadow-hover, 2px 4px 9px rgba(0,0,0,.3), inset 0 0 30px rgba(160,120,60,.08), inset 0 0 0 1px rgba(196,172,124,.6)); }
 
-  :host([selected]) .card { transform: translateY(-1px) rotate(-.2deg); }
   /* The active card is the column's focal point. Its dominance is carried mainly
      by a VALUE lift on the parchment itself — a brightness/saturation bump on the
      paper layer (an area-wide contrast shift the eye reads preattentively), backed
-     by the deeper shadow, the slight elevation, and the gilded frame as redundant
-     cues. The peer cards recede in parallel (see the column's dim rule in
+     by the deeper shadow and the gilded frame as redundant cues. The peer cards
+     recede in parallel (see the column's dim rule in
      styles.css), so the active card reads as figure against a receded ground —
      a border alone shifts figure/ground too little to lead. The brightness rides
      on the deckle filter (kept first so the torn edge is preserved). */
