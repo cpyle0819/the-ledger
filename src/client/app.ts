@@ -20,7 +20,7 @@ import './components/ledger-settings.js';
 import { state } from './core/state.js';
 import { api, loadProjects } from './core/api.js';
 import { loadTree, render, wireDrawer, wireCompose, reconcile, syncUrl, hydrateStateFromUrl, restoreFromUrl, wireDeepLinkNav } from './core/board.js';
-import { initTheme, onThemeChange } from './core/theme.js';
+import { initTheme } from './core/theme.js';
 import { $, need } from './ui/dom.js';
 import type { LedgerDrawer } from './components/ledger-drawer.js';
 import type { LedgerCompose } from './components/ledger-compose.js';
@@ -54,24 +54,11 @@ function setPressed(group: HTMLElement, btn: HTMLElement): void {
     x.setAttribute('aria-pressed', String(on));
   });
 }
-function segWire(id: string, apply: (data: DOMStringMap) => void): void {
-  const s = need(id);
-  s.querySelectorAll('button').forEach((b) => { b.onclick = () => { setPressed(s, b); apply(b.dataset); }; });
-}
-function syncLensSeg(): void {
-  need('#lens-seg').querySelectorAll('button').forEach((b) => {
-    const on = b.dataset.lens === state.lens;
-    b.classList.toggle('on', on);
-    b.setAttribute('aria-pressed', String(on));
-  });
-}
 
 // Reflect the current filter/lens state into the controls, so a view restored
 // from the URL shows the matching toolbar (the project select is set in
 // fillProjects, once its options exist). Runs on startup after hydration.
 function syncControls(): void {
-  syncLensSeg();
-  need<HTMLInputElement>('#show-closed').checked = state.status !== 'Open';
   need<HTMLInputElement>('#search-input').value = state.search;
   const aSeg = need('#assignee-seg'); const aInput = need<HTMLInputElement>('#assignee-input');
   const preset = [...aSeg.querySelectorAll('button')].find((b) => (b.dataset.assignee || '') === state.assignee);
@@ -130,9 +117,13 @@ async function wireTerminal(): Promise<void> {
 }
 
 function wire(): void {
-  // Closed items are hidden by default (status 'Open'); the toggle reveals them.
-  need<HTMLInputElement>('#show-closed').onchange = (e) => { state.status = (e.target as HTMLInputElement).checked ? 'ALL' : 'Open'; reloadForFilterChange(); };
-  segWire('#lens-seg', (d) => { state.lens = (d.lens as typeof state.lens); syncUrl(); render({ animate: true }); });
+  // Display settings (view type + show closed) live in <ledger-settings>; listen
+  // for its composed setting-changed event to apply the state change to the board.
+  document.addEventListener('setting-changed', (e) => {
+    const { key, value } = (e as CustomEvent).detail;
+    if (key === 'lens') { syncUrl(); render({ animate: true }); }
+    else if (key === 'status') { reloadForFilterChange(); }
+  });
 
   const aSeg = need('#assignee-seg'); const aInput = need<HTMLInputElement>('#assignee-input');
   aSeg.querySelectorAll('button').forEach((b) => { b.onclick = () => { setPressed(aSeg, b); aInput.value = ''; state.assignee = b.dataset.assignee || ''; reloadForFilterChange(); }; });
@@ -162,10 +153,6 @@ function wire(): void {
   need('#refresh').onclick = () => loadTree();
   need('#about-btn').onclick = () => need<LedgerAbout>('#about').open();
   need('#settings-btn').onclick = () => need<LedgerSettings>('#settings').open();
-  // The gear is present only when the active theme has knobs to tune; the panel
-  // reads its own `hasSettings` off the active theme, so show/hide tracks it on
-  // every theme resolve and switch.
-  onThemeChange(() => { need('#settings-btn').hidden = !need<LedgerSettings>('#settings').hasSettings; });
   wireDrawer();
   wireCompose();
   wireReconcile();
@@ -178,8 +165,6 @@ function wire(): void {
     if (need('#drawer').hasAttribute('open')) return;
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === 'r') loadTree();
-    else if (e.key === '1') { state.lens = 'columns'; syncLensSeg(); syncUrl(); render({ animate: true }); }
-    else if (e.key === '2') { state.lens = 'outline'; syncLensSeg(); syncUrl(); render(); }
   });
 }
 

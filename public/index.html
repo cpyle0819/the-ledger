@@ -81,9 +81,7 @@
       <!-- Theme switcher — populated from the manifest by the theme controller. -->
       <label class="sr-only" for="theme-select">Theme</label>
       <select class="theme-select" id="theme-select" title="Switch theme" aria-label="Switch theme"></select>
-      <!-- Theme settings gear — shown only when the active theme declares tunable
-           knobs (app.ts toggles [hidden] on theme change). Opens <ledger-settings>. -->
-      <button class="ghost-btn icon-btn" id="settings-btn" title="Theme settings" aria-label="Theme settings" hidden>⚙</button>
+      <button class="ghost-btn icon-btn" id="settings-btn" title="Settings" aria-label="Settings">⚙</button>
       <!-- Terminal — shown only when the host reports terminal:true (app.ts
            reveals it on the source handshake). Opens <ledger-terminal>. -->
       <button class="ghost-btn icon-btn" id="terminal-btn" title="Terminal" aria-label="Open terminal" hidden>▶_</button>
@@ -112,21 +110,7 @@
       <span class="ctl-label" id="search-label">search</span>
       <input type="search" id="search-input" class="ctl-search" placeholder="find in the archive…" spellcheck="false" aria-labelledby="search-label" />
     </div>
-    <div class="ctl">
-      <label class="switch" title="Closed items are hidden by default">
-        <input type="checkbox" id="show-closed" />
-        <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
-        <span class="switch-text">show closed items</span>
-      </label>
-    </div>
     <div class="ctl grow"></div>
-    <div class="ctl" role="group" aria-labelledby="view-label">
-      <span class="ctl-label" id="view-label">view</span>
-      <div class="seg" id="lens-seg" role="group" aria-labelledby="view-label">
-        <button type="button" data-lens="columns" class="on" aria-pressed="true" aria-keyshortcuts="1" title="Columns (1)"><span aria-hidden="true">▚ </span>columns</button>
-        <button type="button" data-lens="outline" aria-pressed="false" aria-keyshortcuts="2" title="Outline (2)"><span aria-hidden="true">☰ </span>outline</button>
-      </div>
-    </div>
     <div class="ctl">
       <button class="ghost-btn" id="refresh" aria-keyshortcuts="r" title="Refresh (r)">
         <span aria-hidden="true">↻ </span>refresh
@@ -163,8 +147,8 @@
        masthead "?" button. -->
   <ledger-about id="about"></ledger-about>
 
-  <!-- Theme settings modal — renders the active theme's tunable knobs (ambient
-       effects, etc.) from its manifest; opened from the masthead gear. -->
+  <!-- Settings modal — Display options (view, show-closed) and theme tuning
+       (when the active theme declares knobs). Opened from the masthead gear. -->
   <ledger-settings id="settings"></ledger-settings>
 
   <div class="toast" id="toast" role="status" aria-live="assertive"></div>

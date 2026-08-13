@@ -1,23 +1,25 @@
-// <ledger-settings> — the theme settings panel behind the masthead gear. A theme
-// declares its tunable knobs in its manifest (`settings`: a list of {attr, type,
-// label, default, …}); this panel renders a control per knob and writes the
-// user's choice back through the theme controller — into localStorage (so it
-// survives reloads) and onto the live ambient/logo element (so it takes effect at
-// once). The controller stays theme-agnostic: it renders whatever the schema
-// declares and understands no specific attr, exactly as it mounts ambient/logo.
+// <ledger-settings> — the application settings panel behind the masthead gear.
+// Two sections:
+//   Display — view type (columns/outline) and show-closed toggle. Core the-ledger
+//     concerns, independent of any plugin.
+//   Theme — the active theme's tunable knobs (from its manifest `settings`
+//     schema). Hidden when the theme declares no knobs.
 //
-// Shares the About modal's chrome verbatim — a centered leaf over a scrim, brass
-// rule, focus trap, Esc/scrim-click to close. Reopen re-reads current values, so
-// the controls always mirror what's applied. A theme with no `settings` has no
-// gear (app.ts hides the button), so this panel is only reachable when there is
-// something to tune.
+// Chrome matches the About modal: centered leaf over a scrim, brass rule, focus
+// trap, Esc/scrim-click to close. Emits `setting-changed` events (composed,
+// bubbles) so the app root can react to display changes.
 
 import { el } from './util.js';
 import { chromeSheet, scrollbarSheet } from './shared-styles.js';
+import './ledger-switch.js';
+import './ledger-segment.js';
+import type { LedgerSwitch } from './ledger-switch.js';
+import type { LedgerSegment } from './ledger-segment.js';
 import {
   activeTheme, loadSettings, saveSetting, applyLiveSetting,
   type ThemeSetting,
 } from '../core/theme.js';
+import { state } from '../core/state.js';
 
 const sheet = new CSSStyleSheet();
 sheet.replaceSync(`
@@ -51,43 +53,28 @@ sheet.replaceSync(`
   .ghost-btn:hover { color: #fff; border-color: var(--metal, #b08d4f); background: linear-gradient(180deg, var(--frame-raised, #33230f), var(--frame, #2a1c10)); }
 
   .s-title { font-family: var(--fell, serif); font-weight: 400; font-size: 28px; line-height: 1.2; margin: 12px 0 6px; color: var(--text, #33291a); }
-  .s-lede { font-family: var(--gara, serif); font-size: 15px; line-height: 1.6; color: var(--text-muted, #5b4a30); font-style: italic; margin: 0 0 4px; }
   .s-rule { height: 2px; background: linear-gradient(90deg, var(--metal-dim, #7a5f30), transparent); margin: 16px 0 4px; }
 
   .s-body { overflow-y: auto; padding: 8px 0 0; }
-  /* One knob per row: label at the left, its control at the right. */
+
+  /* Section headings — dominant over their rows: larger, heavier, full-value
+     text, and a hairline underline that groups the rows beneath. Sits below the
+     modal title in the hierarchy (title 28px), above the 16px row labels. */
+  .section-label {
+    font-family: var(--fell, serif); font-size: 19px; font-weight: 600; letter-spacing: .02em;
+    color: var(--text, #33291a); margin: 22px 0 2px; padding: 0 0 6px;
+    border-bottom: 1px solid var(--hairline-soft, rgba(122,95,48,.4));
+  }
+  .section-label:first-child { margin-top: 4px; }
+
   .row { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 13px 0; border-bottom: 1px solid var(--hairline-soft, rgba(122,95,48,.4)); }
   .row:last-child { border-bottom: 0; }
   .row-label { font-family: var(--gara, serif); font-size: 16px; color: var(--text, #33291a); }
 
-  /* Toggle switch — a brass-tracked pill echoing the board's "show closed". */
-  .switch { position: relative; width: 46px; height: 24px; flex: 0 0 auto; cursor: pointer; }
-  .switch input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
-  .track { position: absolute; inset: 0; border-radius: 999px; background: var(--well, rgba(20,14,7,.6)); border: 1px solid var(--metal-dim, #7a5f30); transition: .18s; }
-  .thumb { position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--metal, #b08d4f); transition: .18s; box-shadow: 0 1px 2px rgba(0,0,0,.5); }
-  .switch input:checked + .track { background: var(--seg-on-bg, linear-gradient(180deg, var(--metal-bright, #d8b878), var(--metal, #b08d4f))); }
-  .switch input:checked + .track + .thumb { left: 24px; background: var(--frame-deep, #1c1409); }
-  .switch input:focus-visible + .track { outline: 2px solid var(--metal-bright, #d8b878); outline-offset: 2px; }
-
-  /* Range slider + its live numeric read-out. */
+  /* Range slider */
   .range { display: flex; align-items: center; gap: 10px; }
   .range input { width: 150px; accent-color: var(--metal, #b08d4f); cursor: pointer; }
   .range-val { font-family: var(--mono, monospace); font-size: 13px; color: var(--text-muted, #5b4a30); min-width: 3ch; text-align: right; }
-
-  /* Segmented mode control (e.g. Light / Dark) — a brass-framed pill group; the
-     active segment fills with the theme's on-gradient, matching the board's segs. */
-  .segmode { display: inline-flex; border: 1px solid var(--metal-dim, #7a5f30); border-radius: 999px; overflow: hidden; background: var(--well, rgba(20,14,7,.6)); }
-  .segmode button {
-    font-family: var(--gara, serif); font-size: 14px; color: var(--text-muted, #5b4a30);
-    background: transparent; border: 0; padding: 6px 16px; cursor: pointer; transition: .15s; line-height: 1.3;
-  }
-  .segmode button + button { border-left: 1px solid var(--hairline-soft, rgba(122,95,48,.4)); }
-  .segmode button:hover { color: var(--text, #33291a); }
-  .segmode button[aria-pressed="true"] {
-    color: var(--seg-on-fg, var(--frame-deep, #1c1409)); font-weight: 600;
-    background: var(--seg-on-bg, linear-gradient(180deg, var(--metal-bright, #d8b878), var(--metal, #b08d4f)));
-  }
-  .segmode button:focus-visible { outline: 2px solid var(--focus-ring-onlight, var(--metal-bright, #d8b878)); outline-offset: -2px; }
 
   .s-foot { display: flex; justify-content: flex-end; padding: 14px 0 22px; }
   .s-reset {
@@ -95,7 +82,6 @@ sheet.replaceSync(`
     background: none; border: 0; padding: 4px 2px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px;
   }
   .s-reset:hover { color: var(--alert, #8f2f22); }
-  .s-empty { font-family: var(--gara, serif); font-style: italic; color: var(--text-muted, #5b4a30); padding: 8px 0 24px; }
 
   :focus-visible { outline: 2px solid var(--metal-bright, #d8b878); outline-offset: 3px; }
 `);
@@ -112,99 +98,117 @@ export class LedgerSettings extends HTMLElement {
       <div class="scrim" part="scrim"></div>
       <div class="panel" role="dialog" aria-modal="true" aria-labelledby="s-title" tabindex="-1" part="panel">
         <div class="s-head">
-          <span class="s-kicker" id="s-kicker">Theme</span>
+          <span class="s-kicker" id="s-kicker">Preferences</span>
           <button class="ghost-btn" id="s-close" aria-keyshortcuts="Escape" title="Close (Esc)"><span aria-hidden="true">✕ </span>close</button>
         </div>
         <h2 class="s-title" id="s-title">Settings</h2>
-        <p class="s-lede">Tune this theme's atmosphere. Saved for this browser.</p>
         <div class="s-rule" aria-hidden="true"></div>
         <div class="s-body" id="s-body"></div>
-        <div class="s-foot" id="s-foot" hidden><button class="s-reset" id="s-reset">Reset to theme defaults</button></div>
+        <div class="s-foot" id="s-foot" hidden><button class="s-reset" id="s-reset">Reset theme to defaults</button></div>
       </div>`;
     this.#$('.scrim').addEventListener('click', () => this.close());
     this.#$('#s-close').addEventListener('click', () => this.close());
-    this.#$('#s-reset').addEventListener('click', () => this.#reset());
-    this.shadowRoot!.addEventListener('keydown', (e) => {
-      if ((e as KeyboardEvent).key === 'Escape') this.close();
-    });
+    this.#$('#s-reset').addEventListener('click', () => this.#resetTheme());
   }
 
   #$<T extends Element = HTMLElement>(sel: string): T { return this.shadowRoot!.querySelector(sel) as T; }
 
-  // Whether the active theme has anything to configure — app.ts reads this to
-  // show or hide the gear.
-  get hasSettings(): boolean { return !!activeTheme()?.settings?.length; }
-
-  // (Re)build the controls from the active theme's schema and current saved
-  // values. Called on every open so the panel mirrors what's applied.
+  // Build the controls from current state and the active theme's schema.
+  // Called on every open so the panel mirrors what's applied.
   #render(): void {
     const theme = activeTheme();
     const body = this.#$('#s-body');
     body.replaceChildren();
-    this.#$('#s-kicker').textContent = theme?.name ?? 'Theme';
+
+    // Display section (the-ledger core)
+    body.append(this.#sectionLabel('Display'));
+    body.append(this.#displayRows());
+
+    // Theme section (plugin concern) — present only when the theme has knobs.
     const settings = theme?.settings ?? [];
-    const foot = this.#$('#s-foot');
-    if (!settings.length) {
-      body.append(el('p', 's-empty', 'This theme has nothing to configure.'));
-      foot.hidden = true;
-      return;
-    }
-    foot.hidden = false;
-    const saved = loadSettings(theme!.id);
-    for (const s of settings) {
-      const cur = s.attr in saved ? saved[s.attr]! : s.default;
-      body.append(this.#row(theme!.id, s, cur));
+    if (settings.length) {
+      body.append(this.#sectionLabel('Theme'));
+      const saved = loadSettings(theme!.id);
+      for (const s of settings) {
+        const cur = s.attr in saved ? saved[s.attr]! : s.default;
+        body.append(this.#themeRow(theme!.id, s, cur));
+      }
+      this.#$('#s-foot').hidden = false;
+    } else {
+      this.#$('#s-foot').hidden = true;
     }
   }
 
-  // One knob row: its label plus a switch (boolean) or slider (range). Each
-  // control writes through on change — persist the value (dropping it when it
-  // equals the theme default) and apply it live to the mounted component.
-  #row(id: string, s: ThemeSetting, cur: boolean | number | string): HTMLElement {
+  #sectionLabel(text: string): HTMLElement {
+    return el('h3', 'section-label', text);
+  }
+
+  // Display section: view type + show closed.
+  #displayRows(): DocumentFragment {
+    const frag = document.createDocumentFragment();
+
+    // View type (columns / outline)
+    const viewRow = el('div', 'row');
+    viewRow.append(el('span', 'row-label', 'View'));
+    const seg = document.createElement('ledger-segment') as LedgerSegment;
+    seg.setAttribute('aria-label', 'View type');
+    seg.options = [
+      { value: 'columns', label: 'columns' },
+      { value: 'outline', label: 'outline' },
+    ];
+    seg.value = state.lens;
+    seg.addEventListener('change', (e) => {
+      const { value } = (e as CustomEvent).detail;
+      state.lens = value as typeof state.lens;
+      this.#emit('setting-changed', { key: 'lens', value });
+    });
+    viewRow.append(seg);
+    frag.append(viewRow);
+
+    // Show closed items
+    const closedRow = el('div', 'row');
+    closedRow.append(el('span', 'row-label', 'Show closed items'));
+    const sw = document.createElement('ledger-switch') as LedgerSwitch;
+    sw.setAttribute('label', 'Show closed items');
+    sw.checked = state.status !== 'Open';
+    sw.addEventListener('change', (e) => {
+      const { checked } = (e as CustomEvent).detail;
+      state.status = checked ? 'ALL' : 'Open';
+      this.#emit('setting-changed', { key: 'status', value: state.status });
+    });
+    closedRow.append(sw);
+    frag.append(closedRow);
+
+    return frag;
+  }
+
+  // One theme knob row: label + control (mode segment, boolean switch, or range
+  // slider). Each control writes through on change.
+  #themeRow(id: string, s: ThemeSetting, cur: boolean | number | string): HTMLElement {
     const row = el('div', 'row');
-    const label = el('span', 'row-label', s.label);
-    row.append(label);
+    row.append(el('span', 'row-label', s.label));
 
     if (s.type === 'mode') {
-      // A segmented pick from s.options; the chosen value is written straight to
-      // the target (a data-attr on <html> for a light/dark palette). No live
-      // remount — the token cascade repaints on the attribute change.
-      const group = el('div', 'segmode');
-      group.setAttribute('role', 'group');
-      group.setAttribute('aria-label', s.label);
-      const opts = s.options ?? [];
-      const paint = (chosen: string) => {
-        for (const b of group.children) {
-          (b as HTMLElement).setAttribute('aria-pressed', String((b as HTMLElement).dataset.value === chosen));
-        }
-      };
-      for (const o of opts) {
-        const b = document.createElement('button');
-        b.type = 'button'; b.dataset.value = o.value; b.textContent = o.label;
-        b.addEventListener('click', () => {
-          saveSetting(id, s.attr, o.value, o.value === s.default);
-          applyLiveSetting(s, o.value);
-          paint(o.value);
-        });
-        group.append(b);
-      }
-      paint(String(cur));
-      row.append(group);
+      const seg = document.createElement('ledger-segment') as LedgerSegment;
+      seg.setAttribute('aria-label', s.label);
+      seg.options = (s.options ?? []).map((o) => ({ value: o.value, label: o.label }));
+      seg.value = String(cur);
+      seg.addEventListener('change', (e) => {
+        const { value } = (e as CustomEvent).detail;
+        saveSetting(id, s.attr, value, value === s.default);
+        applyLiveSetting(s, value);
+      });
+      row.append(seg);
     } else if (s.type === 'boolean') {
-      const wrap = el('label', 'switch');
-      const input = document.createElement('input');
-      input.type = 'checkbox';
-      input.checked = cur === true;
-      input.setAttribute('aria-label', s.label);
-      const track = el('span', 'track'); track.setAttribute('aria-hidden', 'true');
-      const thumb = el('span', 'thumb'); thumb.setAttribute('aria-hidden', 'true');
-      wrap.append(input, track, thumb);
-      input.addEventListener('change', () => {
-        const v = input.checked;
+      const sw = document.createElement('ledger-switch') as LedgerSwitch;
+      sw.setAttribute('label', s.label);
+      sw.checked = cur === true;
+      sw.addEventListener('change', (e) => {
+        const v = (e as CustomEvent).detail.checked as boolean;
         saveSetting(id, s.attr, v, v === s.default);
         applyLiveSetting(s, v);
       });
-      row.append(wrap);
+      row.append(sw);
     } else {
       const wrap = el('div', 'range');
       const input = document.createElement('input');
@@ -225,9 +229,8 @@ export class LedgerSettings extends HTMLElement {
     return row;
   }
 
-  // Clear every knob back to its theme default: wipe the saved value, apply the
-  // default live, then rebuild the controls to match.
-  #reset(): void {
+  // Clear theme knobs to defaults; rebuild controls.
+  #resetTheme(): void {
     const theme = activeTheme();
     if (!theme?.settings) return;
     for (const s of theme.settings) {
@@ -235,6 +238,10 @@ export class LedgerSettings extends HTMLElement {
       applyLiveSetting(s, s.default);
     }
     this.#render();
+  }
+
+  #emit(name: string, detail: unknown): void {
+    this.dispatchEvent(new CustomEvent(name, { bubbles: true, composed: true, detail }));
   }
 
   open(): void {
@@ -245,17 +252,20 @@ export class LedgerSettings extends HTMLElement {
     this.#$('.panel').focus();
     this.#trap = (e: KeyboardEvent) => this.#trapFocus(e);
     document.addEventListener('keydown', this.#trap, true);
+    this.shadowRoot!.addEventListener('keydown', this.#handleEsc);
   }
 
   close(): void {
     if (!this.hasAttribute('open')) return;
     this.removeAttribute('open');
     if (this.#trap) { document.removeEventListener('keydown', this.#trap, true); this.#trap = null; }
+    this.shadowRoot!.removeEventListener('keydown', this.#handleEsc);
     if (this.#lastFocus && this.#lastFocus.isConnected) this.#lastFocus.focus();
     this.#lastFocus = null;
   }
 
-  // Keep Tab within the dialog's focusables, cycling at both ends.
+  #handleEsc = (e: Event): void => { if ((e as KeyboardEvent).key === 'Escape') this.close(); };
+
   #trapFocus(e: KeyboardEvent): void {
     if (e.key !== 'Tab' || !this.hasAttribute('open')) return;
     const sel = 'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])';
