@@ -84,6 +84,7 @@ export async function loadTree(): Promise<void> {
       state.rootsCursor = null; state.rootsLoaded = roots.length; state.rootsTotal = roots.length;
     }
     setRootLanes(roots);
+    clearStaleIdentity();   // the load succeeded, so any prior session-expired flag is stale
     if (!byId(state.selEpic)) { state.selEpic = state.epics[0]?.id || null; state.selStory = null; }
     // The tree just settled the selection (the linked epic, or the first epic as
     // the default). Reflect it so even an unlinked load carries its selection in
@@ -345,6 +346,16 @@ export function handleError(err: ApiError): void {
   }
   toast(err.message, true);
   need('#stage').querySelectorAll('.columns, .outline').forEach((n) => n.remove());
+}
+
+// A successful load proves the session is valid again, so clear the stale flag a
+// prior 401 raised and restore the cached identity name. A no-op when nothing was
+// stale, so it's safe to call on every load.
+function clearStaleIdentity(): void {
+  const ident = $('#ident');
+  if (!ident?.classList.contains('stale')) return;
+  ident.classList.remove('stale');
+  const name = $('#ident-name'); if (name && state.me) name.textContent = state.me;
 }
 
 // ---- render dispatch ----
