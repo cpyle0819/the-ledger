@@ -730,7 +730,7 @@ export class LedgerDrawer extends HTMLElement {
     );
     if (!defs.length) { box.hidden = true; box.innerHTML = ''; return; }
     box.hidden = false; box.innerHTML = '';
-    box.append(el('h4', null, 'Fields'));
+    box.append(el('h4', null, 'custom fields'));
     const grid = el('div', 'd-custom-grid');
     for (const def of defs) {
       const value = item.customFields?.[def.key] ?? null;
