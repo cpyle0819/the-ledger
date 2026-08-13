@@ -17,7 +17,7 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { Capabilities, SourcePlugin } from '../shared/contract';
+import type { Capabilities, CustomFieldDef, SourcePlugin } from '../shared/contract';
 
 const CONTRACT_VERSION = 1;
 
@@ -68,6 +68,7 @@ export function resolveCapabilities(plugin: SourcePlugin): Capabilities {
     taskDates: !!c.taskDates,
     incompleteClose: !!c.incompleteClose,
     pagedRoots: !!c.pagedRoots && has('getRoots'),
+    customFields: Array.isArray(c.customFields) ? c.customFields as CustomFieldDef[] : [],
   };
 }
 

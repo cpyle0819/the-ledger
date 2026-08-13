@@ -24,7 +24,7 @@ import { chromeSheet, idTag, noEstimateIcon, pointsPill, CONFIDENCE, scrollbarSh
 import { renderInto } from './markdown.js';
 import './ledger-comment-thread.js';
 import type { LedgerCommentThread } from './ledger-comment-thread.js';
-import type { Item, LedgerNode, User, EditableField, Capabilities, EpicVelocity, Status, Kind } from '../../shared/contract';
+import type { Item, LedgerNode, User, EditableField, CustomFieldDef, Capabilities, EpicVelocity, Status, Kind } from '../../shared/contract';
 import { STATUS_LABEL, isClosed as statusIsClosed, isAbandoned } from '../../shared/status.js';
 
 /** The fetch wrapper the board injects (see app's api()). */
@@ -225,6 +225,12 @@ sheet.replaceSync(`
   .cgroup-effort { margin-left: 14px; font-family: var(--fell, serif); font-style: italic; font-size: 17px; color: var(--text-muted, #5b4a30); }
   .cgroup-effort::before { content: "· "; color: var(--text-faint, #6f5c3e); }
 
+  /* Custom fields section (plugin-defined, below the built-in grid). */
+  .d-custom { margin-bottom: 20px; }
+  .d-custom h4 { margin: 0 0 10px; font-family: var(--fell-sc, serif); font-size: 15px; letter-spacing: .08em; color: var(--alert, #8f2f22); font-weight: 400; }
+  .d-custom-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 22px; }
+  .d-custom[hidden] { display: none; }
+
   .d-contains { margin-bottom: 22px; padding: 14px 16px; border: 1px solid var(--field-edge, var(--border, #c4ac7c)); border-radius: 2px; background: var(--inset-bg, rgba(255,250,235,.4)); }
   .d-contains h4 { margin: 0 0 10px; font-family: var(--fell-sc, serif); font-size: 15px; letter-spacing: .08em; color: var(--alert, #8f2f22); font-weight: 400; }
   .cline { display: flex; align-items: center; gap: 10px; padding: 6px 4px; cursor: pointer; border-bottom: 1px dotted rgba(91,74,48,.25); font-size: 16px; }
@@ -357,6 +363,7 @@ export class LedgerDrawer extends HTMLElement {
           <div class="d-field" id="d-estimate-field"><label for="d-estimate-edit">estimate (points)<span class="est-warn" id="d-estimate-warn" title="No estimate set" aria-label="No estimate set" hidden>⚠</span></label><input type="number" id="d-estimate-edit" min="0" step="1" spellcheck="false" placeholder="—" /><p class="d-conf-note" id="d-conf-note"></p></div>
           <div class="d-field" id="d-startdate-field" hidden><label for="d-startdate-edit">start date<span class="est-warn" id="d-startdate-warn" title="No start date set" aria-label="No start date set" hidden>⚠</span></label><input type="date" id="d-startdate-edit" spellcheck="false" /></div>
         </div>
+        <div class="d-custom" id="d-custom" hidden></div>
         <div class="d-contains" id="d-contains" hidden></div>
         <div class="d-desc-head">
           <span class="d-desc-label">description</span>
@@ -583,6 +590,7 @@ export class LedgerDrawer extends HTMLElement {
     this.#$('#d-conf-note').textContent = caps.points ? CONFIDENCE[item.kind].meaning : '';
 
     this.#paintDates(item);
+    this.#paintCustomFields(item);
     // Creation date: read-only, every tier, when the source records one. The list
     // node carries no createDate, so on the preview paint we don't yet know whether
     // this source stamps one. A source that supports readItem almost always returns
@@ -710,6 +718,67 @@ export class LedgerDrawer extends HTMLElement {
     return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' });
   }
 
+  // ---- custom fields (plugin-defined) ----
+  // Render the plugin's custom field definitions that apply to this item's tier. Each
+  // def becomes one input (or read-only span) in a grid section below the built-in
+  // fields. Values come from Item.customFields; writes go through the standard
+  // editField endpoint keyed by the def's key.
+  #paintCustomFields(item: LedgerNode & Partial<Item>): void {
+    const box = this.#$('#d-custom');
+    const defs: CustomFieldDef[] = (this.#caps.customFields || []).filter(
+      (d) => !d.tiers?.length || d.tiers.includes(item.kind),
+    );
+    if (!defs.length) { box.hidden = true; box.innerHTML = ''; return; }
+    box.hidden = false; box.innerHTML = '';
+    box.append(el('h4', null, 'Fields'));
+    const grid = el('div', 'd-custom-grid');
+    for (const def of defs) {
+      const value = item.customFields?.[def.key] ?? null;
+      const field = el('div', 'd-field');
+      const label = el('label', null, def.label);
+      field.append(label);
+      if (def.readOnly) {
+        const ro = el('div', value != null ? 'd-readonly' : 'd-readonly empty');
+        ro.textContent = value != null ? String(value) : '—';
+        field.append(ro);
+      } else {
+        const input = document.createElement('input');
+        input.type = def.type === 'number' ? 'number' : 'text';
+        if (def.type === 'number') { input.min = '0'; input.step = '1'; }
+        input.spellcheck = false;
+        input.placeholder = '—';
+        input.value = value != null ? String(value) : '';
+        const key = def.key;
+        const fieldLabel = def.label;
+        input.addEventListener('blur', () => {
+          const v = input.value.trim();
+          const cur = item.customFields?.[key] ?? null;
+          const same = (v === '' && cur == null) || (def.type === 'number' ? Number(v) === cur : v === cur);
+          if (!same) this.#editCustom(key, def.type === 'number' ? v : v, fieldLabel);
+        });
+        field.append(input);
+      }
+      grid.append(field);
+    }
+    box.append(grid);
+  }
+
+  // Write a custom field (same endpoint as built-in fields; the plugin's editField
+  // handles custom keys the same way).
+  async #editCustom(key: string, value: unknown, label: string): Promise<void> {
+    const node = this.#item; if (!node || !this.api) return;
+    try {
+      const { item } = await this.api<{ item: Item }>(`/api/item/${node.id}/edit`, {
+        method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ field: key, value }),
+      });
+      Object.assign(node, item); this.#item = node;
+      this.#paintCustomFields(node);
+      this.sfx?.quill();
+      this.#setSaveState('saved', `${label.toLowerCase()} saved`);
+      this.#emitChanged();
+    } catch (err) { this.toast?.((err as Error).message, true); }
+  }
+
   // ---- edits ----
   async #edit(field: EditableField, value: unknown, label: string): Promise<Item | undefined> {
     const node = this.#item; if (!node || !this.api) return;
@@ -723,10 +792,13 @@ export class LedgerDrawer extends HTMLElement {
         this.#$<HTMLInputElement>('#d-estimate-edit').value = hasEstimate ? String(item.estimate) : '';
         this.#$('#d-estimate-warn').hidden = hasEstimate;
       }
-      // A status change can stamp/clear the source-written completion date, and a
-      // start-date save re-normalizes the input — repaint the date fields from the
-      // authoritative item the source returned.
-      if (field === 'status' || field === 'startDate') this.#paintDates(node);
+      // A status change can stamp/clear the source-written completion date and auto-
+      // fill custom fields (e.g. Spent), and a start-date save re-normalizes the
+      // input — repaint both from the authoritative item the source returned.
+      if (field === 'status' || field === 'startDate') {
+        this.#paintDates(node);
+        this.#paintCustomFields(node);
+      }
       this.sfx?.quill();
       this.#setSaveState('saved', `${label.toLowerCase()} saved`);
       this.#emitChanged();

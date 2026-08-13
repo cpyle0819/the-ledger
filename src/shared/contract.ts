@@ -186,6 +186,11 @@ export interface Item extends LedgerNode {
    *  closed status — never user-editable; cleared if the task reopens. Null while
    *  open. Task-only, gated by the taskDates capability. */
   completionDate: string | null;
+  /** Plugin-defined fields keyed by CustomFieldDef.key. The drawer renders these in
+   *  a "Custom Fields" section, one control per def whose tier matches the item.
+   *  Each value is the display-ready scalar the plugin returns (the drawer formats
+   *  nothing). Absent or empty when the source declares no custom fields. */
+  customFields?: Record<string, string | number | null>;
   comments: Comment[];
   createDate: string | null;
   lastUpdatedDate: string | null;
@@ -196,6 +201,23 @@ export interface User {
   alias: string;
   fullName: string;
   jobTitle?: string;
+}
+
+/** A plugin-defined field the drawer renders without knowing the backing model.
+ *  The plugin declares these in capabilities; the drawer renders one control per
+ *  def whose tier matches the open item, reading/writing via the standard
+ *  editField endpoint (the def's `key` is the field name). */
+export interface CustomFieldDef {
+  /** The key passed to editField and returned in Item.customFields. */
+  key: string;
+  /** Human-facing label shown beside the control. */
+  label: string;
+  /** Control type the drawer renders. */
+  type: 'number' | 'text';
+  /** Which tiers show this field; absent/empty = all tiers. */
+  tiers?: Kind[];
+  /** When true, the drawer shows the value but offers no edit control. */
+  readOnly?: boolean;
 }
 
 /** The fields a source may allow editing. The board gates each field's control
@@ -278,6 +300,11 @@ export interface Capabilities {
    *  board loads every root in one getChildren(null) call, as it always has. This
    *  gates only how roots arrive; drilling a parent's children is unaffected. */
   pagedRoots: boolean;
+  /** Plugin-defined fields rendered in the drawer's custom fields section. Each
+   *  def declares its key, label, control type, and which tiers it applies to. The
+   *  drawer reads values from Item.customFields and writes via editField(id, key,
+   *  value). An absent/empty array means no custom fields. */
+  customFields?: CustomFieldDef[];
 }
 
 /** The plugin contract every source implements. A source module exports a
