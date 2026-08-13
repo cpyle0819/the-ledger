@@ -603,6 +603,11 @@ ledger-card.deemph:hover {
 .ol-row:hover .ol-add, .ol-add:focus-visible { opacity: 1; }
 .ol-add:hover { color: var(--btn-hover-fg, #fff); border-color: var(--metal); }
 
+/* <ledger-terminal> loads lazily, so it exists in the DOM before its module
+   upgrades it. Until then it has no shadow root and none of its :host hiding
+   rules apply; hide it here so it doesn't paint and slide down on first load. */
+ledger-terminal:not(:defined) { display: none; }
+
 /* ===== READING DRAWER ================================================
    The drawer is the <ledger-drawer> custom element — its panel, scrim, fields,
    editor, contains list, typeahead, and comment thread all render in that
