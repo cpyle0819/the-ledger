@@ -50,6 +50,15 @@ export interface Filters {
    *  it matches at every level: a matching item deep in a tree pulls its ancestors
    *  in as context, so a deep match isn't lost. */
   search?: string;
+  /** A sprint id (a Sprint.id) the board scopes to: only tasks belonging to that
+   *  sprint pass, and — like the assignee and search filters — a matching task
+   *  deep in a tree pulls its ancestors in as context, so a sprint's tasks render
+   *  under their real epics/stories rather than in a flat list. A null/absent value
+   *  is no sprint scope (every item passes). Only sources declaring the `sprints`
+   *  capability ever receive it; every other source sees the field absent. Sprint
+   *  membership is a task-tier concept, so this narrows the task set and rolls its
+   *  ancestors up; it never matches a story or epic directly. */
+  sprint?: string | null;
   /** Request source-accurate node fields even when that costs extra reads. A
    *  source whose LIST query returns a lagging/eventually-consistent projection
    *  (e.g. a search index behind the authoritative by-id read) can, when this is set,
@@ -93,6 +102,67 @@ export interface EpicVelocity {
   pointsPerDay: number | null;
   tasksCounted: number;
   openPoints: number;
+}
+
+/** A time-boxed grouping of tasks — an Agile/Scrum sprint. Orthogonal to the
+ *  Epic/Story/Task hierarchy: a sprint is NOT a fourth tier but a cross-cutting
+ *  box that collects tasks living anywhere in the tree. Membership is task-only
+ *  (see addTaskToSprint). Produced only by sources declaring the `sprints`
+ *  capability. */
+export interface Sprint {
+  /** Stable unique id the source keys on (used for get/delete/membership calls). */
+  id: string;
+  /** The sprint's display name. */
+  name: string;
+  /** The sprint's goal or free-text detail. Empty when unset. */
+  goal: string;
+  /** ISO start date (date-only, YYYY-MM-DD). */
+  startDate: string;
+  /** ISO end date (date-only, YYYY-MM-DD). Inclusive of the sprint's last day. */
+  endDate: string;
+  /** Lifecycle state, derived by the source: `future` before the start date,
+   *  `active` between start and end, `closed` past the end date or when the source
+   *  marks the sprint done. Selects the "current sprint". A source whose backing
+   *  store carries no explicit close reports state from the dates alone. */
+  state: SprintState;
+  /** The project (a Project.id) the sprint lives in, or null when unscoped. A
+   *  source that scopes sprints to a project (a room/folder) always sets it; it
+   *  is the dimension findSprints filters on. */
+  project: string | null;
+}
+
+/** A sprint's lifecycle state. See Sprint.state. */
+export type SprintState = 'future' | 'active' | 'closed';
+
+/** A create-sprint request. `project` places the sprint in a grouping (a
+ *  room/folder); a source that requires one (as Maxis does) rejects an absent
+ *  project. State is never an input — the source derives it from the dates and the
+ *  current time. */
+export interface SprintInput {
+  name: string;
+  startDate: string;
+  endDate: string;
+  goal?: string;
+  project?: string | null;
+}
+
+/** A patch to an existing sprint: a present field is written, an absent field is
+ *  left unchanged (not cleared). State is derived, not patchable; project is fixed
+ *  at create and not moved here. */
+export interface SprintPatch {
+  name?: string;
+  startDate?: string;
+  endDate?: string;
+  goal?: string;
+}
+
+/** The filter a findSprints call narrows on. `project` scopes to one grouping (the
+ *  common case — a board shows one project's sprints); absent means every project
+ *  the viewer can see. `state` narrows to one lifecycle state (e.g. only `active`);
+ *  absent means all states. */
+export interface SprintFilter {
+  project?: string | null;
+  state?: SprintState;
 }
 
 /** A page of root nodes with an optional continuation cursor — the contract's
@@ -300,6 +370,13 @@ export interface Capabilities {
    *  board loads every root in one getChildren(null) call, as it always has. This
    *  gates only how roots arrive; drilling a parent's children is unaffected. */
   pagedRoots: boolean;
+  /** Whether the source supports Agile/Scrum sprints — the sprint CRUD family
+   *  (findSprints, getSprint, createSprint, updateSprint, deleteSprint) and task
+   *  membership (addTaskToSprint, removeTaskFromSprint), plus the `sprint` filter
+   *  dimension on getChildren/getRoots. Trusted only when the backing methods
+   *  exist. When absent, the board offers no sprint controls and never sends a
+   *  `sprint` filter. */
+  sprints: boolean;
   /** Plugin-defined fields rendered in the drawer's custom fields section. Each
    *  def declares its key, label, control type, and which tiers it applies to. The
    *  drawer reads values from Item.customFields and writes via editField(id, key,
@@ -361,6 +438,32 @@ export interface SourcePlugin {
    *  Filters. Gated by the epicVelocity capability; the drawer calls it lazily
    *  when an epic opens, so a slow rollup never blocks the drawer's first paint. */
   epicVelocity?(epicId: string): MaybePromise<EpicVelocity>;
+
+  /** The sprint family, gated by the `sprints` capability. A source implements all
+   *  seven or none — the host trusts the flag only when every method exists. Sprints
+   *  are orthogonal to the hierarchy (see Sprint): these operate on the sprint
+   *  grouping and its task membership, never on the Epic/Story/Task tree itself.
+   *  The `sprint` filter on getChildren/getRoots is what surfaces a sprint's tasks
+   *  on the board; these methods manage the sprints and their membership. */
+
+  /** Sprints matching the filter (by project and/or state). An empty/absent filter
+   *  lists every sprint the viewer can see. */
+  findSprints?(filter: SprintFilter): MaybePromise<Sprint[]>;
+  /** One sprint by id. */
+  getSprint?(id: string): MaybePromise<Sprint>;
+  /** Create a sprint from a validated SprintInput and return it. */
+  createSprint?(input: SprintInput): MaybePromise<Sprint>;
+  /** Apply a patch to a sprint and return the updated Sprint. */
+  updateSprint?(id: string, patch: SprintPatch): MaybePromise<Sprint>;
+  /** Delete the sprint grouping. Never touches the member tasks — they lose their
+   *  membership in this sprint and are otherwise unchanged. */
+  deleteSprint?(id: string): MaybePromise<void>;
+
+  /** Add a task to a sprint and return the updated task Item. Rejects a non-task
+   *  (a story or epic) — sprint membership is task-only (see Sprint). */
+  addTaskToSprint?(sprintId: string, taskId: string): MaybePromise<Item>;
+  /** Remove a task from a sprint and return the updated task Item. */
+  removeTaskFromSprint?(sprintId: string, taskId: string): MaybePromise<Item>;
 }
 
 /** A plugin method may answer synchronously or with a Promise; the host awaits

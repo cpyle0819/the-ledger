@@ -68,6 +68,13 @@ export function resolveCapabilities(plugin: SourcePlugin): Capabilities {
     taskDates: !!c.taskDates,
     incompleteClose: !!c.incompleteClose,
     pagedRoots: !!c.pagedRoots && has('getRoots'),
+    // The whole sprint family is one flag, trusted only when every backing method
+    // exists — a half-built family would draw sprint controls with nothing behind
+    // some of them.
+    sprints: !!c.sprints
+      && has('findSprints') && has('getSprint') && has('createSprint')
+      && has('updateSprint') && has('deleteSprint')
+      && has('addTaskToSprint') && has('removeTaskFromSprint'),
     customFields: Array.isArray(c.customFields) ? c.customFields as CustomFieldDef[] : [],
   };
 }
