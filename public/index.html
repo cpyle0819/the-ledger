@@ -106,6 +106,15 @@
         <option value="">all projects</option>
       </select>
     </div>
+    <!-- Shown only when the active source declares the `sprints` capability;
+         populated from /api/sprints for the selected project. Disabled until a
+         project is chosen (sprints are project-scoped). -->
+    <div class="ctl" id="sprint-ctl" role="group" aria-labelledby="sprint-label" hidden>
+      <span class="ctl-label" id="sprint-label">sprint</span>
+      <select id="sprint-select" class="ctl-select" aria-labelledby="sprint-label">
+        <option value="">all sprints</option>
+      </select>
+    </div>
     <div class="ctl" role="group" aria-labelledby="search-label">
       <span class="ctl-label" id="search-label">search</span>
       <input type="search" id="search-input" class="ctl-search" placeholder="find in the archive…" spellcheck="false" aria-labelledby="search-label" />

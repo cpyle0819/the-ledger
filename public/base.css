@@ -311,6 +311,9 @@ ledger-board {
   background: var(--controls-bg, linear-gradient(180deg, rgba(42,28,16,.7), rgba(28,20,9,.5)));
 }
 .ctl { display: flex; align-items: center; gap: 11px; }
+/* The hidden attribute must win over the flex display above; without this an
+   attribute-gated control (a capability not offered) still renders as flex. */
+.ctl[hidden] { display: none; }
 .ctl.grow { flex: 1; }
 .ctl > .ctl-label {
   font-family: var(--fell); font-style: italic; font-size: 17px; letter-spacing: .02em;

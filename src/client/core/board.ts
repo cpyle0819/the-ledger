@@ -8,8 +8,8 @@
 // columns) so upstream columns never tear down and re-animate — that was the
 // "everything blinks" bug.
 
-import { state, byId, indexNodes, clearNodes, parentOf, type CachedNode } from './state.js';
-import { api, fetchChildren, fetchNodesRaw, fetchRootsPage, ensureChildren, fetchChildrenAllStatus, fetchEpicCounts, type ApiError } from './api.js';
+import { state, byId, indexNodes, clearNodes, parentOf, sprintsById, type CachedNode } from './state.js';
+import { api, fetchChildren, fetchNodesRaw, fetchRootsPage, ensureChildren, fetchChildrenAllStatus, fetchEpicCounts, addTaskToSprint, removeTaskFromSprint, type ApiError } from './api.js';
 import { parseHash, writeHash, type UrlState } from './url.js';
 import { sfx } from './sound.js';
 import { $, need } from '../ui/dom.js';
@@ -238,6 +238,7 @@ export function hydrateStateFromUrl(): UrlState {
   state.assignee = u.assignee ?? '';
   if (u.status) state.status = u.status;
   state.project = u.project ?? null;
+  state.sprint = u.sprint ?? null;
   state.search = u.search ?? '';
   state.selEpic = u.epic ?? null;
   state.selStory = u.story ?? null;
@@ -304,6 +305,7 @@ export function wireDeepLinkNav(): void {
       || (u.assignee ?? '') !== state.assignee
       || (u.status ?? 'Open') !== state.status
       || (u.project ?? null) !== state.project
+      || (u.sprint ?? null) !== state.sprint
       || (u.search ?? '') !== state.search;
     if (filtersDiffer) {
       hydrateStateFromUrl();
@@ -482,6 +484,14 @@ export function wireDrawer(): void {
   // epicVelocity capability. Historical over completed work, so it takes no filters.
   d.epicVelocity = (epicId) =>
     api<{ velocity: EpicVelocity }>(`/api/velocity?epic=${encodeURIComponent(epicId)}`).then((r) => r.velocity);
+  // Sprint editor services. The options come from the shared sprint map the board
+  // loaded for the picker (project-scoped, same set), so the drawer's list matches
+  // the filter's; add/remove call the membership endpoints and return the updated
+  // task. Always wired (caps load after wireDrawer); the drawer gates the field on
+  // its own sprints capability.
+  d.sprints = () => [...sprintsById.values()];
+  d.addToSprint = addTaskToSprint;
+  d.removeFromSprint = removeTaskFromSprint;
   d.addEventListener('item-changed', (e) => { if (e.detail?.item) patchNode(e.detail.item); });
   // The drawer closed. Forget the open item and take it out of the URL. A drawer
   // the user opened pushed a history entry, so a user-driven close pops it (Back's
@@ -613,7 +623,7 @@ function insertNode(item: Item, parentId: string | null): void {
 // The fields a card/row renders; a change in any is worth reflecting. Joined into
 // a signature so a whole level's freshness is one comparison.
 function nodeSig(n: CachedNode): string {
-  return [n.title, n.status, n.assignee, n.project, n.estimate, n.workflowAction, n.childCount, n.context ? 1 : 0].join('');
+  return [n.title, n.status, n.assignee, n.project, n.estimate, n.workflowAction, n.childCount, n.context ? 1 : 0, n.sprintId ?? ""].join('');
 }
 
 // Merge a freshly-fetched sibling list into the cached list for a parent (or the

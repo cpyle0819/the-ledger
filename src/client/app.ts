@@ -17,8 +17,8 @@ import './components/ledger-load-more.js';
 import './components/ledger-about.js';
 import './components/ledger-settings.js';
 
-import { state } from './core/state.js';
-import { api, loadProjects } from './core/api.js';
+import { state, sprintsById } from './core/state.js';
+import { api, loadProjects, loadSprints } from './core/api.js';
 import { loadTree, render, wireDrawer, wireCompose, reconcile, syncUrl, hydrateStateFromUrl, restoreFromUrl, wireDeepLinkNav } from './core/board.js';
 import { initTheme } from './core/theme.js';
 import { $, need } from './ui/dom.js';
@@ -44,6 +44,36 @@ async function fillProjects(): Promise<Project[]> {
     need('#project-ctl').hidden = false;
     return projects;
   } catch { return []; /* leave the picker hidden; the board stays unscoped */ }
+}
+
+// Populate the sprint picker for the current project, when the source supports
+// sprints. Sprints are project-scoped (findSprints needs a project), so the picker
+// is disabled with no project selected and rebuilt on every project change. Fills
+// sprintsById so cards/drawer resolve a task's sprintId to a name. Active sprints
+// (today within their range) are marked in the option label. Non-fatal on failure:
+// the picker shows only "all sprints" and the board stays sprint-unscoped.
+async function fillSprints(): Promise<void> {
+  if (!state.caps.sprints) return;
+  const ctl = need('#sprint-ctl');
+  const sel = need<HTMLSelectElement>('#sprint-select');
+  ctl.hidden = false;
+  sprintsById.clear();
+  // Reset to just "all sprints"; a project with no sprints (or no project) leaves
+  // the picker present but with nothing to pick.
+  sel.replaceChildren(new Option('all sprints', ''));
+  sel.disabled = !state.project;
+  if (!state.project) { state.sprint = null; return; }
+  try {
+    const sprints = await loadSprints(state.project);
+    for (const s of sprints) {
+      sprintsById.set(s.id, s);
+      sel.append(new Option(s.state === 'active' ? `${s.name} (active)` : s.name, s.id));
+    }
+    // A sprint selected from the URL only applies if it belongs to this project's
+    // set; otherwise drop it so a stale cross-project id can't scope the board.
+    if (state.sprint && !sprintsById.has(state.sprint)) state.sprint = null;
+    sel.value = state.sprint || '';
+  } catch { /* leave the picker at "all sprints"; the board stays sprint-unscoped */ }
 }
 
 // Set the pressed button in a segmented group: visual `.on` + `aria-pressed`.
@@ -135,7 +165,17 @@ function wire(): void {
   };
 
   // Project scope: null (all) or a source project id. Reloads the tree scoped.
-  need<HTMLSelectElement>('#project-select').onchange = (e) => { state.project = (e.target as HTMLSelectElement).value || null; reloadForFilterChange(); };
+  // Sprints are project-scoped, so a project change rebuilds the sprint picker
+  // (which resets a now-out-of-scope sprint) before the reload.
+  need<HTMLSelectElement>('#project-select').onchange = async (e) => {
+    state.project = (e.target as HTMLSelectElement).value || null;
+    await fillSprints();
+    reloadForFilterChange();
+  };
+
+  // Sprint scope: null (all) or a sprint id within the current project. Reloads
+  // the tree scoped to that sprint's tasks (their ancestors roll up as context).
+  need<HTMLSelectElement>('#sprint-select').onchange = (e) => { state.sprint = (e.target as HTMLSelectElement).value || null; reloadForFilterChange(); };
 
   // Free-text search. Debounced so a reload fires once typing settles rather than
   // per keystroke; Enter reloads at once. A no-op when the trimmed value is
@@ -201,6 +241,7 @@ class LedgerBoard extends HTMLElement {
       need<LedgerDrawer>('#drawer').caps = state.caps;   // gate the drawer's fields on capabilities
       const name = $('#ident-name'); if (name) name.textContent = me;
       const projects = await fillProjects();        // fills + reveals the project picker if supported
+      await fillSprints();                           // fills + reveals the sprint picker if supported
       // Hand the compose sheet the identity + project options it needs. The add
       // affordances that open it (column "+", drawer sections) show only when the
       // source declares create; the sheet itself no-ops on open without it.

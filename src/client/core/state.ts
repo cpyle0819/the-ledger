@@ -5,7 +5,13 @@
 // single source of truth for lookup: every view renders from the one instance a
 // node id maps to, so a single Object.assign on an edited item updates the board.
 
-import type { Capabilities, EpicCounts, LedgerNode, StatusFilter } from '../../shared/contract';
+import type { Capabilities, EpicCounts, LedgerNode, Sprint, StatusFilter } from '../../shared/contract';
+
+// Sprints known for the current project, id -> Sprint, so a card/drawer resolves a
+// task's sprintId to a name (and its active state) without a per-item read. Filled
+// from /api/sprints on load and rebuilt on every project change (see fillSprints);
+// empty when the source has no sprints capability or no project is selected.
+export const sprintsById = new Map<string, Sprint>();
 
 // A cached node also carries its lazily-loaded children and load bookkeeping.
 export interface CachedNode extends LedgerNode {
@@ -21,6 +27,7 @@ export interface BoardState {
   assignee: string;          // '' = the default (me), 'anyone', or an alias
   status: StatusFilter;
   project: string | null;    // null = every project; else a source project id
+  sprint: string | null;     // null = every sprint; else a sprint id (scoped to project)
   search: string;            // '' = no query; else the free text the source matches on
   lens: 'columns' | 'outline';
   me: string | null;
@@ -43,6 +50,7 @@ export const state: BoardState = {
   assignee: '',
   status: 'Open',
   project: null,
+  sprint: null,
   search: '',
   lens: 'columns',
   me: null,

@@ -229,6 +229,13 @@ export interface LedgerNode {
    *  without a per-item fetch — mirrors `estimate` living on the node for the
    *  missing-estimate flag. The full Item always has it; a node may too. */
   startDate?: string | null;
+  /** The task's current sprint id (a Sprint.id), or null when in no sprint. Set
+   *  only on task-tier nodes by a source declaring the `sprints` capability; the
+   *  board resolves the id to a display name against the sprint list it already
+   *  loaded, so the card needs no per-node name read. A task with membership in
+   *  more than one sprint reports the one whose date range contains today (the
+   *  active one), else the first. The full Item always has it; a node may too. */
+  sprintId?: string | null;
 }
 
 /** One comment on an item. */
@@ -261,6 +268,10 @@ export interface Item extends LedgerNode {
    *  Each value is the display-ready scalar the plugin returns (the drawer formats
    *  nothing). Absent or empty when the source declares no custom fields. */
   customFields?: Record<string, string | number | null>;
+  /** The task's current sprint id (a Sprint.id), or null. Task-only, gated by the
+   *  `sprints` capability. Mirrors LedgerNode.sprintId; the drawer's sprint editor
+   *  reads it to show the current selection. */
+  sprintId?: string | null;
   comments: Comment[];
   createDate: string | null;
   lastUpdatedDate: string | null;

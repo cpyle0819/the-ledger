@@ -79,6 +79,11 @@ export const chromeSheet = sheet(`
   /* Count badge: kept accented (red) with a fleuron mark for "contains". */
   .count-badge { color: var(--alert, #8f2f22); }
   .count-badge::before { content: "\\2767\\FE0E"; margin-right: 5px; opacity: .8; }
+  /* Sprint pill: same metadata voice, with a clock/cycle mark for the time-box. An
+     active sprint (today within its range) reads in the accent ink; a non-active one
+     stays muted like the rest of the row, so the current sprint stands out at a glance. */
+  .sprint-pill::before { content: "\\21BB\\FE0E"; margin-right: 5px; opacity: .8; font-style: normal; }
+  .sprint-pill.active { color: var(--seal-story, #3f5e4e); }
   /* Missing-estimate flag: a data gap (no points set), distinct from the planning
      risk tones — a muted amber chip with a warning glyph, sitting where the points
      would be (or beside the type chip on a card). Neutral-but-noticeable so it
@@ -168,6 +173,19 @@ export function pointsPill(kind: Kind, pts: number): HTMLSpanElement {
   pill.append(mark, document.createTextNode(`${pts} ${unit}`));
   pill.title = c.meaning;
   pill.setAttribute('aria-label', `${c.label} estimate: ${pts} ${unit}. ${c.meaning}`);
+  return pill;
+}
+
+// The sprint pill: a task's current sprint, shown on the card meta row and the
+// drawer. One builder so both render it identically, as a peer of the other
+// metadata (same voice). `active` marks the sprint whose range contains today, so
+// the current sprint reads in accent ink where a past/future one stays muted.
+export function sprintPill(name: string, active: boolean): HTMLSpanElement {
+  const pill = el('span', `pill sprint-pill${active ? ' active' : ''}`);
+  pill.append(document.createTextNode(name));
+  const meaning = active ? `In the active sprint "${name}"` : `In sprint "${name}"`;
+  pill.title = meaning;
+  pill.setAttribute('aria-label', meaning);
   return pill;
 }
 

@@ -3,7 +3,7 @@
 // talks to a source backend directly — credentials stay server-side.
 
 import { state, indexNodes, type CachedNode } from './state.js';
-import type { EpicCounts, Project } from '../../shared/contract';
+import type { EpicCounts, Item, Project, Sprint, SprintState } from '../../shared/contract';
 
 /** An error carrying the HTTP status, so callers can react to the transport-level
  *  outcome (e.g. 401 = not authenticated, 422 = unsupported filter combo) without
@@ -34,6 +34,7 @@ export async function fetchNodesRaw(parentId: string | null): Promise<CachedNode
   const q = new URLSearchParams({ status: state.status });
   if (state.assignee) q.set('assignee', state.assignee);
   if (state.project) q.set('project', state.project);
+  if (state.sprint) q.set('sprint', state.sprint);
   if (state.search) q.set('search', state.search);
   if (parentId) q.set('parent', parentId);
   const { nodes } = await api<ChildrenResponse>(`/api/children?${q}`);
@@ -60,6 +61,7 @@ export async function fetchRootsPage(cursor: string | null): Promise<RootsPage> 
   const q = new URLSearchParams({ status: state.status });
   if (state.assignee) q.set('assignee', state.assignee);
   if (state.project) q.set('project', state.project);
+  if (state.sprint) q.set('sprint', state.sprint);
   if (state.search) q.set('search', state.search);
   if (cursor) q.set('cursor', cursor);
   const page = await api<RootsPage>(`/api/children?${q}`);
@@ -94,6 +96,33 @@ export async function loadProjects(): Promise<Project[]> {
   return projects || [];
 }
 
+// The sprints in a project (when the source declares the sprints capability).
+// Scoped to a project — findSprints requires one — so the caller passes the
+// current project; an optional state narrows to one lifecycle state. Returns []
+// for no project (an unscoped sprint list isn't meaningful).
+export async function loadSprints(project: string | null, sprintState?: SprintState): Promise<Sprint[]> {
+  if (!project) return [];
+  const q = new URLSearchParams({ project });
+  if (sprintState) q.set('state', sprintState);
+  const { sprints } = await api<{ sprints: Sprint[] }>(`/api/sprints?${q}`);
+  return sprints || [];
+}
+
+// Move a task into a sprint (single-select: the source drops any other sprint the
+// task was directly in). Returns the updated task Item so the drawer patches its node.
+export async function addTaskToSprint(taskId: string, sprintId: string): Promise<Item> {
+  const { item } = await api<{ item: Item }>(`/api/item/${taskId}/sprint`, {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sprintId }),
+  });
+  return item;
+}
+
+// Take a task out of a sprint. Returns the updated task Item.
+export async function removeTaskFromSprint(taskId: string, sprintId: string): Promise<Item> {
+  const { item } = await api<{ item: Item }>(`/api/item/${taskId}/sprint/${sprintId}`, { method: 'DELETE' });
+  return item;
+}
+
 // Story/task rollups for a set of epics under the current filters. Called after
 // the roots render (the card shows the raw child count until this resolves), so
 // the filter params mirror fetchNodesRaw's. Gated by the epicCounts capability.
@@ -102,6 +131,7 @@ export async function fetchEpicCounts(epicIds: string[]): Promise<Record<string,
   const q = new URLSearchParams({ status: state.status, epics: epicIds.join(',') });
   if (state.assignee) q.set('assignee', state.assignee);
   if (state.project) q.set('project', state.project);
+  if (state.sprint) q.set('sprint', state.sprint);
   if (state.search) q.set('search', state.search);
   const { counts } = await api<{ counts: Record<string, EpicCounts> }>(`/api/counts?${q}`);
   return counts || {};

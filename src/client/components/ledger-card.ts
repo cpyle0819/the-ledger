@@ -14,8 +14,9 @@
 // each card carries its own, which also makes the element reusable anywhere.
 
 import { el, asButton, plural } from './util.js';
-import { chromeSheet, idTag, noEstimateChip, noStartDateChip, pointsPill } from './shared-styles.js';
+import { chromeSheet, idTag, noEstimateChip, noStartDateChip, pointsPill, sprintPill } from './shared-styles.js';
 import { isClosed, isAbandoned, STATUS_LABEL } from '../../shared/status.js';
+import { sprintsById } from '../core/state.js';
 import type { LedgerNode } from '../../shared/contract';
 
 const cardSheet = new CSSStyleSheet();
@@ -235,6 +236,15 @@ export class LedgerCard extends HTMLElement {
       meta.append(who);
     }
     if (hasPoints && item.estimate != null && item.estimate > 0) meta.append(pointsPill(item.kind, item.estimate));
+    // A task's current sprint, when the source has sprints and the task is in one.
+    // The name (and active state) come from the shared sprint map the board loaded
+    // for the picker; an id not in the map (a sprint outside the current project
+    // scope) shows no pill rather than a bare id. Task-tier only (membership is
+    // task-only), matching where sprintId is populated.
+    if (this.hasAttribute('sprints') && item.kind === 'task' && item.sprintId) {
+      const sprint = sprintsById.get(item.sprintId);
+      if (sprint) meta.append(sprintPill(sprint.name, sprint.state === 'active'));
+    }
     // Rollup badges. An epic with resolved counts shows "N stories" + "N tasks"
     // (see EpicCounts — tasks is direct + under-story, stories is immediate),
     // filtered like the board. The counts arrive after first paint, so the epic

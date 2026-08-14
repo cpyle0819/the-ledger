@@ -24,7 +24,7 @@ import { chromeSheet, idTag, noEstimateIcon, pointsPill, CONFIDENCE, scrollbarSh
 import { renderInto } from './markdown.js';
 import './ledger-comment-thread.js';
 import type { LedgerCommentThread } from './ledger-comment-thread.js';
-import type { Item, LedgerNode, User, EditableField, CustomFieldDef, Capabilities, EpicVelocity, Status, Kind } from '../../shared/contract';
+import type { Item, LedgerNode, User, EditableField, CustomFieldDef, Capabilities, EpicVelocity, Status, Kind, Sprint } from '../../shared/contract';
 import { STATUS_LABEL, isClosed as statusIsClosed, isAbandoned } from '../../shared/status.js';
 
 /** The fetch wrapper the board injects (see app's api()). */
@@ -39,6 +39,15 @@ export type PlanningChildrenFn = (node: LedgerNode) => Promise<LedgerNode[]>;
 /** Fetches an epic's points-per-day velocity over its whole task tree.
  *  Injected so the drawer stays transport-agnostic; null when unsupported. */
 export type EpicVelocityFn = (epicId: string) => Promise<EpicVelocity>;
+/** The sprints a task can be assigned to — the current project's set the board
+ *  already loaded for the picker. Synchronous (reads the shared map), so the
+ *  editor's options match the picker's exactly. */
+export type SprintsFn = () => Sprint[];
+/** Moves a task into a sprint / takes it out, returning the updated task Item so
+ *  the drawer patches its node like an edit. Injected so the drawer stays
+ *  transport-agnostic; null when the source has no sprints. */
+export type AddToSprintFn = (taskId: string, sprintId: string) => Promise<Item>;
+export type RemoveFromSprintFn = (taskId: string, sprintId: string) => Promise<Item>;
 /** Optional foley cues. */
 export interface Sfx { pageTurn(): void; quill(): void }
 /** Optional toast surface. */
@@ -303,6 +312,9 @@ export class LedgerDrawer extends HTMLElement {
   fetchChildren: FetchChildrenFn | null = null;
   planningChildren: PlanningChildrenFn | null = null;
   epicVelocity: EpicVelocityFn | null = null;
+  sprints: SprintsFn | null = null;
+  addToSprint: AddToSprintFn | null = null;
+  removeFromSprint: RemoveFromSprintFn | null = null;
   sfx: Sfx | null = null;
   toast: ToastFn | null = null;
   #caps: Partial<Capabilities> = {};
@@ -362,6 +374,7 @@ export class LedgerDrawer extends HTMLElement {
           </div>
           <div class="d-field" id="d-estimate-field"><label for="d-estimate-edit">estimate (points)<span class="est-warn" id="d-estimate-warn" title="No estimate set" aria-label="No estimate set" hidden>⚠</span></label><input type="number" id="d-estimate-edit" min="0" step="1" spellcheck="false" placeholder="—" /><p class="d-conf-note" id="d-conf-note"></p></div>
           <div class="d-field" id="d-startdate-field" hidden><label for="d-startdate-edit">start date<span class="est-warn" id="d-startdate-warn" title="No start date set" aria-label="No start date set" hidden>⚠</span></label><input type="date" id="d-startdate-edit" spellcheck="false" /></div>
+          <div class="d-field" id="d-sprint-field" hidden><label for="d-sprint-edit">sprint</label><select id="d-sprint-edit"></select></div>
         </div>
         <div class="d-custom" id="d-custom" hidden></div>
         <div class="d-contains" id="d-contains" hidden></div>
@@ -402,6 +415,15 @@ export class LedgerDrawer extends HTMLElement {
       const value = (e.target as HTMLInputElement).value; // '' or YYYY-MM-DD
       const current = this.#dateInputValue(this.#item?.startDate);
       if (value !== current) this.#edit('startDate', value, 'Start date');
+    });
+
+    // Sprint: a single-select of the project's sprints plus a blank "no sprint".
+    // Selecting one moves the task there (the source drops any other); the blank
+    // removes it from its current sprint. Not an editField — it calls the dedicated
+    // membership endpoints (see #editSprint).
+    this.#$<HTMLSelectElement>('#d-sprint-edit').addEventListener('change', (e) => {
+      const next = (e.target as HTMLSelectElement).value || null;
+      if (next !== (this.#item?.sprintId ?? null)) this.#editSprint(next);
     });
 
     // Title: click/Enter the heading to edit in place; blur or Enter saves,
@@ -590,6 +612,7 @@ export class LedgerDrawer extends HTMLElement {
     this.#$('#d-conf-note').textContent = caps.points ? CONFIDENCE[item.kind].meaning : '';
 
     this.#paintDates(item);
+    this.#paintSprint(item);
     this.#paintCustomFields(item);
     // Creation date: read-only, every tier, when the source records one. The list
     // node carries no createDate, so on the preview paint we don't yet know whether
@@ -700,6 +723,48 @@ export class LedgerDrawer extends HTMLElement {
     if (days < 7) return days === 1 ? '1 day' : `${days} days`;
     const weeks = Math.round(days / 7);
     return `${weeks === 1 ? '1 week' : `${weeks} weeks`}, ${days} days`;
+  }
+
+  // The sprint editor (task-tier only, gated by the sprints capability): a single
+  // select of the current project's sprints plus a blank "no sprint" option, set to
+  // the task's current sprint. Membership is task-only, so the field hides for
+  // epics/stories and for a source with no sprints. A current sprint outside the
+  // loaded set (assigned under a different project scope) is added to the options,
+  // so the control shows the task's real value rather than resetting it.
+  #paintSprint(item: LedgerNode & Partial<Item>): void {
+    const show = !!this.#caps.sprints && item.kind === 'task';
+    this.#$('#d-sprint-field').hidden = !show;
+    if (!show) return;
+    const sel = this.#$<HTMLSelectElement>('#d-sprint-edit');
+    sel.innerHTML = '';
+    sel.append(new Option('— no sprint —', ''));
+    const sprints = this.sprints?.() || [];
+    const current = item.sprintId || null;
+    for (const s of sprints) {
+      sel.append(new Option(s.state === 'active' ? `${s.name} (active)` : s.name, s.id));
+    }
+    if (current && !sprints.some((s) => s.id === current)) sel.append(new Option(current, current));
+    sel.value = current || '';
+  }
+
+  // Write a sprint membership change through the dedicated endpoints (not editField).
+  // A chosen sprint moves the task there (the source drops any other); the blank
+  // option removes it from its current sprint. Repaints the sprint field and patches
+  // the node like an edit so the card's sprint pill updates.
+  async #editSprint(sprintId: string | null): Promise<void> {
+    const node = this.#item; if (!node) return;
+    const prev = node.sprintId || null;
+    try {
+      let item: Item | undefined;
+      if (sprintId) item = await this.addToSprint?.(node.id, sprintId);
+      else if (prev) item = await this.removeFromSprint?.(node.id, prev);
+      if (!item) return;
+      Object.assign(node, item); this.#item = node;
+      this.#paintSprint(node);
+      this.sfx?.quill();
+      this.#setSaveState('saved', 'sprint saved');
+      this.#emitChanged();
+    } catch (err) { this.toast?.((err as Error).message, true); this.#paintSprint(node); }
   }
 
   // An ISO timestamp (or date) narrowed to the YYYY-MM-DD an <input type="date">

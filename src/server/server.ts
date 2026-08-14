@@ -153,6 +153,9 @@ const server = http.createServer(async (req, res) => {
         status: (q.get('status') as Filters['status']) || 'Open',
       };
       if (source.capabilities.projects && q.get('project')) filters.project = q.get('project');
+      // Sprint scope: only tasks in that sprint pass (the source rolls their
+      // ancestors up as context, like search). Gated on the sprints capability.
+      if (source.capabilities.sprints && q.get('sprint')) filters.sprint = q.get('sprint');
       // Free-text search rides through as one more filter dimension. Opaque to the
       // host — the active source decides what matching it means — so it's passed
       // through with no capability gate.
@@ -182,6 +185,7 @@ const server = http.createServer(async (req, res) => {
         status: (q.get('status') as Filters['status']) || 'Open',
       };
       if (source.capabilities.projects && q.get('project')) filters.project = q.get('project');
+      if (source.capabilities.sprints && q.get('sprint')) filters.sprint = q.get('sprint');
       if (q.get('search')) filters.search = q.get('search')!;
       const epicIds = (q.get('epics') || '').split(',').filter(Boolean);
       const counts = epicIds.length ? await call('countEpicTasks', epicIds, filters) : {};
@@ -207,6 +211,16 @@ const server = http.createServer(async (req, res) => {
 
     if (source.capabilities.stepOptions && p === '/api/steps' && req.method === 'GET') {
       return sendJSON(res, 200, { steps: await call('stepOptions', { project: q.get('project') }) });
+    }
+
+    // The sprints a project holds, for the board's sprint filter and the drawer's
+    // sprint editor. Scoped to `project` (findSprints requires one); an optional
+    // `state` narrows to one lifecycle state. Gated on the sprints capability.
+    if (source.capabilities.sprints && p === '/api/sprints' && req.method === 'GET') {
+      const filter: import('../shared/contract').SprintFilter = {};
+      if (q.get('project')) filter.project = q.get('project');
+      if (q.get('state')) filter.state = q.get('state') as import('../shared/contract').SprintState;
+      return sendJSON(res, 200, { sprints: await call('findSprints', filter) });
     }
 
     // Create: forward a validated create request to the active plugin. Rejected
@@ -242,6 +256,22 @@ const server = http.createServer(async (req, res) => {
     }
     if (commentOne && req.method === 'DELETE') {
       return sendJSON(res, 200, { item: await call('deleteComment', commentOne[1], commentOne[2]) });
+    }
+
+    // Sprint membership for a task. Add moves the task into the given sprint
+    // (POST body { sprintId }); remove takes it out (DELETE, sprint id in the path).
+    // Both return the updated task Item so the drawer patches its node like an edit.
+    // Gated on the sprints capability.
+    if (source.capabilities.sprints) {
+      const sprintAdd = p.match(/^\/api\/item\/([^/]+)\/sprint$/);
+      if (sprintAdd && req.method === 'POST') {
+        const { sprintId } = await readBody(req);
+        return sendJSON(res, 200, { item: await call('addTaskToSprint', sprintId, sprintAdd[1]) });
+      }
+      const sprintRemove = p.match(/^\/api\/item\/([^/]+)\/sprint\/([^/]+)$/);
+      if (sprintRemove && req.method === 'DELETE') {
+        return sendJSON(res, 200, { item: await call('removeTaskFromSprint', sprintRemove[2], sprintRemove[1]) });
+      }
     }
 
     // The theme registry: every installed theme package's manifest, asset URLs
