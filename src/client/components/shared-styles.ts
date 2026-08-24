@@ -79,10 +79,11 @@ export const chromeSheet = sheet(`
   /* Count badge: kept accented (red) with a fleuron mark for "contains". */
   .count-badge { color: var(--alert, #8f2f22); }
   .count-badge::before { content: "\\2767\\FE0E"; margin-right: 5px; opacity: .8; }
-  /* Sprint pill: same metadata voice, with a clock/cycle mark for the time-box. An
-     active sprint (today within its range) reads in the accent ink; a non-active one
-     stays muted like the rest of the row, so the current sprint stands out at a glance. */
-  .sprint-pill::before { content: "\\21BB\\FE0E"; margin-right: 5px; opacity: .8; font-style: normal; }
+  /* Sprint pill: same metadata voice, with a forward-arrow mark for the in-progress
+     time-box. An active sprint (today within its range) reads in the accent ink; a
+     non-active one stays muted like the rest of the row, so the current sprint stands
+     out at a glance. */
+  .sprint-pill::before { content: "\\2192\\FE0E"; opacity: .8; font-style: normal; }
   .sprint-pill.active { color: var(--seal-story, #3f5e4e); }
   /* Missing-estimate flag: a data gap (no points set), distinct from the planning
      risk tones — a muted amber chip with a warning glyph, sitting where the points
