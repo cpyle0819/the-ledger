@@ -528,6 +528,45 @@ function patchNode(item: Item): void {
   if (node) Object.assign(node, item);
   if (state.lens === 'columns') refreshAllColumns(handlers);
   else render();
+  propagateDerived(item.id);
+}
+
+// The mutation seam. An edit response carries the item's own fields only — not the
+// server-computed `context` marker (a node kept visible as the ancestor of a filter
+// match), the item's filter membership, or the enclosing epic's story/task rollup.
+// This refreshes each from the source that owns it: the rollup re-warms from
+// /api/epic-counts; `context` and the on-screen levels' membership recompute via a
+// scoped reconcile that re-fetches with the active filters and merges `context` in.
+// Every edit funnels through patchNode into here, so a new field editor can't leave
+// a dependent view stale.
+function propagateDerived(touchedId: string): void {
+  rewarmAncestorCounts(touchedId);
+  void reconcile();
+}
+
+// Walk up to the epic enclosing a node (or the node itself when it's an epic).
+// Nodes carry no parent pointer, so parentOf scans the cache; a cycle guard bounds
+// the walk. Null for an orphan story/task with no epic above it.
+function enclosingEpic(node: CachedNode): CachedNode | null {
+  let n: CachedNode | null = node;
+  const seen = new Set<string>();
+  while (n && !seen.has(n.id)) {
+    if (n.kind === 'epic') return n;
+    seen.add(n.id);
+    n = parentOf(n);
+  }
+  return null;
+}
+
+// Re-warm the enclosing epic's story/task rollup after a descendant changed, so the
+// epic card's "N stories · N tasks" badge tracks the change instead of the count at
+// last load. A no-op without the epicCounts capability (warmEpicCounts gates it) or
+// when the node has no epic above it.
+function rewarmAncestorCounts(id: string): void {
+  const node = byId(id);
+  if (!node) return;
+  const epic = enclosingEpic(node);
+  if (epic) warmEpicCounts([epic.id]);
 }
 
 // ---- compose (create) ----
@@ -606,6 +645,10 @@ function insertNode(item: Item, parentId: string | null): void {
 
   if (state.lens === 'columns') refreshAllColumns(handlers);
   else render();
+  // A new descendant changes the enclosing epic's rollup; re-warm it from the
+  // parent, whose place in the tree is known even when the new node isn't yet
+  // attached to an unloaded parent's child list.
+  if (parentId) rewarmAncestorCounts(parentId);
   toast(`Created ${item.type} ${item.shortId}`);
 }
 
@@ -637,20 +680,50 @@ function mergeLevel(existing: CachedNode[], fresh: CachedNode[]): { list: Cached
     const old = byIdOld.get(f.id);
     if (!old) { changed = true; indexNodes([f]); return f; }
     if (nodeSig(old) !== nodeSig(f) || existing[i]?.id !== f.id) changed = true;
-    // Merge the fresh list-node fields onto the cached instance, preserving its
-    // lazily-loaded children/loaded bookkeeping (the list node carries neither).
-    const { children, loaded, _loading, ...fields } = old as CachedNode;
-    Object.assign(old, f, { children, loaded, _loading });
+    mergeNodeFields(old, f);
     return old;
   });
   return { list, changed };
 }
 
+// Copy a freshly-fetched list node's server fields onto the cached instance,
+// preserving the client-side augmentation the list node doesn't carry: the
+// lazily-loaded children/loaded bookkeeping and the warmed epic rollup. The one
+// instance per id is mutated in place so every view and the open drawer keep
+// rendering the current data.
+function mergeNodeFields(old: CachedNode, fresh: CachedNode): void {
+  const { children, loaded, _loading, counts } = old;
+  Object.assign(old, fresh, { children, loaded, _loading, counts });
+}
+
+// Refresh the server fields — notably `context` — on already-loaded root instances
+// from a fresh roots page, without changing lane membership. A pagedRoots source
+// loads roots a page at a time, so a single fetch can't list every loaded root;
+// updating only the ones it returns (never adding or removing) keeps a loaded-more
+// browse intact while still tracking edits to a root's own fields. Returns true if
+// any instance changed. Roots past the first page refresh on their next reload.
+function refreshRootFields(fresh: CachedNode[]): boolean {
+  const freshById = new Map(fresh.map((f) => [f.id, f]));
+  let changed = false;
+  for (const lane of [state.epics, state.orphanStories, state.orphanTasks]) {
+    for (const inst of lane) {
+      const f = freshById.get(inst.id);
+      if (f && nodeSig(inst) !== nodeSig(f)) { mergeNodeFields(inst, f); changed = true; }
+    }
+  }
+  return changed;
+}
+
 let reconciling = false;
+// A reconcile requested while one is running (a poll overlapping a post-edit
+// reconcile, or two edits in quick succession) sets this so exactly one trailing
+// run fires after the current one — the second request's change can't be missed by
+// a fetch the running pass already issued before it landed.
+let reconcileQueued = false;
 
 export async function reconcile(): Promise<void> {
-  if (reconciling) return;                       // drop overlapping polls
   if (loadInFlight) return;                       // a full load is mid-flight; let it win
+  if (reconciling) { reconcileQueued = true; return; } // fold into one trailing re-run
   if (!state.epics.length && !state.orphanStories.length && !state.orphanTasks.length) return; // nothing loaded yet
   // Capture the load generation: if a loadTree (e.g. a filter toggle) runs while
   // this poll's fetches are outstanding, the fetched nodes describe the OLD filter
@@ -661,16 +734,19 @@ export async function reconcile(): Promise<void> {
   try {
     let changed = false;
 
-    // Roots first (epics + orphan stories/tasks), split like loadTree does — but
-    // NOT for a pagedRoots source: a roots re-fetch there returns only the first
-    // page, which mergeLevel would read as "every later-page root was removed" and
-    // collapse a loaded-more browse back to page 1. The browse is a user-driven
-    // snapshot; leave its root set to load-more and reconcile only the open subtrees
-    // below (selected/expanded parents), which still surfaces out-of-Ledger edits to
-    // what's on screen.
-    if (!state.caps.pagedRoots) {
-      const roots = await fetchNodesRaw(null);
-      if (gen !== loadGen) return;                  // a load superseded this poll
+    // Roots first (epics + orphan stories/tasks). A pagedRoots source needs a
+    // field-only merge: a roots re-fetch there returns only the first page, which a
+    // membership merge would read as "every later-page root was removed" and
+    // collapse a loaded-more browse back to page 1. So for pagedRoots, refresh the
+    // server fields (notably `context`) on the roots the page does return and leave
+    // lane membership to load-more; a non-paged source gets the full add/remove
+    // merge. Either way a root's own arrow/status tracks an edit instead of waiting
+    // for a full reload.
+    const roots = await fetchNodesRaw(null);
+    if (gen !== loadGen) return;                    // a load superseded this poll
+    if (state.caps.pagedRoots) {
+      changed ||= refreshRootFields(roots);
+    } else {
       const freshEpics = roots.filter((n) => n.kind === 'epic');
       const freshOStories = roots.filter((n) => n.kind === 'story');
       const freshOTasks = roots.filter((n) => n.kind === 'task');
@@ -707,5 +783,8 @@ export async function reconcile(): Promise<void> {
       }
     }
   } catch { /* a failed poll is a no-op; the next one retries */ }
-  finally { reconciling = false; }
+  finally {
+    reconciling = false;
+    if (reconcileQueued) { reconcileQueued = false; void reconcile(); }
+  }
 }
