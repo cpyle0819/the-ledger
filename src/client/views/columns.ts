@@ -32,7 +32,7 @@ function buildEpicCol(animate: boolean, h: ViewHandlers): LedgerColumn {
   wireAdd(col, 'Add epic', h, () => ({ type: 'EPIC', parentNode: null }));
   if (!state.epics.length) body.append(emptyMsg('No epics.', 'Try changing your filters.'));
   state.epics.forEach((e) => {
-    const cd = card(e, { drill: true, animate, onActivate: () => h.selectEpic(e.id), onOpen: h.openDrawer });
+    const cd = card(e, { drill: true, animate, onActivate: () => h.selectEpic(e.id), onOpen: h.openDrawer, onAssignMe: h.assignToMe });
     if (e.id === state.selEpic) cd.setAttribute('selected', '');
     body.append(cd);
   });
@@ -43,7 +43,7 @@ function buildStoryCol(animate: boolean, h: ViewHandlers): LedgerColumn {
   const epic = byId(state.selEpic);
   const orphans = state.orphanStories;
   const storyCard = (s: CachedNode) => {
-    const cd = card(s, { drill: true, animate, onActivate: () => h.selectStory(s.id), onOpen: h.openDrawer });
+    const cd = card(s, { drill: true, animate, onActivate: () => h.selectStory(s.id), onOpen: h.openDrawer, onAssignMe: h.assignToMe });
     if (s.id === state.selStory) cd.setAttribute('selected', '');
     return cd;
   };
@@ -91,7 +91,7 @@ function buildTaskCol(animate: boolean, h: ViewHandlers): LedgerColumn {
   // tasks outside the current focus (the selected story, else the selected epic)
   // dim so the in-focus tasks lead. With no epic selected nothing recedes.
   const addTask = (body: LedgerColumn, t: CachedNode, deemph = false) => {
-    const cd = card(t, { animate, onOpen: h.openDrawer });
+    const cd = card(t, { animate, onOpen: h.openDrawer, onAssignMe: h.assignToMe });
     if (deemph) cd.classList.add('deemph');
     body.append(cd);
   };

@@ -21,6 +21,8 @@ export interface ViewHandlers {
   selectStory(id: string): void;
   /** Open the reading drawer for a node. */
   openDrawer(node: CachedNode): void;
+  /** Reassign a node to the current user (the card's "assign to me" action). */
+  assignToMe(node: CachedNode): void;
   /** Expand/collapse an outline node (lazy-loads children on first expand). */
   toggleExpand(node: CachedNode): void;
   /** Open the compose sheet for a new item of a fixed tier/parent. */

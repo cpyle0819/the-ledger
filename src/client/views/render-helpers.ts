@@ -26,12 +26,13 @@ export interface CardOpts {
   animate?: boolean;
   onActivate?: (item: CachedNode) => void;
   onOpen?: (item: CachedNode) => void;
+  onAssignMe?: (item: CachedNode) => void;
 }
 
 // Wire a <ledger-card> to an item and its activation handlers: `onActivate`
 // fires on the primary click (drill into children), `onOpen` on the view-details
 // affordance / a leaf card's click. dataset.id lets selection-sync find cards.
-export function card(item: CachedNode, { drill = false, animate = false, onActivate, onOpen }: CardOpts = {}): LedgerCard {
+export function card(item: CachedNode, { drill = false, animate = false, onActivate, onOpen, onAssignMe }: CardOpts = {}): LedgerCard {
   const c = document.createElement('ledger-card');
   c.dataset.id = item.id;
   if (drill) c.setAttribute('drill', '');
@@ -53,9 +54,16 @@ export function card(item: CachedNode, { drill = false, animate = false, onActiv
   // attribute so the card stays board-state-free (it reads the sprint name from the
   // shared sprintsById map).
   if (state.caps.sprints) c.setAttribute('sprints', '');
+  // The current user and whether the source allows the assignee edit, so the card can
+  // offer "assign to me" (hidden when the item is already theirs). Passed as attributes
+  // (like the capability flags above) so the card reads only its own inputs; the write
+  // itself goes up to the host via onAssignMe.
+  if (state.me) c.setAttribute('me', state.me);
+  if (state.caps.editFields?.includes('assignee')) c.setAttribute('assignable', '');
   c.item = item;
   if (onActivate) c.addEventListener('card-activate', () => onActivate(item));
   if (onOpen) c.addEventListener('card-open', () => onOpen(item));
+  if (onAssignMe) c.addEventListener('card-assign-me', () => onAssignMe(item));
   return c;
 }
 

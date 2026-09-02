@@ -5,8 +5,11 @@
 // drill chevron for a card that opens children rather than details).
 //
 // Events out (composed, so they cross the shadow boundary):
-//   card-activate {id}  — primary click: drill into children, or open if a leaf
-//   card-open     {id}  — the "view details" affordance / a leaf card's click
+//   card-activate  {id}  — primary click: drill into children, or open if a leaf
+//   card-open      {id}  — the "view details" affordance / a leaf card's click
+//   card-assign-me {id}  — the "assign to me" hover action (present only when the
+//                          source allows the assignee edit and the item isn't
+//                          already the current user's); the host performs the write
 //
 // Self-contained: the deckled paper edge is an SVG turbulence filter inlined in
 // this component's own shadow root. SVG filter references (url(#…)) resolve
@@ -276,6 +279,15 @@ export class LedgerCard extends HTMLElement {
     const read = el('span', 'card-act', 'view details');
     read.addEventListener('click', (ev) => { ev.stopPropagation(); this.#emit('card-open'); });
     acts.append(read);
+    // "assign to me": shown when the source allows the assignee edit (the `assignable`
+    // attribute) and the item isn't already the current user's (`me` attribute). The
+    // click emits up; the host owns the write, keeping the card free of api access.
+    const me = this.getAttribute('me');
+    if (this.hasAttribute('assignable') && me && item.assignee !== me) {
+      const assign = el('span', 'card-act', 'assign to me');
+      assign.addEventListener('click', (ev) => { ev.stopPropagation(); this.#emit('card-assign-me'); });
+      acts.append(assign);
+    }
     body.append(acts);
 
     if (drill) { const d = el('span', 'drill-hint', '›'); d.setAttribute('aria-hidden', 'true'); body.append(d); }
@@ -298,7 +310,7 @@ export class LedgerCard extends HTMLElement {
     root.append(card);
   }
 
-  #emit(type: 'card-activate' | 'card-open'): void {
+  #emit(type: 'card-activate' | 'card-open' | 'card-assign-me'): void {
     this.dispatchEvent(new CustomEvent(type, {
       detail: { id: this.#item?.id, item: this.#item },
       bubbles: true, composed: true,

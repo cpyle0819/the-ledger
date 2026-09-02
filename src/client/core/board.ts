@@ -46,6 +46,7 @@ export const handlers: ViewHandlers = {
   selectEpic,
   selectStory,
   openDrawer,
+  assignToMe,
   toggleExpand,
   addItem,
 };
@@ -459,6 +460,22 @@ function openDrawer(node: CachedNode): void {
   openItemId = node.id;
   drawer().open(node);
   if (!alreadyOpen) { syncUrl(true); drawerPushed = true; }
+}
+
+// Reassign a node to the current user from its card's "assign to me" action. Writes
+// through the same edit endpoint the drawer uses, then hands the result to patchNode,
+// which merges the edited item into the cache and refreshes the views — so the board
+// and any open drawer stay in step. A no-op when the item is already theirs (the card
+// hides the action then anyway).
+function assignToMe(node: CachedNode): void {
+  if (!state.me || node.assignee === state.me) return;
+  api<{ item: Item }>(`/api/item/${node.id}/edit`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ field: 'assignee', value: state.me }),
+  })
+    .then(({ item }) => { sfx.quill(); patchNode(item); toast(`assigned to ${state.me}`); })
+    .catch(handleError);
 }
 
 // Wire the drawer's injected host services once. The drawer stays
