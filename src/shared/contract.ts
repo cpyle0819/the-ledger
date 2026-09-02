@@ -259,9 +259,11 @@ export interface Item extends LedgerNode {
   /** ISO date a task was started. Editable in the drawer (task-only, gated by the
    *  taskDates capability). Null when unset. */
   startDate: string | null;
-  /** ISO date a task was completed. Written by the SOURCE when the task moves to a
-   *  closed status — never user-editable; cleared if the task reopens. Null while
-   *  open. Task-only, gated by the taskDates capability. */
+  /** ISO date a task was completed. Editable in the drawer (task-only, gated by the
+   *  taskDates capability plus editFields carrying 'completionDate'), so a late close
+   *  can be backdated to when the work finished. The source stamps it on close only
+   *  when still unset, so a hand-set date survives closing; editing it re-derives any
+   *  duration/velocity/spent the source computes from the span. Null when unset. */
   completionDate: string | null;
   /** Plugin-defined fields keyed by CustomFieldDef.key. The drawer renders these in
    *  a "Custom Fields" section, one control per def whose tier matches the item.
@@ -303,7 +305,7 @@ export interface CustomFieldDef {
 
 /** The fields a source may allow editing. The board gates each field's control
  *  on membership in Capabilities.editFields. */
-export type EditableField = 'title' | 'status' | 'description' | 'assignee' | 'estimate' | 'workflowAction' | 'startDate';
+export type EditableField = 'title' | 'status' | 'description' | 'assignee' | 'estimate' | 'workflowAction' | 'startDate' | 'completionDate';
 
 /** The fields a create request may carry. A source declares which it accepts in
  *  Capabilities.createFields (parallel to editFields); the compose UI shows a
@@ -361,10 +363,8 @@ export interface Capabilities {
    *  'estimate', which is write permission, not whether the concept exists. */
   points: boolean;
   /** Whether the source's tasks carry start/completion dates. When absent, the
-   *  drawer shows neither the editable start-date field nor the read-only
-   *  completion-date line. Start date is editable (gated additionally by
-   *  editFields carrying 'startDate'); completion date is written by the source
-   *  when a task closes and is never user-editable. Task-tier only. */
+   *  drawer shows neither date field. Each date is editable when editFields carries
+   *  its name ('startDate' / 'completionDate'), else shown read-only. Task-tier only. */
   taskDates: boolean;
   /** Whether the source can distinguish a close that COMPLETED the work from one
    *  that abandoned it unfinished (the 'Abandoned' status, shown as "Closed (not

@@ -278,6 +278,8 @@ sheet.replaceSync(`
   .d-desc-render { font-family: var(--gara, serif); font-size: 18px; line-height: 1.7; color: var(--text, #33291a); min-height: 120px; cursor: text; border-radius: 2px; transition: background .12s; }
   .d-desc-render:hover { background: rgba(196,172,124,.12); }
   .d-desc-render.empty { font-style: italic; color: var(--text-faint, #6f5c3e); }
+  .d-desc-render.loading { display: flex; flex-direction: column; gap: 12px; padding-top: 5px; cursor: default; }
+  .d-desc-render.loading:hover { background: none; }
   .d-desc-render h1, .d-desc-render h2, .d-desc-render h3 { font-family: var(--fell, serif); font-weight: 400; color: var(--text, #33291a); line-height: 1.25; margin: 20px 0 8px; }
   .d-desc-render h1 { font-size: 24px; } .d-desc-render h2 { font-size: 21px; } .d-desc-render h3 { font-size: 18px; }
   .d-desc-render p { margin: 0 0 12px; }
@@ -363,7 +365,8 @@ export class LedgerDrawer extends HTMLElement {
         <div class="d-rule" aria-hidden="true"></div>
         <div class="d-grid">
           <div class="d-field" id="d-created-field" hidden><label id="d-created-label">created</label><div class="d-readonly" id="d-created-text" aria-labelledby="d-created-label"></div></div>
-          <div class="d-field" id="d-completion-field" hidden><label id="d-completion-label">completed</label><div class="d-readonly" id="d-completion-text" aria-labelledby="d-completion-label"></div></div>
+          <div class="d-field" id="d-startdate-field" hidden><label for="d-startdate-edit">start date<span class="est-warn" id="d-startdate-warn" title="No start date set" aria-label="No start date set" hidden>⚠</span></label><input type="date" id="d-startdate-edit" spellcheck="false" /></div>
+          <div class="d-field" id="d-completion-field" hidden><label for="d-completion-edit" id="d-completion-label">completed date</label><input type="date" id="d-completion-edit" spellcheck="false" aria-labelledby="d-completion-label" hidden /><div class="d-readonly" id="d-completion-text" aria-labelledby="d-completion-label" hidden></div><p class="d-conf-note" id="d-completion-dur"></p></div>
           <div class="d-field" id="d-status-field"><label for="d-status-edit">status</label><select id="d-status-edit"></select></div>
           <div class="d-field" id="d-step-field" hidden><label for="d-step-edit">workflow step</label><select id="d-step-edit"></select></div>
           <div class="d-field" id="d-assignee-field"><label for="d-assignee-edit">assignee</label>
@@ -373,7 +376,6 @@ export class LedgerDrawer extends HTMLElement {
             </div>
           </div>
           <div class="d-field" id="d-estimate-field"><label for="d-estimate-edit">estimate (points)<span class="est-warn" id="d-estimate-warn" title="No estimate set" aria-label="No estimate set" hidden>⚠</span></label><input type="number" id="d-estimate-edit" min="0" step="1" spellcheck="false" placeholder="—" /><p class="d-conf-note" id="d-conf-note"></p></div>
-          <div class="d-field" id="d-startdate-field" hidden><label for="d-startdate-edit">start date<span class="est-warn" id="d-startdate-warn" title="No start date set" aria-label="No start date set" hidden>⚠</span></label><input type="date" id="d-startdate-edit" spellcheck="false" /></div>
           <div class="d-field" id="d-sprint-field" hidden><label for="d-sprint-edit">sprint</label><select id="d-sprint-edit"></select></div>
         </div>
         <div class="d-custom" id="d-custom" hidden></div>
@@ -415,6 +417,11 @@ export class LedgerDrawer extends HTMLElement {
       const value = (e.target as HTMLInputElement).value; // '' or YYYY-MM-DD
       const current = this.#dateInputValue(this.#item?.startDate);
       if (value !== current) this.#edit('startDate', value, 'Start date');
+    });
+    this.#$<HTMLInputElement>('#d-completion-edit').addEventListener('change', (e) => {
+      const value = (e.target as HTMLInputElement).value; // '' or YYYY-MM-DD
+      const current = this.#dateInputValue(this.#item?.completionDate);
+      if (value !== current) this.#edit('completionDate', value, 'Completion date');
     });
 
     // Sprint: a single-select of the project's sprints plus a blank "no sprint".
@@ -650,7 +657,7 @@ export class LedgerDrawer extends HTMLElement {
 
     this.#populateStepField(item);
     this.#renderContains(item);
-    this.#renderMarkdown(item.description || '');
+    this.#renderMarkdown(item.description || '', preview && !!caps.readItem && !item.description);
     this.#setDescMode('read');
     this.#setSaveState('');
 
@@ -678,28 +685,38 @@ export class LedgerDrawer extends HTMLElement {
     // Only for a genuine completion: an open task hasn't necessarily started, and an
     // abandoned task never delivered, so neither is warned.
     this.#$('#d-startdate-warn').hidden = !(item.status === 'Closed' && !item.startDate);
-    // Completion is meaningful only once the task is COMPLETED: show the line when a
-    // completion date exists OR the task is closed-as-done. An open task hides it
-    // entirely (the concept doesn't apply yet — no empty-state noise); an abandoned
-    // task likewise hides it (it was never completed — `=== 'Closed'` is the
-    // completion, not the terminal, sense). A completed task with no stamped date
-    // (closed before this feature, or by a source that doesn't record one) reads
-    // "completed (date not recorded)" rather than the false "not yet".
+    // Completion date. When the source allows the edit, it's an editable input shown
+    // for any non-abandoned task (backdate a late close; set it before closing) — an
+    // abandoned task was never completed, so it has no completion date. When the
+    // source writes but doesn't allow the edit, fall back to the read-only line, shown
+    // once a completion date exists or the task is closed-as-done; an open task hides
+    // it (the concept doesn't apply yet). `=== 'Closed'` is the completion, not the
+    // terminal, sense (an abandoned close is 'Abandoned').
     const completed = item.status === 'Closed';
-    this.#$('#d-completion-field').hidden = !(showDates && (item.completionDate || completed));
+    const editableCompletion = canEdit('completionDate') && !isAbandoned(item.status);
+    this.#$('#d-completion-field').hidden = !(showDates && (editableCompletion || item.completionDate || completed));
+    const compInput = this.#$<HTMLInputElement>('#d-completion-edit');
     const compText = this.#$('#d-completion-text');
-    // Duration rides the completion line as a parenthetical ("Apr 2, 2026 (2 weeks,
-    // 13 days)"): how long a finished task took, start → completion. Shown only
-    // once both dates exist (a closed task with a recorded start); absent for a task
-    // with no start or a negative span (completion before start — clock skew or a
-    // hand-edited start), which #durationDays suppresses rather than show a
-    // misleading "0 days".
+    const compDur = this.#$('#d-completion-dur');
+    compInput.hidden = !editableCompletion;
+    compText.hidden = editableCompletion;
+    // Duration: how long a finished task took, start → completion. Shown only once
+    // both dates exist; absent for a task with no start or a negative span (completion
+    // before start — clock skew or a hand-edited date), which #durationDays suppresses
+    // rather than show a misleading "0 days". Rides the read-only line as a parenthetical
+    // ("Apr 2, 2026 (2 weeks)") or, under the editable input, its own muted note.
     const days = this.#durationDays(item.startDate, item.completionDate);
-    if (item.completionDate) {
-      compText.className = 'd-readonly';
-      const date = this.#formatDate(item.completionDate);
-      compText.textContent = days != null ? `${date} (${this.#formatDuration(days)})` : date;
-    } else { compText.className = 'd-readonly empty'; compText.textContent = 'date not recorded'; }
+    if (editableCompletion) {
+      compInput.value = this.#dateInputValue(item.completionDate);
+      compDur.textContent = days != null ? this.#formatDuration(days) : '';
+    } else {
+      compDur.textContent = '';
+      if (item.completionDate) {
+        compText.className = 'd-readonly';
+        const date = this.#formatDate(item.completionDate);
+        compText.textContent = days != null ? `${date} (${this.#formatDuration(days)})` : date;
+      } else { compText.className = 'd-readonly empty'; compText.textContent = 'date not recorded'; }
+    }
   }
 
   // Whole days between two ISO date-ish values, start → end, or null when either is
@@ -858,9 +875,10 @@ export class LedgerDrawer extends HTMLElement {
         this.#$('#d-estimate-warn').hidden = hasEstimate;
       }
       // A status change can stamp/clear the source-written completion date and auto-
-      // fill custom fields (e.g. Spent), and a start-date save re-normalizes the
-      // input — repaint both from the authoritative item the source returned.
-      if (field === 'status' || field === 'startDate') {
+      // fill custom fields (e.g. Spent); a date save re-normalizes the input and
+      // re-derives the duration and any span-based custom field (Spent) — repaint both
+      // from the authoritative item the source returned.
+      if (field === 'status' || field === 'startDate' || field === 'completionDate') {
         this.#paintDates(node);
         this.#paintCustomFields(node);
       }
@@ -892,8 +910,19 @@ export class LedgerDrawer extends HTMLElement {
   }
 
   // ---- description edit mode ----
-  #renderMarkdown(src: string): void {
+  // `loading` is the preview paint for a readItem source: the list node carries no
+  // description, so an empty string here means "not fetched yet", not "no description".
+  // Show a skeleton then, reserving the same "No description yet" message for the
+  // real paint that returns a genuinely empty body.
+  #renderMarkdown(src: string, loading = false): void {
     const box = this.#$('#d-desc-render');
+    if (loading) {
+      box.className = 'd-desc-render loading';
+      box.setAttribute('aria-busy', 'true');
+      box.replaceChildren(this.#skLine('92%'), this.#skLine('98%'), this.#skLine('60%'));
+      return;
+    }
+    box.removeAttribute('aria-busy');
     if (!src.trim()) { box.className = 'd-desc-render empty'; box.textContent = 'No description yet. Click “edit” to add one.'; return; }
     box.className = 'd-desc-render';
     renderInto(box, src);
