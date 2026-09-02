@@ -155,7 +155,12 @@
   --field-bg-focus:  rgba(255,255,255,.10);   /* focused field                   */
   --field-edge:      var(--border);       /* field border                    */
   --inset-bg:        rgba(255,255,255,.04);   /* the drawer "contains" box        */
-  --onlight-chip-bg: rgba(255,255,255,.08);   /* card-act / copy-link hover chip  */
+  --onlight-chip-bg: rgba(255,255,255,.08);   /* copy-link hover chip (on chrome)  */
+  /* The card's hover-action chips ("view details" / "assign to me") sit on the card
+     surface, not the dark chrome, so they need an OPAQUE fill that reads on a light
+     card — a faint-white wash vanishes on parchment. Defaults to the bright surface
+     (a chip a shade lighter than the card); a theme restyles it here. */
+  --card-act-bg:     var(--surface-bright);
 }
 
 * { box-sizing: border-box; }
