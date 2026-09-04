@@ -275,8 +275,7 @@ sheet.replaceSync(`
 
   .d-desc-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
   .d-desc-label { font-family: var(--fell-sc, serif); font-size: 17px; letter-spacing: .08em; color: var(--alert, #8f2f22); }
-  .d-desc-render { font-family: var(--gara, serif); font-size: 18px; line-height: 1.7; color: var(--text, #33291a); min-height: 120px; cursor: text; border-radius: 2px; transition: background .12s; }
-  .d-desc-render:hover { background: rgba(196,172,124,.12); }
+  .d-desc-render { font-family: var(--gara, serif); font-size: 18px; line-height: 1.7; color: var(--text, #33291a); min-height: 120px; border-radius: 2px; }
   .d-desc-render.empty { font-style: italic; color: var(--text-faint, #6f5c3e); }
   .d-desc-render.loading { display: flex; flex-direction: column; gap: 12px; padding-top: 5px; cursor: default; }
   .d-desc-render.loading:hover { background: none; }
@@ -296,13 +295,50 @@ sheet.replaceSync(`
   .d-desc-render th, .d-desc-render td { border: 1px solid var(--border, #c4ac7c); padding: 6px 10px; text-align: left; vertical-align: top; }
   .d-desc-render th { font-family: var(--fell, serif); font-weight: 600; background: rgba(196,172,124,.18); color: var(--text, #33291a); }
   .d-desc-render tbody tr:nth-child(even) { background: rgba(196,172,124,.08); }
+  /* The editor matches the rendered view's type (18px Garamond, 1.7 line-height)
+     so entering edit mode reads as writing on the same leaf, not a swap into a
+     cramped form field. It auto-grows to fit its content (see #autosize), so it
+     never scrolls internally or leaves dead space; resize is off. */
   .d-desc {
-    width: 100%; min-height: 300px; resize: vertical; color: var(--text, #33291a); background: var(--field-bg, rgba(255,250,235,.7));
-    border: 1px solid var(--border, #c4ac7c); border-radius: 2px; padding: 16px; font-family: var(--gara, serif);
-    font-size: 15px; line-height: 1.65; outline: none;
-    background-image: repeating-linear-gradient(180deg, transparent 0 27px, rgba(91,74,48,.12) 27px 28px);
+    box-sizing: border-box; width: 100%; min-height: 160px; resize: none; overflow: hidden;
+    color: var(--text, #33291a); background: var(--field-bg, rgba(255,250,235,.7));
+    border: 1px solid var(--border, #c4ac7c); border-top: 0; border-radius: 0 0 2px 2px; padding: 14px 16px;
+    font-family: var(--gara, serif); font-size: 18px; line-height: 1.7; outline: none;
   }
   .d-desc:focus { border-color: var(--metal-dim, #7a5f30); }
+
+  /* Markdown toolbar: a row of formatting affordances above the editor, sharing
+     its box so the two read as one control. Each button wraps the selection (or
+     inserts a stub) in the matching Markdown syntax. Shown only in edit mode. */
+  .d-toolbar {
+    display: flex; align-items: center; gap: 2px; padding: 5px 6px;
+    background: var(--inset-bg, rgba(255,250,235,.4));
+    border: 1px solid var(--border, #c4ac7c); border-radius: 2px 2px 0 0;
+  }
+  .d-toolbar[hidden] { display: none; }
+  .d-tool {
+    display: inline-flex; align-items: center; justify-content: center; min-width: 30px; height: 28px; padding: 0 7px;
+    font-family: var(--fell, serif); font-size: 16px; line-height: 1; color: var(--text-muted, #5b4a30);
+    background: none; border: 1px solid transparent; border-radius: 2px; cursor: pointer; transition: .12s;
+  }
+  .d-tool:hover { color: var(--text, #33291a); background: rgba(196,172,124,.3); border-color: var(--field-edge, var(--border, #c4ac7c)); }
+  .d-tool b, .d-tool i { font-size: 17px; }
+  .d-tool .th { font-family: var(--fell-sc, serif); font-size: 14px; letter-spacing: .04em; }
+  .d-tool .tcode { font-family: var(--mono, monospace); font-size: 13px; }
+  .d-tool-sep { width: 1px; height: 18px; margin: 0 4px; background: var(--field-edge, var(--border, #c4ac7c)); opacity: .6; }
+  .d-tool-hint { margin-left: auto; font-family: var(--fell, serif); font-style: italic; font-size: 14px; color: var(--text-faint, #6f5c3e); }
+
+  /* Edit / Save / Cancel controls in the description header. Save is the primary
+     brass action; edit and cancel are quieter ghost buttons. */
+  .d-desc-actions { display: flex; align-items: center; gap: 8px; }
+  .d-save-btn {
+    font-family: var(--fell, serif); font-style: italic; font-size: 16px; color: var(--frame-deep, #1c1409);
+    background: linear-gradient(180deg, var(--metal-bright, #d8b878), var(--metal, #b08d4f));
+    border: 1px solid var(--metal-dim, #7a5f30); border-radius: 2px; padding: 7px 16px; cursor: pointer; transition: .15s;
+    box-shadow: 0 1px 2px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,248,230,.4);
+  }
+  .d-save-btn:hover { background: linear-gradient(180deg, #e6c98a, var(--metal-bright, #d8b878)); }
+  .d-save-btn[hidden], .ghost-btn[hidden] { display: none; }
   .d-comments { margin-top: 26px; }
   :focus-visible { outline: 2px solid var(--metal-bright, #d8b878); outline-offset: 3px; }
 `);
@@ -322,7 +358,6 @@ export class LedgerDrawer extends HTMLElement {
   #caps: Partial<Capabilities> = {};
   #item: (LedgerNode & Partial<Item>) | null = null;
   #descMode: 'read' | 'edit' = 'read';
-  #descCancelled = false;
   #titleMode: 'read' | 'edit' = 'read';
   #titleCancelled = false;
   #lastFocus: HTMLElement | null = null;
@@ -382,10 +417,25 @@ export class LedgerDrawer extends HTMLElement {
         <div class="d-contains" id="d-contains" hidden></div>
         <div class="d-desc-head">
           <span class="d-desc-label">description</span>
-          <button type="button" class="ghost-btn" id="d-cancel" hidden>cancel</button>
+          <div class="d-desc-actions">
+            <button type="button" class="ghost-btn" id="d-edit" hidden>edit</button>
+            <button type="button" class="ghost-btn" id="d-cancel" hidden>cancel</button>
+            <button type="button" class="d-save-btn" id="d-save" hidden>save</button>
+          </div>
         </div>
-        <div class="d-desc-render" id="d-desc-render" tabindex="0" role="button" aria-label="Description — activate to edit"></div>
-        <textarea id="d-desc" class="d-desc" spellcheck="false" aria-label="Description (Markdown)" placeholder="No description yet. Click to write one…" hidden></textarea>
+        <div class="d-desc-render" id="d-desc-render"></div>
+        <div class="d-toolbar" id="d-toolbar" role="toolbar" aria-label="Formatting" hidden>
+          <button type="button" class="d-tool" data-md="bold" title="Bold (Ctrl+B)" aria-label="Bold"><b>B</b></button>
+          <button type="button" class="d-tool" data-md="italic" title="Italic (Ctrl+I)" aria-label="Italic"><i>I</i></button>
+          <button type="button" class="d-tool" data-md="link" title="Link (Ctrl+K)" aria-label="Link"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1.5-1.5"/></svg></button>
+          <span class="d-tool-sep" aria-hidden="true"></span>
+          <button type="button" class="d-tool" data-md="h2" title="Heading" aria-label="Heading"><span class="th">H</span></button>
+          <button type="button" class="d-tool" data-md="ul" title="Bulleted list" aria-label="Bulleted list">•</button>
+          <button type="button" class="d-tool" data-md="quote" title="Quote" aria-label="Quote">❝</button>
+          <button type="button" class="d-tool" data-md="code" title="Code" aria-label="Code"><span class="tcode">&lt;/&gt;</span></button>
+          <span class="d-tool-hint">Markdown · Ctrl+S to save</span>
+        </div>
+        <textarea id="d-desc" class="d-desc" spellcheck="false" aria-label="Description (Markdown)" placeholder="Write a description… Markdown is supported." hidden></textarea>
         <div class="d-comments"><ledger-comment-thread id="c-thread"></ledger-comment-thread></div>
         <div class="scroll-tail" aria-hidden="true"></div>
       </div>`;
@@ -443,10 +493,33 @@ export class LedgerDrawer extends HTMLElement {
       else if (e.key === 'Escape') { e.stopPropagation(); this.#cancelTitleEdit(); }
     });
 
-    // Description: click/Enter the rendered view to edit; blur saves; cancel discards.
-    asButton(this.#$('#d-desc-render'), () => this.#enterEdit());
-    this.#$('#d-cancel').addEventListener('mousedown', (e) => { e.preventDefault(); this.#cancelEdit(); });
-    this.#$('#d-desc').addEventListener('blur', () => this.#saveDescOnBlur());
+    // Description: an explicit edit button opens the editor; save commits, cancel
+    // discards. No click-to-edit — the rendered view stays selectable/copyable, and
+    // an edit never starts by accident (e.g. dragging to select text).
+    this.#$('#d-edit').addEventListener('click', () => this.#enterEdit());
+    this.#$('#d-save').addEventListener('click', () => this.#saveDesc());
+    this.#$('#d-cancel').addEventListener('click', () => this.#cancelEdit());
+
+    // Toolbar: each button wraps the current selection in Markdown syntax.
+    this.#$('#d-toolbar').addEventListener('mousedown', (e) => {
+      const btn = (e.target as HTMLElement).closest<HTMLElement>('.d-tool');
+      if (!btn) return;
+      e.preventDefault(); // keep focus + selection in the textarea
+      this.#applyMarkdown(btn.dataset.md!);
+    });
+
+    this.#$('#d-desc').addEventListener('input', () => this.#autosize());
+
+    // Editor keyboard shortcuts: Ctrl/Cmd+S saves, the format keys mirror the
+    // toolbar. Escape (handled below) cancels.
+    this.#$<HTMLTextAreaElement>('#d-desc').addEventListener('keydown', (e) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      const k = e.key.toLowerCase();
+      if (k === 's') { e.preventDefault(); this.#saveDesc(); }
+      else if (k === 'b') { e.preventDefault(); this.#applyMarkdown('bold'); }
+      else if (k === 'i') { e.preventDefault(); this.#applyMarkdown('italic'); }
+      else if (k === 'k') { e.preventDefault(); this.#applyMarkdown('link'); }
+    });
 
     const aEdit = this.#$<HTMLInputElement>('#d-assignee-edit');
     aEdit.addEventListener('input', () => this.#onAssigneeInput());
@@ -923,33 +996,87 @@ export class LedgerDrawer extends HTMLElement {
       return;
     }
     box.removeAttribute('aria-busy');
-    if (!src.trim()) { box.className = 'd-desc-render empty'; box.textContent = 'No description yet. Click “edit” to add one.'; return; }
+    if (!src.trim()) {
+      box.className = 'd-desc-render empty';
+      box.textContent = this.#canEditDesc() ? 'No description yet.' : 'No description.';
+      return;
+    }
     box.className = 'd-desc-render';
     renderInto(box, src);
   }
+  #canEditDesc(): boolean { return (this.#caps.editFields || []).includes('description'); }
   #setDescMode(mode: 'read' | 'edit'): void {
     this.#descMode = mode;
     const editing = mode === 'edit';
     this.#$('#d-desc-render').hidden = editing;
     this.#$('#d-desc').hidden = !editing;
+    this.#$('#d-toolbar').hidden = !editing;
     this.#$('#d-cancel').hidden = !editing;
-    if (editing) this.#$('#d-desc').focus();
+    this.#$('#d-save').hidden = !editing;
+    // The edit button shows only in read mode, and only when the source allows it.
+    this.#$('#d-edit').hidden = editing || !this.#canEditDesc();
+    if (editing) { this.#autosize(); this.#$('#d-desc').focus(); }
   }
   #enterEdit(): void {
-    if (this.#descMode === 'edit') return;
-    this.#descCancelled = false;
+    if (this.#descMode === 'edit' || !this.#canEditDesc()) return;
     this.#$<HTMLTextAreaElement>('#d-desc').value = this.#item?.description || '';
     this.#setDescMode('edit');
   }
-  #cancelEdit(): void { this.#descCancelled = true; this.#setDescMode('read'); }
-  async #saveDescOnBlur(): Promise<void> {
+  #cancelEdit(): void { this.#setDescMode('read'); }
+  async #saveDesc(): Promise<void> {
     if (this.#descMode !== 'edit') return;
-    if (this.#descCancelled) { this.#descCancelled = false; return; }
     const value = this.#$<HTMLTextAreaElement>('#d-desc').value;
     if (value === (this.#item?.description || '')) { this.#setDescMode('read'); return; }
     const item = await this.#edit('description', value, 'Description').catch(() => null);
     if (item) this.#renderMarkdown(item.description || '');
     this.#setDescMode('read');
+  }
+
+  // Grow the textarea to fit its content, so a description of any length shows in
+  // full without an inner scrollbar or reserved dead space. Called on entering edit
+  // mode and on every input.
+  #autosize(): void {
+    const ta = this.#$<HTMLTextAreaElement>('#d-desc');
+    ta.style.height = 'auto';
+    ta.style.height = `${ta.scrollHeight}px`;
+  }
+
+  // Wrap the current selection in the chosen Markdown syntax (or insert a stub with
+  // the caret placed to type over the placeholder). Inline marks (bold/italic/link/
+  // code) wrap in place; block marks (heading/list/quote) prefix each selected line.
+  #applyMarkdown(kind: string): void {
+    const ta = this.#$<HTMLTextAreaElement>('#d-desc');
+    const start = ta.selectionStart, end = ta.selectionEnd;
+    const sel = ta.value.slice(start, end);
+    let before = '', after = '', body = sel, caretStart = -1, caretEnd = -1;
+    const inline = (mark: string, stub: string) => {
+      before = mark; after = mark; if (!sel) { body = stub; caretStart = start + mark.length; caretEnd = caretStart + stub.length; }
+    };
+    const linePrefix = (prefix: string) => {
+      const lines = (sel || 'text').split('\n');
+      body = lines.map((l) => prefix + l).join('\n');
+      if (!sel) { caretStart = start + prefix.length; caretEnd = caretStart + 4; }
+    };
+    switch (kind) {
+      case 'bold': inline('**', 'bold text'); break;
+      case 'italic': inline('*', 'italic text'); break;
+      case 'code': inline('`', 'code'); break;
+      case 'link': {
+        const text = sel || 'link text';
+        before = ''; after = ''; body = `[${text}](url)`;
+        caretStart = start + text.length + 3; caretEnd = caretStart + 3; // select "url"
+        break;
+      }
+      case 'h2': linePrefix('## '); break;
+      case 'ul': linePrefix('- '); break;
+      case 'quote': linePrefix('> '); break;
+      default: return;
+    }
+    const insert = before + body + after;
+    ta.setRangeText(insert, start, end, 'end');
+    if (caretStart >= 0) ta.setSelectionRange(caretStart, caretEnd);
+    ta.focus();
+    this.#autosize();
   }
 
   // ---- title edit mode ----
