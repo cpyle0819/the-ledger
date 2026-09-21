@@ -1032,13 +1032,15 @@ export class LedgerDrawer extends HTMLElement {
     this.#setDescMode('read');
   }
 
-  // Grow the textarea to fit its content, so a description of any length shows in
-  // full without an inner scrollbar or reserved dead space. Called on entering edit
-  // mode and on every input.
+  // Fit the description without an inner scrollbar, preserving the panel's position
+  // while the temporary auto height collapses its scrollable content.
   #autosize(): void {
     const ta = this.#$<HTMLTextAreaElement>('#d-desc');
+    const panel = this.#$('.panel');
+    const scrollTop = panel.scrollTop;
     ta.style.height = 'auto';
     ta.style.height = `${ta.scrollHeight}px`;
+    panel.scrollTop = scrollTop;
   }
 
   // Wrap the current selection in the chosen Markdown syntax (or insert a stub with
