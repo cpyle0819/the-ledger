@@ -27,13 +27,13 @@ sheet.replaceSync(`
 
   .compose { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
   .compose textarea, .c-edit {
-    width: 100%; resize: vertical; color: var(--text, #33291a); font-family: var(--gara, serif);
+    box-sizing: border-box; width: 100%; resize: vertical; color: var(--text, #33291a); font-family: var(--gara, serif);
     font-size: 16.5px; line-height: 1.6; background: var(--field-bg, rgba(255,250,235,.7));
-    border: 1px solid var(--border, #c4ac7c); border-radius: 2px; padding: 8px 10px; outline: none;
+    border: 1px solid var(--border, #c4ac7c); border-radius: var(--control-radius, 2px); padding: 8px 10px; outline: none;
   }
   .compose textarea:focus, .c-edit:focus { border-color: var(--metal-dim, #7a5f30); background: var(--field-bg-focus, #fffaeb); }
   .mini-btn, .ghost-btn {
-    font-family: var(--fell, serif); font-style: italic; font-size: 16px; cursor: pointer; border-radius: 2px;
+    font-family: var(--fell, serif); font-style: italic; font-size: 16px; cursor: pointer; border-radius: var(--control-radius, 2px);
     padding: 6px 13px; transition: .13s; line-height: 1.3;
   }
   .mini-btn {

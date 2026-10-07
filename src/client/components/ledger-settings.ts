@@ -1,6 +1,6 @@
 // <ledger-settings> — the application settings panel behind the masthead gear.
 // Two sections:
-//   Display — view type (columns/outline) and show-closed toggle. Core the-ledger
+//   Display — view type, default item-panel width, and show-closed toggle. Core the-ledger
 //     concerns, independent of any plugin.
 //   Theme — the active theme's tunable knobs (from its manifest `settings`
 //     schema). Hidden when the theme declares no knobs.
@@ -9,6 +9,7 @@
 // trap, Esc/scrim-click to close. Emits `setting-changed` events (composed,
 // bubbles) so the app root can react to display changes.
 
+import { deepActiveElement, focusableElements } from './focus.js';
 import { el } from './util.js';
 import { chromeSheet, scrollbarSheet } from './shared-styles.js';
 import './ledger-switch.js';
@@ -20,6 +21,7 @@ import {
   type ThemeSetting,
 } from '../core/theme.js';
 import { state } from '../core/state.js';
+import { defaultPanelView, saveDefaultPanelView } from '../core/preferences.js';
 
 const sheet = new CSSStyleSheet();
 sheet.replaceSync(`
@@ -47,7 +49,7 @@ sheet.replaceSync(`
   .ghost-btn {
     font-family: var(--fell, serif); font-style: italic; font-size: 16px; color: var(--metal-bright, #d8b878);
     background: linear-gradient(180deg, var(--frame, #2a1c10), var(--frame-raised, #33230f));
-    border: 1px solid var(--metal-dim, #7a5f30); border-radius: 2px; padding: 7px 14px; cursor: pointer; transition: .15s;
+    border: 1px solid var(--metal-dim, #7a5f30); border-radius: var(--control-radius, 2px); padding: 7px 14px; cursor: pointer; transition: .15s;
     box-shadow: 0 1px 2px rgba(0,0,0,.4), inset 0 1px 0 rgba(216,184,120,.15);
   }
   .ghost-btn:hover { color: #fff; border-color: var(--metal, #b08d4f); background: linear-gradient(180deg, var(--frame-raised, #33230f), var(--frame, #2a1c10)); }
@@ -70,6 +72,7 @@ sheet.replaceSync(`
   .row { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 13px 0; border-bottom: 1px solid var(--hairline-soft, rgba(122,95,48,.4)); }
   .row:last-child { border-bottom: 0; }
   .row-label { font-family: var(--gara, serif); font-size: 16px; color: var(--text, #33291a); }
+  .row-hint { display: block; margin-top: 4px; font: 13px/1.5 var(--gara, sans-serif); color: var(--text-muted); }
 
   /* Range slider */
   .range { display: flex; align-items: center; gap: 10px; }
@@ -143,7 +146,7 @@ export class LedgerSettings extends HTMLElement {
     return el('h3', 'section-label', text);
   }
 
-  // Display section: view type + show closed.
+  // Display preferences apply across themes.
   #displayRows(): DocumentFragment {
     const frag = document.createDocumentFragment();
 
@@ -164,6 +167,21 @@ export class LedgerSettings extends HTMLElement {
     });
     viewRow.append(seg);
     frag.append(viewRow);
+
+    const panelRow = el('div', 'row');
+    const panelLabel = el('span', 'row-label', 'Full-screen item panels');
+    panelLabel.append(el('small', 'row-hint', 'Default width when opening an item'));
+    const panelSwitch = document.createElement('ledger-switch') as LedgerSwitch;
+    panelSwitch.id = 'panel-view-switch';
+    panelSwitch.setAttribute('label', 'Full-screen item panels');
+    panelSwitch.checked = defaultPanelView() === 'fullscreen';
+    panelSwitch.addEventListener('change', (e) => {
+      const view = (e as CustomEvent).detail.checked ? 'fullscreen' : 'sidebar';
+      saveDefaultPanelView(view);
+      this.#emit('setting-changed', { key: 'panelView', value: view });
+    });
+    panelRow.append(panelLabel, panelSwitch);
+    frag.append(panelRow);
 
     // Show closed items
     const closedRow = el('div', 'row');
@@ -268,11 +286,10 @@ export class LedgerSettings extends HTMLElement {
 
   #trapFocus(e: KeyboardEvent): void {
     if (e.key !== 'Tab' || !this.hasAttribute('open')) return;
-    const sel = 'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])';
-    const focusables = [...this.#$('.panel').querySelectorAll<HTMLElement>(sel)].filter((n) => !n.hidden && n.offsetParent !== null);
+    const focusables = focusableElements(this.#$('.panel'));
     if (!focusables.length) return;
     const first = focusables[0]!, last = focusables[focusables.length - 1]!;
-    const active = this.shadowRoot!.activeElement;
+    const active = deepActiveElement();
     if (e.shiftKey && (active === first || active === this.#$('.panel'))) { e.preventDefault(); last.focus(); }
     else if (!e.shiftKey && active === last) { e.preventDefault(); first.focus(); }
   }

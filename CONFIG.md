@@ -64,3 +64,12 @@ server (or the service environment when running under `register`).
 
 A third-party plugin reads whatever env vars it documents; those are the plugin's own
 config, not the host's.
+
+## Item panel width
+
+**Settings → Display → Full-screen item panels** chooses the default width for
+newly opened items. This browser preference applies to every theme and persists
+under `ledger:panel-view`. Sidebar is the default when no preference exists.
+The open panel's expand/shrink icon changes only that panel;
+**close** remains available in either mode. See [Reading view](docs/reader-view.md)
+for typography, interaction behavior, and validation.

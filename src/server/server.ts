@@ -34,6 +34,7 @@ const MIME: Record<string, string> = {
   '.js': 'text/javascript',
   '.mjs': 'text/javascript',
   '.css': 'text/css',
+  '.woff2': 'font/woff2',
   '.svg': 'image/svg+xml',
   '.ogg': 'audio/ogg',
   '.wav': 'audio/wav',

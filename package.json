@@ -11,10 +11,12 @@
     "start": "npm run build && node dist/server/server.js",
     "serve": "node scripts/serve.js",
     "register": "node scripts/register.js",
-    "prepare": "tsc -b"
+    "prepare": "tsc -b",
+    "test:reader": "npm run build && node tests/reader.browser.cjs"
   },
   "dependencies": {
     "@cpyle0819/ambience": "github:cpyle0819/ambience",
+    "@cpyle0819/ledger-theme-earendil": "file:../ledger-themes/packages/earendil",
     "@cpyle0819/ledger-theme-professional": "^1.1.1",
     "@cpyle0819/ledger-theme-space-opera": "^1.3.0",
     "@cpyle0819/ledger-theme-the-ledger": "^1.4.0",
@@ -28,6 +30,7 @@
   "devDependencies": {
     "@types/node": "^26.1.1",
     "@types/ws": "^8.18.1",
+    "playwright": "1.63.0",
     "typescript": "^7.0.2"
   },
   "author": "Corey Pyle",

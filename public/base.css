@@ -105,6 +105,9 @@
   --app-bg:        #26282c;   /* neutral flat backdrop; themes override wholesale */
 
   /* panel + sheet surfaces (outline epics, drawer, compose, about, toast) */
+  --control-radius: 2px;
+  --reader-font: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  --reader-heading-font: system-ui, -apple-system, 'Segoe UI', sans-serif;
   --panel-radius:    6px;
   --panel-surface:   var(--surface);
   --panel-head-wash: linear-gradient(90deg, rgba(0,0,0,.05), transparent 48%);

@@ -53,7 +53,7 @@ sheet.replaceSync(`
   .ghost-btn {
     font-family: var(--fell, serif); font-style: italic; font-size: 15px; color: var(--metal-bright, #d8b878);
     background: linear-gradient(180deg, var(--frame, #2a1c10), var(--frame-raised, #33230f));
-    border: 1px solid var(--metal-dim, #7a5f30); border-radius: 2px; padding: 5px 12px; cursor: pointer; transition: .15s;
+    border: 1px solid var(--metal-dim, #7a5f30); border-radius: var(--control-radius, 2px); padding: 5px 12px; cursor: pointer; transition: .15s;
   }
   .ghost-btn:hover { color: #fff; border-color: var(--metal, #b08d4f); }
 

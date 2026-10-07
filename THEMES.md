@@ -305,3 +305,12 @@ package `version` on each release.
 - [ ] Extraction test: emptying `theme.css` resolves to the neutral baseline, not
       to any real theme.
 - [ ] Verified by rendering the live page, not by reading the CSS.
+
+`--control-radius` sets the corner radius of dialog buttons and form fields,
+including controls inside shadow roots. Its neutral default is `2px`.
+
+Full-screen items use `--reader-font` (self-hosted Source Serif 4 by default),
+`--reader-heading-font` (system sans-serif), and an optional `--reader-measure`
+(default `700px`). `--reader-surface` optionally overrides the theme's
+`--sheet-surface`; it must remain readable with the theme's `--text` and
+`--text-muted`. Theme changes do not change the user's panel-width preference.

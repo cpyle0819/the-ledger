@@ -21,7 +21,10 @@
 
 import { el, asButton, copyLink, plural } from './util.js';
 import { chromeSheet, idTag, noEstimateIcon, pointsPill, CONFIDENCE, scrollbarSheet } from './shared-styles.js';
+import { deepActiveElement, focusableElements } from './focus.js';
+import { readerSheet } from './reader-styles.js';
 import { renderInto } from './markdown.js';
+import { defaultPanelView, type PanelView } from '../core/preferences.js';
 import './ledger-comment-thread.js';
 import type { LedgerCommentThread } from './ledger-comment-thread.js';
 import type { Item, LedgerNode, User, EditableField, CustomFieldDef, Capabilities, EpicVelocity, Status, Kind, Sprint } from '../../shared/contract';
@@ -121,7 +124,7 @@ sheet.replaceSync(`
   .ghost-btn {
     font-family: var(--fell, serif); font-style: italic; font-size: 16px; color: var(--metal-bright, #d8b878);
     background: linear-gradient(180deg, var(--frame, #2a1c10), var(--frame-raised, #33230f));
-    border: 1px solid var(--metal-dim, #7a5f30); border-radius: 2px; padding: 7px 14px; cursor: pointer; transition: .15s;
+    border: 1px solid var(--metal-dim, #7a5f30); border-radius: var(--control-radius, 2px); padding: 7px 14px; cursor: pointer; transition: .15s;
     box-shadow: 0 1px 2px rgba(0,0,0,.4), inset 0 1px 0 rgba(216,184,120,.15);
   }
   .ghost-btn:hover { color: #fff; border-color: var(--metal, #b08d4f); background: linear-gradient(180deg, var(--frame-raised, #33230f), var(--frame, #2a1c10)); }
@@ -136,7 +139,7 @@ sheet.replaceSync(`
   .d-title-edit {
     box-sizing: border-box; width: 100%; margin: 18px 0 12px; padding: 2px 6px;
     font-family: var(--fell, serif); font-weight: 400; font-size: 30px; line-height: 1.2; color: var(--text, #33291a);
-    background: var(--field-bg, rgba(255,250,235,.7)); border: 1px solid var(--field-edge, var(--border, #c4ac7c)); border-radius: 2px; outline: none;
+    background: var(--field-bg, rgba(255,250,235,.7)); border: 1px solid var(--field-edge, var(--border, #c4ac7c)); border-radius: var(--control-radius, 2px); outline: none;
   }
   .d-title-edit:focus { border-color: var(--metal-dim, #7a5f30); background: var(--field-bg-focus, #fffaeb); }
   .d-rule { height: 2px; background: linear-gradient(90deg, var(--metal-dim, #7a5f30), transparent); margin-bottom: 20px; }
@@ -152,7 +155,7 @@ sheet.replaceSync(`
   .d-conf-note:empty { display: none; }
   .d-field select, .d-field input, .d-typeahead input {
     box-sizing: border-box; width: 100%; background: var(--field-bg, rgba(255,250,235,.7)); color: var(--text, #33291a); border: 1px solid var(--field-edge, var(--border, #c4ac7c));
-    border-radius: 2px; padding: 8px 10px; font-family: var(--gara, serif); font-size: 15px; outline: none;
+    border-radius: var(--control-radius, 2px); padding: 8px 10px; font-family: var(--gara, serif); font-size: 15px; outline: none;
   }
   .d-field select:focus, .d-field input:focus, .d-typeahead input:focus { border-color: var(--metal-dim, #7a5f30); background: var(--field-bg-focus, #fffaeb); }
   /* A read-only field value (the completion date, written by the source on close,
@@ -164,7 +167,7 @@ sheet.replaceSync(`
   .typeahead-list { position: absolute; z-index: 5; left: 0; right: 0; top: calc(100% + 2px); margin: 0; padding: 4px; list-style: none;
     background: var(--surface-bright, #f3ead0); border: 1px solid var(--metal-dim, #7a5f30); border-radius: 2px;
     box-shadow: 0 8px 20px rgba(0,0,0,.35); max-height: 260px; overflow-y: auto; }
-  .typeahead-item { display: grid; grid-template-columns: 1fr auto; gap: 0 10px; align-items: baseline; padding: 6px 8px; cursor: pointer; border-radius: 2px; }
+  .typeahead-item { display: grid; grid-template-columns: 1fr auto; gap: 0 10px; align-items: baseline; padding: 6px 8px; cursor: pointer; border-radius: var(--control-radius, 2px); }
   .typeahead-item.active, .typeahead-item:hover { background: rgba(196,172,124,.35); }
   .ta-name { font-family: var(--gara, serif); font-size: 15px; color: var(--text, #33291a); }
   .ta-alias { font-family: var(--mono, monospace); font-size: 12px; color: var(--alert, #8f2f22); }
@@ -267,7 +270,7 @@ sheet.replaceSync(`
   .cgroup-add {
     font-family: var(--fell, serif); font-style: italic; font-size: 15px; color: var(--metal-bright, #d8b878);
     background: linear-gradient(180deg, var(--frame, #2a1c10), var(--frame-raised, #33230f));
-    border: 1px solid var(--metal-dim, #7a5f30); border-radius: 2px; padding: 3px 10px; cursor: pointer;
+    border: 1px solid var(--metal-dim, #7a5f30); border-radius: var(--control-radius, 2px); padding: 3px 10px; cursor: pointer;
     opacity: 0; transition: opacity .12s, color .12s, border-color .12s;
   }
   .cgroup:hover .cgroup-add, .cgroup-add:focus-visible { opacity: 1; }
@@ -319,7 +322,7 @@ sheet.replaceSync(`
   .d-tool {
     display: inline-flex; align-items: center; justify-content: center; min-width: 30px; height: 28px; padding: 0 7px;
     font-family: var(--fell, serif); font-size: 16px; line-height: 1; color: var(--text-muted, #5b4a30);
-    background: none; border: 1px solid transparent; border-radius: 2px; cursor: pointer; transition: .12s;
+    background: none; border: 1px solid transparent; border-radius: var(--control-radius, 2px); cursor: pointer; transition: .12s;
   }
   .d-tool:hover { color: var(--text, #33291a); background: rgba(196,172,124,.3); border-color: var(--field-edge, var(--border, #c4ac7c)); }
   .d-tool b, .d-tool i { font-size: 17px; }
@@ -334,7 +337,7 @@ sheet.replaceSync(`
   .d-save-btn {
     font-family: var(--fell, serif); font-style: italic; font-size: 16px; color: var(--frame-deep, #1c1409);
     background: linear-gradient(180deg, var(--metal-bright, #d8b878), var(--metal, #b08d4f));
-    border: 1px solid var(--metal-dim, #7a5f30); border-radius: 2px; padding: 7px 16px; cursor: pointer; transition: .15s;
+    border: 1px solid var(--metal-dim, #7a5f30); border-radius: var(--control-radius, 2px); padding: 7px 16px; cursor: pointer; transition: .15s;
     box-shadow: 0 1px 2px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,248,230,.4);
   }
   .d-save-btn:hover { background: linear-gradient(180deg, #e6c98a, var(--metal-bright, #d8b878)); }
@@ -380,10 +383,10 @@ export class LedgerDrawer extends HTMLElement {
   connectedCallback(): void {
     if (this.shadowRoot) return;
     this.attachShadow({ mode: 'open' });
-    this.shadowRoot!.adoptedStyleSheets = [chromeSheet, sheet, scrollbarSheet];
+    this.shadowRoot!.adoptedStyleSheets = [chromeSheet, sheet, scrollbarSheet, readerSheet];
     this.shadowRoot!.innerHTML = `
       <div class="scrim" part="scrim"></div>
-      <div class="panel" role="dialog" aria-modal="true" tabindex="-1" part="panel">
+      <div class="panel" role="dialog" aria-modal="true" aria-labelledby="d-title" tabindex="-1" part="panel">
         <button type="button" class="d-back" id="d-back" hidden><span class="d-back-arrow" aria-hidden="true">←</span> <span id="d-back-text"></span></button>
         <div class="head">
           <div class="dh-left">
@@ -392,12 +395,22 @@ export class LedgerDrawer extends HTMLElement {
             <button type="button" class="copy-link" id="d-copy-link" title="Copy link" aria-label="Copy link to this item"><span class="copy-icon" aria-hidden="true">⧉</span></button>
             <span class="save-state" id="d-save-state" role="status" aria-live="polite"></span>
           </div>
+          <div class="d-window-actions">
+          <button type="button" class="ghost-btn d-view-btn" id="d-view" aria-label="Expand to full screen"></button>
           <button class="ghost-btn" id="d-close" aria-keyshortcuts="Escape" title="Close (Esc)"><span aria-hidden="true">✕ </span>close</button>
+          </div>
         </div>
         <h2 class="d-title" id="d-title"></h2>
         <input type="text" class="d-title-edit" id="d-title-edit" spellcheck="false" aria-label="Title" hidden />
-        <div class="d-risk" id="d-risk" hidden></div>
+        <div class="d-reader-context">
+          <p class="d-byline" id="d-byline"></p>
+          <button type="button" class="d-details-link" id="d-show-details">Details &amp; planning ↓</button>
+        </div>
         <div class="d-rule" aria-hidden="true"></div>
+        <details class="d-metadata" id="d-metadata" open>
+          <summary>Details &amp; planning</summary>
+          <div class="d-metadata-body">
+        <div class="d-risk" id="d-risk" hidden></div>
         <div class="d-grid">
           <div class="d-field" id="d-created-field" hidden><label id="d-created-label">created</label><div class="d-readonly" id="d-created-text" aria-labelledby="d-created-label"></div></div>
           <div class="d-field" id="d-startdate-field" hidden><label for="d-startdate-edit">start date<span class="est-warn" id="d-startdate-warn" title="No start date set" aria-label="No start date set" hidden>⚠</span></label><input type="date" id="d-startdate-edit" spellcheck="false" /></div>
@@ -415,6 +428,9 @@ export class LedgerDrawer extends HTMLElement {
         </div>
         <div class="d-custom" id="d-custom" hidden></div>
         <div class="d-contains" id="d-contains" hidden></div>
+          </div>
+        </details>
+        <section class="d-article" id="d-article" aria-label="Description">
         <div class="d-desc-head">
           <span class="d-desc-label">description</span>
           <div class="d-desc-actions">
@@ -436,9 +452,11 @@ export class LedgerDrawer extends HTMLElement {
           <span class="d-tool-hint">Markdown · Ctrl+S to save</span>
         </div>
         <textarea id="d-desc" class="d-desc" spellcheck="false" aria-label="Description (Markdown)" placeholder="Write a description… Markdown is supported." hidden></textarea>
+        </section>
         <div class="d-comments"><ledger-comment-thread id="c-thread"></ledger-comment-thread></div>
         <div class="scroll-tail" aria-hidden="true"></div>
       </div>`;
+    this.inert = !this.hasAttribute('open');
     this.#wire();
   }
 
@@ -450,6 +468,13 @@ export class LedgerDrawer extends HTMLElement {
   #wire(): void {
     this.#$('.scrim').addEventListener('click', () => this.close());
     this.#$('#d-close').addEventListener('click', () => this.close());
+    this.#$('#d-view').addEventListener('click', () => this.#setView(this.dataset.view === 'fullscreen' ? 'sidebar' : 'fullscreen', true));
+    this.#$('#d-show-details').addEventListener('click', () => {
+      const details = this.#$<HTMLDetailsElement>('#d-metadata');
+      details.open = true;
+      details.querySelector('summary')!.focus();
+      details.scrollIntoView({ block: 'start' });
+    });
     this.#$('#d-back').addEventListener('click', () => this.#back());
     this.#$('#d-copy-link').addEventListener('click', () => { if (this.#item?.url) copyLink(this.#item.url, this.#$('#d-copy-link')); });
 
@@ -541,12 +566,53 @@ export class LedgerDrawer extends HTMLElement {
     thread.addEventListener('comment-delete', (e) => this.#comment('DELETE', `/${e.detail.id}`));
   }
 
+  /** Width changes preserve the live editor and do not alter the saved default. */
+  #setView(view: PanelView, preservePosition = false): void {
+    const panel = this.#$('.panel');
+    const toolbarBottom = this.#$('.head').getBoundingClientRect().bottom;
+    const blocks = [...this.shadowRoot!.querySelectorAll<HTMLElement>('#d-desc-render > *, #d-desc:not([hidden])')];
+    const anchor = preservePosition && panel.scrollTop > 0
+      ? blocks.find(node => {
+          const rect = node.getBoundingClientRect();
+          return rect.top >= toolbarBottom && rect.top < panel.getBoundingClientRect().bottom;
+        }) ?? blocks.find(node => node.getBoundingClientRect().bottom > toolbarBottom)
+      : undefined;
+    const before = anchor?.getBoundingClientRect().top;
+    const details = this.#$<HTMLDetailsElement>('#d-metadata');
+    const article = this.#$('#d-article');
+    const fullscreen = view === 'fullscreen';
+    this.dataset.view = view;
+    details.open = !fullscreen;
+    if (fullscreen) article.after(details);
+    else article.before(details);
+    const button = this.#$('#d-view');
+    const corners = fullscreen
+      ? 'M8 3v5H3M16 3v5h5M3 16h5v5M21 16h-5v5'
+      : 'M8 3H3v5M16 3h5v5M3 16v5h5M21 16v5h-5';
+    button.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${corners}"/></svg>`;
+    const actions = this.#$('.d-desc-actions');
+    if (fullscreen) this.#$('.d-window-actions').prepend(actions);
+    else this.#$('.d-desc-head').append(actions);
+    button.setAttribute('aria-label', fullscreen ? 'Shrink to sidebar' : 'Expand to full screen');
+    button.title = fullscreen ? 'Shrink to sidebar' : 'Expand to full screen';
+    if (this.#descMode === 'edit') this.#autosize();
+    if (anchor && before !== undefined) panel.scrollTop += anchor.getBoundingClientRect().top - before;
+    else panel.scrollTop = 0;
+  }
+
+  #paintByline(item: LedgerNode & Partial<Item>): void {
+    const parts = [STATUS_LABEL[item.status] ?? item.status, item.assignee ? `Assigned to ${item.assignee}` : 'Unassigned'];
+    if (item.createDate) parts.push(`Created ${this.#formatDate(item.createDate)}`);
+    this.#$('#d-byline').textContent = parts.join(' · ');
+  }
+
   // ---- open / close ----
   // External entry point (board click, deep-link restore): opens fresh and clears
   // the back trail — back never crosses separate openings.
   async open(node: LedgerNode | null): Promise<void> {
     this.#trail = [];
     this.#openClosed.clear();
+    if (node && !this.hasAttribute('open')) this.#setView(defaultPanelView());
     return this.#show(node);
   }
 
@@ -581,11 +647,15 @@ export class LedgerDrawer extends HTMLElement {
     this.#item = node;
     this.#descMode = 'read';
     this.#paint(node, true);
-    this.#lastFocus = document.activeElement as HTMLElement | null;
+    if (!this.hasAttribute('open')) {
+      this.#lastFocus = deepActiveElement() as HTMLElement | null;
+      this.#trap = (e: KeyboardEvent) => this.#trapFocus(e);
+      document.addEventListener('keydown', this.#trap, true);
+    }
+    this.inert = false;
     this.setAttribute('open', '');
+    this.#$('.panel').scrollTop = 0;
     this.#$('.panel').focus();
-    this.#trap = (e: KeyboardEvent) => this.#trapFocus(e);
-    document.addEventListener('keydown', this.#trap, true);
 
     if (this.#caps.readItem && this.api) {
       try {
@@ -601,6 +671,7 @@ export class LedgerDrawer extends HTMLElement {
   close(): void {
     if (!this.hasAttribute('open')) return;
     this.removeAttribute('open');
+    this.inert = true;
     this.#item = null;
     this.#trail = [];
     this.#openClosed.clear();
@@ -616,33 +687,14 @@ export class LedgerDrawer extends HTMLElement {
   // Tab cycles through every focusable in the open dialog, not just this root's.
   #trapFocus(e: KeyboardEvent): void {
     if (e.key !== 'Tab' || !this.hasAttribute('open')) return;
-    const focusables = this.#deepFocusables(this.#$('.panel'));
+    const focusables = focusableElements(this.#$('.panel'));
     if (!focusables.length) return;
     const first = focusables[0]!, last = focusables[focusables.length - 1]!;
     const active = this.shadowRoot!.activeElement;
-    const activeDeep = this.#deepActive();
+    const activeDeep = deepActiveElement();
     if (e.shiftKey && (activeDeep === first || active === this.#$('.panel'))) { e.preventDefault(); last.focus(); }
     else if (!e.shiftKey && activeDeep === last) { e.preventDefault(); first.focus(); }
   }
-  #deepActive(): Element | null {
-    let a: Element | null = document.activeElement;
-    while (a?.shadowRoot?.activeElement) a = a.shadowRoot.activeElement;
-    return a;
-  }
-  #deepFocusables(root: Element): HTMLElement[] {
-    const sel = 'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])';
-    const out: HTMLElement[] = [];
-    const walk = (r: Element | ShadowRoot) => {
-      r.querySelectorAll<HTMLElement>(sel).forEach((n) => {
-        if (n.hidden || n.offsetParent === null) return;
-        out.push(n);
-        if (n.shadowRoot) walk(n.shadowRoot);
-      });
-    };
-    walk(root);
-    return out;
-  }
-
   // ---- paint ----
   // `preview` is the first paint from the list node, before the full item has
   // loaded — some fields (the created date, the workflow step's option list) aren't
@@ -651,6 +703,7 @@ export class LedgerDrawer extends HTMLElement {
   #paint(item: LedgerNode & Partial<Item>, preview = false): void {
     const caps = this.#caps;
     this.#paintBack();
+    this.#paintByline(item);
     const type = this.#$('#d-type'); type.textContent = item.type; type.className = `chip t-${item.type}`;
     // The source supplies the ticket link; without one, show the id as plain text
     // (no href, no copy button) — the app builds no source URL itself.
@@ -942,6 +995,7 @@ export class LedgerDrawer extends HTMLElement {
         method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ field, value }),
       });
       Object.assign(node, item); this.#item = node;
+      this.#paintByline(node);
       if (field === 'estimate') {
         const hasEstimate = item.estimate != null && item.estimate > 0;
         this.#$<HTMLInputElement>('#d-estimate-edit').value = hasEstimate ? String(item.estimate) : '';
